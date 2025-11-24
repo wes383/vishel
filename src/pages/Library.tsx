@@ -19,10 +19,16 @@ interface TVShow {
 export default function LibraryPage() {
     const [movies, setMovies] = useState<Movie[]>([])
     const [tvShows, setTvShows] = useState<TVShow[]>([])
-    const [activeTab, setActiveTab] = useState<'all' | 'movies' | 'tv'>('all')
+    const [activeTab, setActiveTab] = useState<'all' | 'movies' | 'tv'>(() => {
+        return (sessionStorage.getItem('library_active_tab') as 'all' | 'movies' | 'tv') || 'all'
+    })
     const [loading, setLoading] = useState(false)
     const navigate = useNavigate()
     const scrollRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        sessionStorage.setItem('library_active_tab', activeTab)
+    }, [activeTab])
 
     const fetchData = async () => {
         setLoading(true)

@@ -28,6 +28,12 @@ export default function SettingsPage() {
             const sources = Array.isArray(data.sources) ? data.sources : []
             setSettings({ ...data, sources })
         })
+
+        // Check scan status
+        // @ts-ignore
+        window.electron.ipcRenderer.invoke('get-scan-status').then((isScanning: boolean) => {
+            setScanning(isScanning)
+        })
     }, [])
 
     const handleSave = async () => {
@@ -76,7 +82,6 @@ export default function SettingsPage() {
                 <button
                     onClick={() => navigate('/')}
                     className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                    title="Close Settings"
                 >
                     <X className="w-6 h-6" />
                 </button>

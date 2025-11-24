@@ -17,59 +17,66 @@ export const getTMDBClient = () => {
 }
 
 class RateLimiter {
-    private queue: (() => Promise<any>)[] = []
-    private processing = false
+    private queue: { fn: () => Promise<any>, resolve: (value: any) => void, reject: (reason: any) => void }[] = []
+    private activeRequests = 0
+    private maxConcurrent = 5
     private lastRequestTime = 0
-    private minDelay = 300
+    private minDelay = 200
 
     async add<T>(fn: () => Promise<T>): Promise<T> {
         return new Promise((resolve, reject) => {
-            this.queue.push(async () => {
-                try {
-                    const result = await fn()
-                    resolve(result)
-                } catch (error) {
-                    reject(error)
-                }
-            })
+            this.queue.push({ fn, resolve, reject })
             this.processQueue()
         })
     }
 
     private async processQueue() {
-        if (this.processing || this.queue.length === 0) return
+        if (this.queue.length === 0) return
 
-        this.processing = true
+        const now = Date.now()
+        const timeSinceLastRequest = now - this.lastRequestTime
+        const waitTime = Math.max(0, this.minDelay - timeSinceLastRequest)
 
-        while (this.queue.length > 0) {
-            const now = Date.now()
-            const timeSinceLastRequest = now - this.lastRequestTime
-            const waitTime = Math.max(0, this.minDelay - timeSinceLastRequest)
+        if (waitTime > 0) {
+            await new Promise(resolve => setTimeout(resolve, waitTime))
+        }
 
-            if (waitTime > 0) {
-                await new Promise(resolve => setTimeout(resolve, waitTime))
-            }
+        if (this.queue.length === 0) return
 
+        while (this.queue.length > 0 && this.activeRequests < this.maxConcurrent) {
             const task = this.queue.shift()
             if (task) {
+                this.activeRequests++
                 this.lastRequestTime = Date.now()
-                await task()
+                task.fn().then(result => {
+                    task.resolve(result)
+                }).catch(error => {
+                    task.reject(error)
+                }).finally(() => {
+                    this.activeRequests--
+                    this.processQueue()
+                })
             }
         }
 
-        this.processing = false
+        if (this.queue.length > 0 && this.activeRequests < this.maxConcurrent) {
+            setTimeout(() => this.processQueue(), this.minDelay)
+        }
     }
 }
 
 const limiter = new RateLimiter()
 
-export const searchMovie = async (query: string) => {
+export const searchMovie = async (query: string, year?: number) => {
     const client = getTMDBClient()
     if (!client) throw new Error('TMDB API Key not configured')
 
     try {
         const response = await limiter.add(() => client.get('/search/movie', {
-            params: { query }
+            params: {
+                query,
+                year: year?.toString()
+            }
         }))
         return response.data.results
     } catch (error) {
@@ -93,13 +100,16 @@ export const getMovieDetails = async (id: number) => {
     }
 }
 
-export const searchTVShow = async (query: string) => {
+export const searchTVShow = async (query: string, year?: number) => {
     const client = getTMDBClient()
     if (!client) throw new Error('TMDB API Key not configured')
 
     try {
         const response = await limiter.add(() => client.get('/search/tv', {
-            params: { query }
+            params: {
+                query,
+                first_air_date_year: year?.toString()
+            }
         }))
         return response.data.results
     } catch (error) {

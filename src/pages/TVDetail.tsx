@@ -147,18 +147,25 @@ export default function TVDetail() {
             <div className="absolute inset-0 h-[60vh] w-full overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-neutral-900/60 to-neutral-900 z-10" />
                 {show.backdropPath && (
-                    <img
-                        src={`https://image.tmdb.org/t/p/original${show.backdropPath}`}
-                        alt={show.name}
-                        className="w-full h-full object-cover opacity-50"
-                    />
+                    <>
+                        <img
+                            src={`https://image.tmdb.org/t/p/w300${show.backdropPath}`}
+                            alt={show.name}
+                            className="absolute inset-0 w-full h-full object-cover opacity-50 blur-md"
+                        />
+                        <img
+                            src={`https://image.tmdb.org/t/p/original${show.backdropPath}`}
+                            alt={show.name}
+                            className="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-700 ease-in-out"
+                            onLoad={(e) => e.currentTarget.classList.remove('opacity-0')}
+                        />
+                    </>
                 )}
             </div>
 
             <button
                 onClick={() => navigate('/')}
                 className="absolute top-8 right-8 z-50 p-2 hover:bg-white/10 rounded-full transition-colors"
-                title="Close"
             >
                 <X className="w-6 h-6" />
             </button>

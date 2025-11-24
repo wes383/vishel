@@ -1,6 +1,6 @@
 import { ipcMain, dialog, shell } from 'electron'
 import store from './store'
-import { scanMovies } from './scanner'
+import { scanMovies, getScanStatus } from './scanner'
 import { playVideo } from './player'
 import { getDb } from './db'
 import { testConnection, listDirectory } from './webdavService'
@@ -44,6 +44,10 @@ export const setupIpcHandlers = () => {
     // Library
     ipcMain.handle('scan-library', async () => {
         return await scanMovies()
+    })
+
+    ipcMain.handle('get-scan-status', () => {
+        return getScanStatus()
     })
 
     ipcMain.handle('get-movies', async () => {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Settings } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
@@ -22,6 +22,7 @@ export default function LibraryPage() {
     const [activeTab, setActiveTab] = useState<'all' | 'movies' | 'tv'>('all')
     const [loading, setLoading] = useState(false)
     const navigate = useNavigate()
+    const scrollRef = useRef<HTMLDivElement>(null)
 
     const fetchData = async () => {
         setLoading(true)
@@ -44,10 +45,24 @@ export default function LibraryPage() {
         fetchData()
     }, [])
 
+    useEffect(() => {
+        const container = scrollRef.current
+        if (!container) return
+        const savedScroll = sessionStorage.getItem('library_scroll')
+        if (savedScroll && !loading) {
+            container.scrollTop = parseInt(savedScroll, 10)
+        }
+        const handleScroll = () => {
+            sessionStorage.setItem('library_scroll', container.scrollTop.toString())
+        }
+        container.addEventListener('scroll', handleScroll)
+        return () => container.removeEventListener('scroll', handleScroll)
+    }, [loading])
+
     return (
         <div className="h-full flex flex-col">
             {/* Main Content */}
-            <div className="flex-1 overflow-auto p-8">
+            <div ref={scrollRef} className="flex-1 overflow-auto p-8">
                 <div className="relative flex items-center justify-between mb-8">
                     <h2 className="text-3xl font-bold ml-[5px]">Vishel</h2>
 

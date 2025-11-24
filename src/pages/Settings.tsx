@@ -49,10 +49,9 @@ export default function SettingsPage() {
             // @ts-ignore
             await window.electron.ipcRenderer.invoke('scan-library')
         } catch (error) {
-            console.error(error)
-        } finally {
-            setScanning(false)
+            console.error('Scan error:', error)
         }
+        setScanning(false)
     }
 
     const handleAddSource = (source: DataSource) => {

@@ -113,6 +113,7 @@ export default function AddSourceModal({ onClose, onAdd }: AddSourceModalProps) 
                                     value={name}
                                     onChange={e => setName(e.target.value)}
                                     placeholder={type === 'webdav' ? "My WebDAV" : type === 'smb' ? "My SMB Share" : "My Local Folder"}
+                                    spellCheck={false}
                                     className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 outline-none focus:border-white transition-colors"
                                 />
                             </div>
@@ -126,6 +127,7 @@ export default function AddSourceModal({ onClose, onAdd }: AddSourceModalProps) 
                                             value={config.url || ''}
                                             onChange={e => setConfig({ ...config, url: e.target.value })}
                                             placeholder="https://example.com/webdav"
+                                            spellCheck={false}
                                             className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 outline-none focus:border-white transition-colors"
                                         />
                                     </div>
@@ -137,6 +139,7 @@ export default function AddSourceModal({ onClose, onAdd }: AddSourceModalProps) 
                                             value={config.username || ''}
                                             onChange={e => setConfig({ ...config, username: e.target.value })}
                                             placeholder="username"
+                                            spellCheck={false}
                                             className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 outline-none focus:border-white transition-colors"
                                         />
                                     </div>
@@ -148,6 +151,7 @@ export default function AddSourceModal({ onClose, onAdd }: AddSourceModalProps) 
                                             value={config.password || ''}
                                             onChange={e => setConfig({ ...config, password: e.target.value })}
                                             placeholder="password"
+                                            spellCheck={false}
                                             className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 outline-none focus:border-white transition-colors"
                                         />
                                     </div>
@@ -161,6 +165,7 @@ export default function AddSourceModal({ onClose, onAdd }: AddSourceModalProps) 
                                             value={config.share || ''}
                                             onChange={e => setConfig({ ...config, share: e.target.value })}
                                             placeholder="//192.168.1.100/movies"
+                                            spellCheck={false}
                                             className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 outline-none focus:border-white transition-colors"
                                         />
                                         <p className="text-xs text-gray-500 mt-1">Format: //server/share</p>
@@ -173,6 +178,7 @@ export default function AddSourceModal({ onClose, onAdd }: AddSourceModalProps) 
                                             value={config.username || ''}
                                             onChange={e => setConfig({ ...config, username: e.target.value })}
                                             placeholder="username"
+                                            spellCheck={false}
                                             className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 outline-none focus:border-white transition-colors"
                                         />
                                     </div>
@@ -184,6 +190,7 @@ export default function AddSourceModal({ onClose, onAdd }: AddSourceModalProps) 
                                             value={config.password || ''}
                                             onChange={e => setConfig({ ...config, password: e.target.value })}
                                             placeholder="password"
+                                            spellCheck={false}
                                             className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 outline-none focus:border-white transition-colors"
                                         />
                                     </div>
@@ -195,6 +202,7 @@ export default function AddSourceModal({ onClose, onAdd }: AddSourceModalProps) 
                                             value={config.domain || ''}
                                             onChange={e => setConfig({ ...config, domain: e.target.value })}
                                             placeholder="WORKGROUP"
+                                            spellCheck={false}
                                             className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 outline-none focus:border-white transition-colors"
                                         />
                                     </div>
@@ -208,6 +216,7 @@ export default function AddSourceModal({ onClose, onAdd }: AddSourceModalProps) 
                                             value={config.path || ''}
                                             onChange={e => setConfig({ ...config, path: e.target.value })}
                                             placeholder="D:\Movies"
+                                            spellCheck={false}
                                             className="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 outline-none focus:border-white transition-colors"
                                         />
                                         <button

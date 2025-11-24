@@ -16,6 +16,7 @@ export interface Movie {
     title: string
     posterPath: string
     backdropPath: string
+    logoPath?: string
     overview: string
     releaseDate: string
     sourceId: string
@@ -55,6 +56,7 @@ export interface TVShow {
     name: string
     posterPath: string
     backdropPath: string
+    logoPath?: string
     overview: string
     firstAirDate: string
     sourceId: string

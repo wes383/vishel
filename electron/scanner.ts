@@ -163,7 +163,7 @@ const scanDirectoryRecursive = async (
                                     const processPromise = (async () => {
                                         const existingShow = state.currentTVShows.find(s => s.id === tvId)
 
-                                        if (existingShow && existingShow.cast && existingShow.cast.length > 0 && existingShow.externalIds) {
+                                        if (existingShow && existingShow.cast && existingShow.cast.length > 0 && existingShow.externalIds && existingShow.logoPath !== undefined) {
                                             state.newTVShows.set(tvId, {
                                                 ...existingShow,
                                                 seasons: []
@@ -181,9 +181,12 @@ const scanDirectoryRecursive = async (
                                                     profilePath: c.profile_path
                                                 }))
 
+                                                const logoPath = details.images?.logos?.find((l: any) => l.iso_639_1 === 'en')?.file_path
+
                                                 state.newTVShows.set(tvId, {
                                                     id: details.id,
                                                     name: details.name,
+                                                    logoPath: logoPath || '',
                                                     posterPath: details.poster_path,
                                                     backdropPath: details.backdrop_path,
                                                     overview: details.overview,
@@ -291,7 +294,7 @@ const scanDirectoryRecursive = async (
                                     const processPromise = (async () => {
                                         const existingMovie = state.currentMovies.find(m => m.id === bestMatch.id)
 
-                                        if (existingMovie && existingMovie.cast && existingMovie.cast.length > 0 && typeof existingMovie.director !== 'string' && existingMovie.externalIds) {
+                                        if (existingMovie && existingMovie.cast && existingMovie.cast.length > 0 && typeof existingMovie.director !== 'string' && existingMovie.externalIds && existingMovie.logoPath !== undefined) {
                                             state.newMovies.set(movieId, {
                                                 ...existingMovie,
                                                 videoFiles: []
@@ -311,9 +314,12 @@ const scanDirectoryRecursive = async (
                                                     profilePath: directors[0].profile_path || null
                                                 } : undefined
 
+                                                const logoPath = details.images?.logos?.find((l: any) => l.iso_639_1 === 'en')?.file_path
+
                                                 state.newMovies.set(movieId, {
                                                     id: details.id,
                                                     title: details.title,
+                                                    logoPath: logoPath || '',
                                                     overview: details.overview,
                                                     posterPath: details.poster_path,
                                                     backdropPath: details.backdrop_path,

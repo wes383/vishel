@@ -30,6 +30,7 @@ interface Season {
 interface TVShow {
     id: number
     name: string
+    logoPath?: string
     posterPath: string
     backdropPath: string
     overview: string
@@ -174,7 +175,15 @@ export default function TVDetail() {
             <div className="relative z-20 container mx-auto px-8 pt-[45vh] pb-8">
 
                 <div className="mb-12 pt-4">
-                    <h1 className="text-5xl font-bold mb-4 leading-tight">{show.name}</h1>
+                    {show.logoPath ? (
+                        <img
+                            src={`https://image.tmdb.org/t/p/w500${show.logoPath}`}
+                            alt={show.name}
+                            className="max-w-[400px] max-h-[150px] object-contain mb-6 origin-left"
+                        />
+                    ) : (
+                        <h1 className="text-5xl font-bold mb-4 leading-tight">{show.name}</h1>
+                    )}
 
                     <div className="flex flex-wrap items-center gap-6 text-gray-300 mb-8">
                         {show.firstAirDate && (

@@ -128,6 +128,7 @@ export default function SettingsPage() {
                             type="text"
                             value={settings.tmdbApiKey}
                             onChange={e => setSettings({ ...settings, tmdbApiKey: e.target.value })}
+                            spellCheck={false}
                             className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 outline-none focus:border-white transition-colors"
                         />
                     </div>
@@ -139,6 +140,7 @@ export default function SettingsPage() {
                             value={settings.playerPath}
                             onChange={e => setSettings({ ...settings, playerPath: e.target.value })}
                             placeholder="C:\Program Files\..."
+                            spellCheck={false}
                             className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 outline-none focus:border-white transition-colors"
                         />
                         <p className="text-xs text-gray-500 mt-1">Full path to the executable (e.g., PotPlayer, VLC)</p>

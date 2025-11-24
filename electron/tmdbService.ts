@@ -91,7 +91,10 @@ export const getMovieDetails = async (id: number) => {
 
     try {
         const response = await limiter.add(() => client.get(`/movie/${id}`, {
-            params: { append_to_response: 'credits,external_ids' }
+            params: {
+                append_to_response: 'credits,external_ids,images',
+                include_image_language: 'en,null'
+            }
         }))
         return response.data
     } catch (error) {
@@ -124,7 +127,10 @@ export const getTVShowDetails = async (id: number) => {
 
     try {
         const response = await limiter.add(() => client.get(`/tv/${id}`, {
-            params: { append_to_response: 'credits,external_ids' }
+            params: {
+                append_to_response: 'credits,external_ids,images',
+                include_image_language: 'en,null'
+            }
         }))
         return response.data
     } catch (error) {

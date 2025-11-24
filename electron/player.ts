@@ -4,11 +4,24 @@ import axios from 'axios'
 
 export const playVideo = async (fileUrl: string, title?: string) => {
     const playerPath = store.get('playerPath') as string
-    const username = store.get('username') as string
-    const password = store.get('password') as string
+    const sources = store.get('sources') as any[]
 
     if (!playerPath) {
         throw new Error('Player path not configured')
+    }
+
+    let username = ''
+    let password = ''
+
+    if (sources && Array.isArray(sources)) {
+        for (const source of sources) {
+            if (source.config?.url && fileUrl.startsWith(source.config.url)) {
+                username = source.config.username || ''
+                password = source.config.password || ''
+                console.log(`Found matching source: ${source.name}`)
+                break
+            }
+        }
     }
 
     let authUrl = fileUrl

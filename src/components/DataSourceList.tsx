@@ -10,9 +10,9 @@ export default function DataSourceList({ sources, onRemove }: DataSourceListProp
     return (
         <div className="space-y-3">
             {sources.map(source => (
-                <div key={source.id} className="bg-neutral-800 border border-neutral-700 rounded-lg p-4 flex items-center justify-between group">
-                    <div className="flex items-center gap-4">
-                        <div className="bg-neutral-700 p-3 rounded-lg">
+                <div key={source.id} className="bg-neutral-800 border border-neutral-700 rounded-lg p-3 flex items-center justify-between group">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-neutral-700 p-2 rounded-lg">
                             <FolderOpen className="w-6 h-6 text-white" />
                         </div>
                         <div>

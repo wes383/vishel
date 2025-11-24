@@ -55,6 +55,8 @@ export default function TVDetail() {
     const [selectedEpisode, setSelectedEpisode] = useState<Episode | null>(null)
     const [isSeasonOpen, setIsSeasonOpen] = useState(false)
     const [sources, setSources] = useState<DataSource[]>([])
+    const [hideSpoilers, setHideSpoilers] = useState(false)
+    const [revealedEpisodes, setRevealedEpisodes] = useState<Set<number>>(new Set())
     const dropdownRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
@@ -91,6 +93,7 @@ export default function TVDetail() {
         // @ts-ignore
         window.electron.ipcRenderer.invoke('get-settings').then((data: any) => {
             setSources(data.sources || [])
+            setHideSpoilers(data.hideEpisodeSpoilers || false)
         })
     }, [id])
 
@@ -123,6 +126,19 @@ export default function TVDetail() {
             title: `${show.name} - S${episode.seasonNumber}E${episode.episodeNumber} - ${episode.name}`
         })
         setSelectedEpisode(null)
+    }
+
+    const toggleSpoiler = (episodeId: number) => {
+        if (!hideSpoilers) return
+        setRevealedEpisodes(prev => {
+            const newSet = new Set(prev)
+            if (newSet.has(episodeId)) {
+                newSet.delete(episodeId)
+            } else {
+                newSet.add(episodeId)
+            }
+            return newSet
+        })
     }
 
     if (loading) {
@@ -362,7 +378,12 @@ export default function TVDetail() {
                                             {episode.episodeNumber}. {episode.name}
                                         </h3>
                                     </div>
-                                    <p className="text-gray-400 line-clamp-3">{episode.overview}</p>
+                                    <p
+                                        className={`text-gray-400 line-clamp-3 transition-all duration-300 ${hideSpoilers && !revealedEpisodes.has(episode.id) ? 'blur-sm cursor-pointer select-none' : ''}`}
+                                        onClick={() => toggleSpoiler(episode.id)}
+                                    >
+                                        {episode.overview}
+                                    </p>
                                 </div>
                             </div>
                         ))}

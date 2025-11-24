@@ -96,7 +96,6 @@ export default function LibraryPage() {
                     <button
                         onClick={() => navigate('/settings')}
                         className="p-2 rounded-full text-gray-400 hover:bg-neutral-800 hover:text-white transition-colors"
-                        title="Settings"
                     >
                         <Settings className="w-6 h-6" />
                     </button>

@@ -18,12 +18,14 @@ export interface DataSource {
 interface Settings {
     tmdbApiKey: string
     playerPath: string
+    hideEpisodeSpoilers: boolean
     sources: DataSource[]
 }
 
 const schema = {
     tmdbApiKey: { type: 'string', default: '' },
     playerPath: { type: 'string', default: '' },
+    hideEpisodeSpoilers: { type: 'boolean', default: false },
     sources: {
         type: 'array',
         default: [],

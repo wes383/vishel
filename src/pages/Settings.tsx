@@ -8,6 +8,7 @@ import AddSourceModal from '../components/AddSourceModal'
 interface SettingsData {
     tmdbApiKey: string
     playerPath: string
+    hideEpisodeSpoilers: boolean
     sources: DataSource[]
 }
 
@@ -15,6 +16,7 @@ export default function SettingsPage() {
     const [settings, setSettings] = useState<SettingsData>({
         tmdbApiKey: '',
         playerPath: '',
+        hideEpisodeSpoilers: false,
         sources: []
     })
     const [saving, setSaving] = useState(false)
@@ -120,7 +122,7 @@ export default function SettingsPage() {
 
                 {/* General Settings Section */}
                 <section className="space-y-4">
-                    <h2 className="text-xl font-semibold text-white">General Configuration</h2>
+                    <h2 className="text-xl font-semibold text-white -mt-[5px]">General Configuration</h2>
 
                     <div>
                         <label className="block text-sm font-medium text-gray-400 mb-1">TMDB API Key</label>
@@ -145,9 +147,22 @@ export default function SettingsPage() {
                         />
                         <p className="text-xs text-gray-500 mt-1">Full path to the executable (e.g., PotPlayer, VLC)</p>
                     </div>
+
+                    <div>
+                        <div className="flex items-center justify-between bg-neutral-800 p-4 rounded-lg">
+                            <h3 className="font-medium">Hide Episode Details (Spoilers)</h3>
+                            <button
+                                onClick={() => setSettings({ ...settings, hideEpisodeSpoilers: !settings.hideEpisodeSpoilers })}
+                                className={`w-12 h-6 rounded-full transition-colors relative ${settings.hideEpisodeSpoilers ? 'bg-white' : 'bg-neutral-600'}`}
+                            >
+                                <div className={`absolute top-1 w-4 h-4 rounded-full bg-black transition-transform ${settings.hideEpisodeSpoilers ? 'left-7' : 'left-1'}`} />
+                            </button>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Blur episode descriptions until clicked</p>
+                    </div>
                 </section>
 
-                <div className="pt-4">
+                <div className="pt-px">
                     <button
                         onClick={handleSave}
                         disabled={saving}

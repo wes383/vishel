@@ -34,7 +34,9 @@ export default function LibraryPage() {
     const [searchExpanded, setSearchExpanded] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
     const [filterMenuOpen, setFilterMenuOpen] = useState(false)
-    const [sortBy, setSortBy] = useState<'name-asc' | 'name-desc' | 'date-desc' | 'date-asc' | 'rating-desc'>('name-asc')
+    const [sortBy, setSortBy] = useState<'name-asc' | 'name-desc' | 'date-desc' | 'date-asc' | 'rating-desc'>(() => {
+        return (sessionStorage.getItem('library_sort_by') as 'name-asc' | 'name-desc' | 'date-desc' | 'date-asc' | 'rating-desc') || 'name-asc'
+    })
     const [activeTab, setActiveTab] = useState<'all' | 'movies' | 'tv'>(() => {
         return (sessionStorage.getItem('library_active_tab') as 'all' | 'movies' | 'tv') || 'all'
     })
@@ -46,6 +48,10 @@ export default function LibraryPage() {
     useEffect(() => {
         sessionStorage.setItem('library_active_tab', activeTab)
     }, [activeTab])
+
+    useEffect(() => {
+        sessionStorage.setItem('library_sort_by', sortBy)
+    }, [sortBy])
 
     const fetchData = async () => {
         setLoading(true)
@@ -136,6 +142,29 @@ export default function LibraryPage() {
                 return (b.firstAirDate || '').localeCompare(a.firstAirDate || '')
             case 'date-asc':
                 return (a.firstAirDate || '').localeCompare(b.firstAirDate || '')
+            case 'rating-desc':
+                return (b.popularity || 0) - (a.popularity || 0)
+            default:
+                return 0
+        }
+    })
+
+    // Combined  array for All tab - mix movies and TV shows together
+    type CombinedItem = (Movie & { type: 'movie', sortKey: string, sortDate: string }) | (TVShow & { type: 'tv', sortKey: string, sortDate: string })
+
+    const combinedItems: CombinedItem[] = [
+        ...sortedMovies.map(m => ({ ...m, type: 'movie' as const, sortKey: m.title, sortDate: m.releaseDate })),
+        ...sortedTvShows.map(s => ({ ...s, type: 'tv' as const, sortKey: s.name, sortDate: s.firstAirDate }))
+    ].sort((a, b) => {
+        switch (sortBy) {
+            case 'name-asc':
+                return a.sortKey.localeCompare(b.sortKey)
+            case 'name-desc':
+                return b.sortKey.localeCompare(a.sortKey)
+            case 'date-desc':
+                return (b.sortDate || '').localeCompare(a.sortDate || '')
+            case 'date-asc':
+                return (a.sortDate || '').localeCompare(b.sortDate || '')
             case 'rating-desc':
                 return (b.popularity || 0) - (a.popularity || 0)
             default:
@@ -247,7 +276,7 @@ export default function LibraryPage() {
                     ) : (
                         <>
                             {activeTab === 'all' && (
-                                (sortedMovies.length === 0 && sortedTvShows.length === 0) ? (
+                                (combinedItems.length === 0) ? (
                                     <div className="text-center text-gray-400 mt-20">
                                         {searchQuery ? (
                                             <>
@@ -263,17 +292,17 @@ export default function LibraryPage() {
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                                        {sortedMovies.map(movie => (
+                                        {combinedItems.map(item => (
                                             <div
-                                                key={`movie-${movie.id}`}
-                                                onClick={() => navigate(`/movie/${movie.id}`)}
+                                                key={`${item.type}-${item.id}`}
+                                                onClick={() => navigate(item.type === 'movie' ? `/movie/${item.id}` : `/tv/${item.id}`)}
                                                 className="group relative bg-neutral-800 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer"
                                             >
                                                 <div className="aspect-[2/3] relative">
-                                                    {movie.posterPath ? (
+                                                    {item.posterPath ? (
                                                         <img
-                                                            src={`https://image.tmdb.org/t/p/w500${movie.posterPath}`}
-                                                            alt={movie.title}
+                                                            src={`https://image.tmdb.org/t/p/w500${item.posterPath}`}
+                                                            alt={item.type === 'movie' ? (item as Movie).title : (item as TVShow).name}
                                                             className="w-full h-full object-cover transition-all duration-[100ms] group-hover:blur-sm"
                                                         />
                                                     ) : (
@@ -282,31 +311,9 @@ export default function LibraryPage() {
                                                         </div>
                                                     )}
                                                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-all duration-300 delay-[50ms] flex items-center justify-center p-4 opacity-0 group-hover:opacity-100">
-                                                        <h3 className="font-bold text-white text-center text-lg">{movie.title}</h3>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                        {sortedTvShows.map(show => (
-                                            <div
-                                                key={`tv-${show.id}`}
-                                                onClick={() => navigate(`/tv/${show.id}`)}
-                                                className="group relative bg-neutral-800 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer"
-                                            >
-                                                <div className="aspect-[2/3] relative">
-                                                    {show.posterPath ? (
-                                                        <img
-                                                            src={`https://image.tmdb.org/t/p/w500${show.posterPath}`}
-                                                            alt={show.name}
-                                                            className="w-full h-full object-cover transition-all duration-[50ms] group-hover:blur-sm"
-                                                        />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center bg-neutral-700 text-neutral-500">
-                                                            No Poster
-                                                        </div>
-                                                    )}
-                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-all duration-300 delay-[50ms] flex items-center justify-center p-4 opacity-0 group-hover:opacity-100">
-                                                        <h3 className="font-bold text-white text-center text-lg">{show.name}</h3>
+                                                        <h3 className="font-bold text-white text-center text-lg">
+                                                            {item.type === 'movie' ? (item as Movie).title : (item as TVShow).name}
+                                                        </h3>
                                                     </div>
                                                 </div>
                                             </div>

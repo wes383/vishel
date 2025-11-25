@@ -92,7 +92,6 @@ export default function LibraryPage() {
         return () => container.removeEventListener('scroll', handleScroll)
     }, [loading])
 
-    // Close filter menu when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (filterMenuRef.current && !filterMenuRef.current.contains(event.target as Node)) {
@@ -105,7 +104,6 @@ export default function LibraryPage() {
         }
     }, [filterMenuOpen])
 
-    // Filter movies and TV shows based on search query
     const filteredMovies = searchQuery
         ? movies.filter(movie => movie.title.toLowerCase().includes(searchQuery.toLowerCase()))
         : movies
@@ -114,7 +112,6 @@ export default function LibraryPage() {
         ? tvShows.filter(show => show.name.toLowerCase().includes(searchQuery.toLowerCase()))
         : tvShows
 
-    // Sort filtered results
     const sortedMovies = [...filteredMovies].sort((a, b) => {
         switch (sortBy) {
             case 'name-asc':
@@ -149,7 +146,6 @@ export default function LibraryPage() {
         }
     })
 
-    // Combined  array for All tab - mix movies and TV shows together
     type CombinedItem = (Movie & { type: 'movie', sortKey: string, sortDate: string }) | (TVShow & { type: 'tv', sortKey: string, sortDate: string })
 
     const combinedItems: CombinedItem[] = [

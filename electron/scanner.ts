@@ -80,6 +80,7 @@ interface ScanState {
     pendingMovies: Map<number, Promise<void>>
     pendingTVShows: Map<number, Promise<void>>
     pendingSeasons: Map<string, Promise<void>>
+    unscannedFiles: VideoFile[]
 }
 
 const scanDirectoryRecursive = async (
@@ -163,7 +164,7 @@ const scanDirectoryRecursive = async (
                                     const processPromise = (async () => {
                                         const existingShow = state.currentTVShows.find(s => s.id === tvId)
 
-                                        if (existingShow && existingShow.cast && existingShow.cast.length > 0 && existingShow.externalIds && existingShow.logoPath !== undefined) {
+                                        if (existingShow && existingShow.cast && existingShow.cast.length > 0 && existingShow.externalIds && existingShow.logoPath !== undefined && existingShow.popularity !== undefined) {
                                             state.newTVShows.set(tvId, {
                                                 ...existingShow,
                                                 seasons: []
@@ -194,6 +195,7 @@ const scanDirectoryRecursive = async (
                                                     sourceId: source.id,
                                                     genres: details.genres?.map((g: any) => g.name),
                                                     voteAverage: details.vote_average,
+                                                    popularity: details.popularity,
                                                     status: details.status,
                                                     cast,
                                                     createdBy,
@@ -272,9 +274,13 @@ const scanDirectoryRecursive = async (
                                     }
                                 }
                             }
+                        } else {
+                            console.warn(`No TV show match found for: ${item.filename}`)
+                            state.unscannedFiles.push(createVideoFile(source, item.filename))
                         }
                     } catch (error) {
                         console.error(`Failed to process TV show ${item.filename}:`, error)
+                        state.unscannedFiles.push(createVideoFile(source, item.filename))
                     }
                 } else {
                     // Handle Movie
@@ -294,7 +300,7 @@ const scanDirectoryRecursive = async (
                                     const processPromise = (async () => {
                                         const existingMovie = state.currentMovies.find(m => m.id === bestMatch.id)
 
-                                        if (existingMovie && existingMovie.cast && existingMovie.cast.length > 0 && typeof existingMovie.director !== 'string' && existingMovie.externalIds && existingMovie.logoPath !== undefined) {
+                                        if (existingMovie && existingMovie.cast && existingMovie.cast.length > 0 && typeof existingMovie.director !== 'string' && existingMovie.externalIds && existingMovie.logoPath !== undefined && existingMovie.popularity !== undefined) {
                                             state.newMovies.set(movieId, {
                                                 ...existingMovie,
                                                 videoFiles: []
@@ -326,6 +332,7 @@ const scanDirectoryRecursive = async (
                                                     releaseDate: details.release_date,
                                                     runtime: details.runtime,
                                                     voteAverage: details.vote_average,
+                                                    popularity: details.popularity,
                                                     genres: details.genres?.map((g: any) => g.name),
                                                     sourceId: source.id,
                                                     status: details.status,
@@ -347,9 +354,13 @@ const scanDirectoryRecursive = async (
                             if (movie) {
                                 movie.videoFiles.push(createVideoFile(source, item.filename))
                             }
+                        } else {
+                            console.warn(`No movie match found for: ${item.filename}`)
+                            state.unscannedFiles.push(createVideoFile(source, item.filename))
                         }
                     } catch (error) {
                         console.error(`Failed to process movie ${item.filename}:`, error)
+                        state.unscannedFiles.push(createVideoFile(source, item.filename))
                     }
                 }
             }
@@ -387,7 +398,8 @@ export const scanMovies = async (onProgress?: (data: any) => void) => {
             seasonDetailsCache: new Map(),
             pendingMovies: new Map(),
             pendingTVShows: new Map(),
-            pendingSeasons: new Map()
+            pendingSeasons: new Map(),
+            unscannedFiles: []
         }
 
         for (const source of sources) {
@@ -406,6 +418,7 @@ export const scanMovies = async (onProgress?: (data: any) => void) => {
 
         db.data.movies = Array.from(state.newMovies.values())
         db.data.tvShows = Array.from(state.newTVShows.values())
+        db.data.unscannedFiles = state.unscannedFiles
 
         await db.write()
 

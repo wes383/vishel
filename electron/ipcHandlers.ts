@@ -70,6 +70,11 @@ export const setupIpcHandlers = () => {
         return db.data.tvShows?.find(s => s.id === id)
     })
 
+    ipcMain.handle('get-unscanned-files', async () => {
+        const db = await getDb()
+        return db.data.unscannedFiles || []
+    })
+
     // Player
     ipcMain.handle('play-video', async (_, { url, title }) => {
         await playVideo(url, title)

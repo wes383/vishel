@@ -24,6 +24,7 @@ export interface Movie {
     genres?: string[]
     runtime?: number
     voteAverage?: number
+    popularity?: number
     tagline?: string
     status?: string
     cast?: { name: string, character: string, profilePath: string }[]
@@ -62,6 +63,7 @@ export interface TVShow {
     sourceId: string
     genres?: string[]
     voteAverage?: number
+    popularity?: number
     status?: string
     cast?: { name: string, character: string, profilePath: string }[]
     createdBy?: { name: string, profilePath: string }[]
@@ -75,10 +77,11 @@ export interface TVShow {
 export interface Data {
     movies: Movie[]
     tvShows: TVShow[]
+    unscannedFiles: VideoFile[]
     lastScan: string
 }
 
-const defaultData: Data = { movies: [], tvShows: [], lastScan: '' }
+const defaultData: Data = { movies: [], tvShows: [], unscannedFiles: [], lastScan: '' }
 
 const dbPath = path.join(app.getPath('userData'), 'db.json')
 

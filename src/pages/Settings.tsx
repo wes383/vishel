@@ -152,7 +152,7 @@ export default function SettingsPage() {
                             spellCheck={false}
                             className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 outline-none focus:border-white transition-colors"
                         />
-                        <p className="text-xs text-gray-500 mt-1">Full path to the executable (e.g., PotPlayer, VLC)</p>
+                        <p className="text-xs text-gray-500 mt-1">Full path to the executable (e.g., PotPlayer, mpv)</p>
                     </div>
 
                     <div>

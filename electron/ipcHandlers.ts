@@ -85,8 +85,49 @@ export const setupIpcHandlers = () => {
     })
 
     // Player
-    ipcMain.handle('play-video', async (_, { url, title }) => {
+    // Player
+    ipcMain.handle('play-video', async (_, { url, title, history }) => {
+        if (history) {
+            const db = await getDb()
+
+            // Remove existing entry for the same media (same movie or same episode)
+            db.data.history = db.data.history.filter(item => {
+                if (item.mediaId !== history.mediaId || item.mediaType !== history.mediaType) {
+                    return true
+                }
+                // For TV shows, also check season and episode
+                if (history.mediaType === 'tv') {
+                    return item.seasonNumber !== history.seasonNumber || item.episodeNumber !== history.episodeNumber
+                }
+                // For movies, filter out if same mediaId
+                return false
+            })
+
+            const historyItem = {
+                ...history,
+                id: crypto.randomUUID(),
+                timestamp: Date.now()
+            }
+            db.data.history.unshift(historyItem)
+            // Keep only last 200 items
+            if (db.data.history.length > 200) {
+                db.data.history = db.data.history.slice(0, 200)
+            }
+            await db.write()
+        }
         await playVideo(url, title)
+    })
+
+    ipcMain.handle('get-history', async () => {
+        const db = await getDb()
+        return db.data.history || []
+    })
+
+    ipcMain.handle('delete-history-item', async (_, historyId: string) => {
+        const db = await getDb()
+        db.data.history = db.data.history.filter(item => item.id !== historyId)
+        await db.write()
+        return true
     })
 
     // Dialogs

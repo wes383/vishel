@@ -78,14 +78,28 @@ export interface TVShow {
     }
 }
 
+export interface HistoryItem {
+    id: string
+    mediaId: number
+    mediaType: 'movie' | 'tv'
+    title: string
+    posterPath: string
+    filePath: string
+    timestamp: number
+    seasonNumber?: number
+    episodeNumber?: number
+    episodeName?: string
+}
+
 export interface Data {
     movies: Movie[]
     tvShows: TVShow[]
     unscannedFiles: VideoFile[]
+    history: HistoryItem[]
     lastScan: string
 }
 
-const defaultData: Data = { movies: [], tvShows: [], unscannedFiles: [], lastScan: '' }
+const defaultData: Data = { movies: [], tvShows: [], unscannedFiles: [], history: [], lastScan: '' }
 
 const dbPath = path.join(app.getPath('userData'), 'db.json')
 
@@ -94,5 +108,12 @@ let dbInstance: Low<Data> | null = null
 export const getDb = async (): Promise<Low<Data>> => {
     if (dbInstance) return dbInstance
     dbInstance = await JSONFilePreset<Data>(dbPath, defaultData)
+
+    // Ensure history array exists for existing databases
+    if (!dbInstance.data.history) {
+        dbInstance.data.history = []
+        await dbInstance.write()
+    }
+
     return dbInstance
 }

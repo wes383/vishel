@@ -125,7 +125,17 @@ export default function TVDetail() {
         // @ts-ignore
         window.electron.ipcRenderer.invoke('play-video', {
             url: file.webdavUrl,
-            title: `${show.name} - S${episode.seasonNumber}E${episode.episodeNumber} - ${episode.name}`
+            title: `${show.name} - S${episode.seasonNumber}E${episode.episodeNumber} - ${episode.name}`,
+            history: {
+                mediaId: show.id,
+                mediaType: 'tv',
+                title: show.name,
+                posterPath: show.posterPath,
+                filePath: file.filePath,
+                seasonNumber: episode.seasonNumber,
+                episodeNumber: episode.episodeNumber,
+                episodeName: episode.name
+            }
         })
         setSelectedEpisode(null)
     }

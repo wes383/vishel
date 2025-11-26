@@ -19,6 +19,7 @@ interface Settings {
     tmdbApiKey: string
     playerPath: string
     hideEpisodeSpoilers: boolean
+    showTitlesOnPosters: boolean
     sources: DataSource[]
 }
 
@@ -26,6 +27,7 @@ const schema = {
     tmdbApiKey: { type: 'string', default: '' },
     playerPath: { type: 'string', default: '' },
     hideEpisodeSpoilers: { type: 'boolean', default: false },
+    showTitlesOnPosters: { type: 'boolean', default: false },
     sources: {
         type: 'array',
         default: [],

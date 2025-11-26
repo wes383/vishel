@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Save, Plus, X, RefreshCw } from 'lucide-react'
+import { Plus, X, RefreshCw } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { DataSource } from '../../electron/store'
 import DataSourceList from '../components/DataSourceList'
@@ -9,6 +9,7 @@ interface SettingsData {
     tmdbApiKey: string
     playerPath: string
     hideEpisodeSpoilers: boolean
+    showTitlesOnPosters: boolean
     sources: DataSource[]
 }
 
@@ -17,9 +18,9 @@ export default function SettingsPage() {
         tmdbApiKey: '',
         playerPath: '',
         hideEpisodeSpoilers: false,
+        showTitlesOnPosters: false,
         sources: []
     })
-    const [saving, setSaving] = useState(false)
     const [scanning, setScanning] = useState(false)
     const [showAddModal, setShowAddModal] = useState(false)
     const navigate = useNavigate()
@@ -38,11 +39,9 @@ export default function SettingsPage() {
         })
     }, [])
 
-    const handleSave = async () => {
-        setSaving(true)
+    const autoSave = async (newSettings: SettingsData) => {
         // @ts-ignore
-        await window.electron.ipcRenderer.invoke('save-settings', settings)
-        setTimeout(() => setSaving(false), 1000)
+        await window.electron.ipcRenderer.invoke('save-settings', newSettings)
     }
 
     const handleScan = async () => {
@@ -129,7 +128,11 @@ export default function SettingsPage() {
                         <input
                             type="text"
                             value={settings.tmdbApiKey}
-                            onChange={e => setSettings({ ...settings, tmdbApiKey: e.target.value })}
+                            onChange={e => {
+                                const newSettings = { ...settings, tmdbApiKey: e.target.value }
+                                setSettings(newSettings)
+                            }}
+                            onBlur={() => autoSave(settings)}
                             spellCheck={false}
                             className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 outline-none focus:border-white transition-colors"
                         />
@@ -140,7 +143,11 @@ export default function SettingsPage() {
                         <input
                             type="text"
                             value={settings.playerPath}
-                            onChange={e => setSettings({ ...settings, playerPath: e.target.value })}
+                            onChange={e => {
+                                const newSettings = { ...settings, playerPath: e.target.value }
+                                setSettings(newSettings)
+                            }}
+                            onBlur={() => autoSave(settings)}
                             placeholder="C:\Program Files\..."
                             spellCheck={false}
                             className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 outline-none focus:border-white transition-colors"
@@ -152,7 +159,11 @@ export default function SettingsPage() {
                         <div className="flex items-center justify-between bg-neutral-800 p-4 rounded-lg">
                             <h3 className="font-medium">Hide Episode Details (Spoilers)</h3>
                             <button
-                                onClick={() => setSettings({ ...settings, hideEpisodeSpoilers: !settings.hideEpisodeSpoilers })}
+                                onClick={() => {
+                                    const newSettings = { ...settings, hideEpisodeSpoilers: !settings.hideEpisodeSpoilers }
+                                    setSettings(newSettings)
+                                    autoSave(newSettings)
+                                }}
                                 className={`w-12 h-6 rounded-full transition-colors relative ${settings.hideEpisodeSpoilers ? 'bg-white' : 'bg-neutral-600'}`}
                             >
                                 <div className={`absolute top-1 w-4 h-4 rounded-full bg-black transition-transform ${settings.hideEpisodeSpoilers ? 'left-7' : 'left-1'}`} />
@@ -160,22 +171,25 @@ export default function SettingsPage() {
                         </div>
                         <p className="text-xs text-gray-500 mt-1">Blur episode descriptions until clicked</p>
                     </div>
+
+                    <div>
+                        <div className="flex items-center justify-between bg-neutral-800 p-4 rounded-lg">
+                            <h3 className="font-medium">Show Titles Below Posters</h3>
+                            <button
+                                onClick={() => {
+                                    const newSettings = { ...settings, showTitlesOnPosters: !settings.showTitlesOnPosters }
+                                    setSettings(newSettings)
+                                    autoSave(newSettings)
+                                }}
+                                className={`w-12 h-6 rounded-full transition-colors relative ${settings.showTitlesOnPosters ? 'bg-white' : 'bg-neutral-600'}`}
+                            >
+                                <div className={`absolute top-1 w-4 h-4 rounded-full bg-black transition-transform ${settings.showTitlesOnPosters ? 'left-7' : 'left-1'}`} />
+                            </button>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Display titles below posters instead of on hover</p>
+                    </div>
                 </section>
 
-
-
-                <hr className="border-neutral-800" />
-
-                <div className="pt-px">
-                    <button
-                        onClick={handleSave}
-                        disabled={saving}
-                        className="bg-white hover:bg-gray-200 text-black px-6 py-2 rounded-full font-medium flex items-center gap-2 disabled:opacity-50 transition-colors"
-                    >
-                        <Save className="w-4 h-4" />
-                        {saving ? 'Saved!' : 'Save Settings'}
-                    </button>
-                </div>
             </div>
 
             {showAddModal && (

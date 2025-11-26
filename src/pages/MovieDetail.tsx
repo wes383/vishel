@@ -83,7 +83,17 @@ export default function MovieDetail() {
     const playVideo = (file: VideoFile) => {
         if (!movie) return
         // @ts-ignore
-        window.electron.ipcRenderer.invoke('play-video', { url: file.webdavUrl, title: movie.title })
+        window.electron.ipcRenderer.invoke('play-video', {
+            url: file.webdavUrl,
+            title: movie.title,
+            history: {
+                mediaId: movie.id,
+                mediaType: 'movie',
+                title: movie.title,
+                posterPath: movie.posterPath,
+                filePath: file.filePath
+            }
+        })
         setShowVersionSelector(false)
     }
 

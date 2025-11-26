@@ -8,6 +8,7 @@
 - **Universal Sources**: Supports Local folders, SMB shares (NAS), and WebDAV.
 - **External Player**: Plays media in your favorite player (VLC, PotPlayer, mpv) with auto-auth handling.
 
+## Screenshot
 <img width="2853" height="1653" alt="image" src="https://github.com/user-attachments/assets/3b251878-7005-46e5-bb8a-51ee3819961a" />
 
 ## Getting Started

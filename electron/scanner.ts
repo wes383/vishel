@@ -1,4 +1,4 @@
-import { getDb, Movie, TVShow, VideoFile } from './db'
+import { getDb, saveMovie, saveTVShow, addUnscannedFile, clearUnscannedFiles, Movie, TVShow, VideoFile } from './db'
 import { searchMovie, getMovieDetails, searchTVShow, getTVShowDetails, getSeasonDetails } from './tmdbService'
 import { listDirectory } from './webdavService'
 import { listLocalDirectory } from './localFileService'
@@ -414,14 +414,15 @@ export const scanMovies = async (onProgress?: (data: any) => void) => {
     console.log('Starting media scan...')
 
     try {
-        const db = await getDb()
+        clearUnscannedFiles()
+
         const sources = store.get('sources') as DataSource[]
 
         const state: ScanState = {
             newMovies: new Map(),
-            currentMovies: db.data.movies,
+            currentMovies: [],
             newTVShows: new Map(),
-            currentTVShows: db.data.tvShows || [],
+            currentTVShows: [],
             seasonDetailsCache: new Map(),
             pendingMovies: new Map(),
             pendingTVShows: new Map(),
@@ -443,17 +444,33 @@ export const scanMovies = async (onProgress?: (data: any) => void) => {
             }
         }
 
-        db.data.movies = Array.from(state.newMovies.values())
-        db.data.tvShows = Array.from(state.newTVShows.values())
-        db.data.unscannedFiles = state.unscannedFiles
+        onProgress?.({ status: 'Saving metadata...' })
+
+        const db = getDb()
+
+        const saveTransaction = db.transaction(() => {
+            db.prepare('DELETE FROM movies').run()
+            db.prepare('DELETE FROM tv_shows').run()
+            for (const movie of state.newMovies.values()) {
+                saveMovie(movie)
+            }
+            for (const show of state.newTVShows.values()) {
+                saveTVShow(show)
+            }
+            for (const file of state.unscannedFiles) {
+                addUnscannedFile(file)
+            }
+        })
+
+        saveTransaction()
 
         onProgress?.({ status: 'Updating IMDb ratings...' })
         const allImdbIds: string[] = []
 
-        db.data.movies.forEach(m => {
+        state.newMovies.forEach(m => {
             if (m.externalIds?.imdb_id) allImdbIds.push(m.externalIds.imdb_id)
         })
-        db.data.tvShows.forEach(t => {
+        state.newTVShows.forEach(t => {
             if (t.externalIds?.imdb_id) allImdbIds.push(t.externalIds.imdb_id)
         })
 
@@ -471,36 +488,43 @@ export const scanMovies = async (onProgress?: (data: any) => void) => {
                     allImdbIds
                 )
 
-                let updatedCount = 0
-                db.data.movies.forEach(m => {
-                    if (m.externalIds?.imdb_id) {
-                        const rating = getImdbRating(m.externalIds.imdb_id)
-                        if (rating) {
-                            m.imdbRating = rating.rating
-                            m.imdbVotes = rating.votes
-                            updatedCount++
+                const updateRatingsTransaction = db.transaction(() => {
+                    let updatedCount = 0
+
+                    for (const movie of state.newMovies.values()) {
+                        if (movie.externalIds?.imdb_id) {
+                            const rating = getImdbRating(movie.externalIds.imdb_id)
+                            if (rating) {
+                                movie.imdbRating = rating.rating
+                                movie.imdbVotes = rating.votes
+                                saveMovie(movie)
+                                updatedCount++
+                            }
                         }
                     }
-                })
-                db.data.tvShows.forEach(t => {
-                    if (t.externalIds?.imdb_id) {
-                        const rating = getImdbRating(t.externalIds.imdb_id)
-                        if (rating) {
-                            t.imdbRating = rating.rating
-                            t.imdbVotes = rating.votes
-                            updatedCount++
+
+                    for (const show of state.newTVShows.values()) {
+                        if (show.externalIds?.imdb_id) {
+                            const rating = getImdbRating(show.externalIds.imdb_id)
+                            if (rating) {
+                                show.imdbRating = rating.rating
+                                show.imdbVotes = rating.votes
+                                saveTVShow(show)
+                                updatedCount++
+                            }
                         }
                     }
+                    console.log(`Updated IMDb ratings for ${updatedCount} items`)
                 })
-                console.log(`Updated IMDb ratings for ${updatedCount} items`)
+
+                updateRatingsTransaction()
+
             } catch (error) {
                 console.error('Failed to update IMDb ratings:', error)
             }
         }
 
-        await db.write()
-
-        console.log(`Scan complete: Found ${db.data.movies.length} movies and ${db.data.tvShows?.length || 0} TV shows`)
+        console.log(`Scan complete: Found ${state.newMovies.size} movies and ${state.newTVShows.size} TV shows`)
         onProgress?.({ status: 'Scan complete!', done: true })
     } catch (error) {
         console.error('Scan failed:', error)

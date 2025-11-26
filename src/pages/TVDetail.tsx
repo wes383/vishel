@@ -161,7 +161,7 @@ export default function TVDetail() {
         return (
             <div className="flex flex-col items-center justify-center h-screen text-gray-400">
                 <p className="text-xl mb-4">TV Show not found</p>
-                <button onClick={() => navigate('/')} className="p-2 hover:bg-neutral-800 rounded-lg transition-colors">
+                <button onClick={() => navigate('/')} className="p-2 hover:bg-neutral-800 rounded-full transition-colors">
                     <X className="w-6 h-6" />
                 </button>
             </div>

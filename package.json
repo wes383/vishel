@@ -8,7 +8,7 @@
     "build": "tsc && vite build && electron-builder",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "rebuild": "npm rebuild better-sqlite3 --runtime=electron --target=30.0.1 --dist-url=https://electronjs.org/headers"
+    "rebuild": "electron-rebuild -f -w better-sqlite3"
   },
   "dependencies": {
     "@marsaud/smb2": "^0.18.0",

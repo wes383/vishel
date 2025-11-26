@@ -2,7 +2,7 @@ import { ipcMain, dialog, shell } from 'electron'
 import store from './store'
 import { scanMovies, getScanStatus } from './scanner'
 import { playVideo } from './player'
-import { getDb } from './db'
+import { getAllMovies, getMovie, getAllTVShows, getTVShow, getHistory, addToHistory, deleteHistoryItem, getUnscannedFiles } from './db'
 import { testConnection, listDirectory } from './webdavService'
 import { testLocalConnection, listLocalDirectory } from './localFileService'
 import { testConnection as testSMBConnection, listDirectory as listSMBDirectory } from './smbService'
@@ -60,30 +60,26 @@ export const setupIpcHandlers = () => {
     })
 
     ipcMain.handle('get-movies', async () => {
-        const db = await getDb()
-        return db.data.movies
+        return getAllMovies()
     })
 
     ipcMain.handle('get-movie', async (_, id) => {
-        const db = await getDb()
-        return db.data.movies.find(m => m.id === id)
+        return getMovie(id)
     })
 
     ipcMain.handle('get-tv-shows', async () => {
-        const db = await getDb()
-        return db.data.tvShows || []
+        return getAllTVShows()
     })
 
     ipcMain.handle('get-tv-show', async (_, id) => {
-        const db = await getDb()
-        return db.data.tvShows?.find(s => s.id === id)
+        return getTVShow(id)
     })
 
     ipcMain.handle('get-unscanned-files', async () => {
-        const db = await getDb()
+        const files = getUnscannedFiles()
         const sources = store.get('sources') as any[] || []
 
-        return (db.data.unscannedFiles || []).map(file => {
+        return files.map(file => {
             const source = sources.find(s => s.id === file.sourceId)
             return {
                 ...file,
@@ -95,41 +91,21 @@ export const setupIpcHandlers = () => {
     // Player
     ipcMain.handle('play-video', async (_, { url, title, history }) => {
         if (history) {
-            const db = await getDb()
-            db.data.history = db.data.history.filter(item => {
-                if (item.mediaId !== history.mediaId || item.mediaType !== history.mediaType) {
-                    return true
-                }
-                if (history.mediaType === 'tv') {
-                    return item.seasonNumber !== history.seasonNumber || item.episodeNumber !== history.episodeNumber
-                }
-                return false
-            })
-
-            const historyItem = {
+            addToHistory({
                 ...history,
                 id: crypto.randomUUID(),
                 timestamp: Date.now()
-            }
-            db.data.history.unshift(historyItem)
-            // Keep only last 200 items
-            if (db.data.history.length > 200) {
-                db.data.history = db.data.history.slice(0, 200)
-            }
-            await db.write()
+            })
         }
         await playVideo(url, title)
     })
 
     ipcMain.handle('get-history', async () => {
-        const db = await getDb()
-        return db.data.history || []
+        return getHistory()
     })
 
     ipcMain.handle('delete-history-item', async (_, historyId: string) => {
-        const db = await getDb()
-        db.data.history = db.data.history.filter(item => item.id !== historyId)
-        await db.write()
+        deleteHistoryItem(historyId)
         return true
     })
 

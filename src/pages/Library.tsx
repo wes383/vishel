@@ -590,39 +590,56 @@ export default function LibraryPage() {
                                         )}
                                     </div>
                                 ) : (
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                                    <div className="space-y-2">
                                         {filteredHistory.map(item => (
-                                            <div key={item.id} className="group">
-                                                <div className={`relative rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 ${showTitlesOnPosters ? 'group-hover:-translate-y-1' : ''}`}>
+                                            <div
+                                                key={item.id}
+                                                className="group bg-neutral-800 rounded-lg overflow-hidden hover:bg-neutral-700 transition-colors"
+                                            >
+                                                <div className="flex items-center gap-4 p-3">
+                                                    {/* Poster */}
                                                     <div
-                                                        className="aspect-[2/3] relative cursor-pointer bg-neutral-800"
+                                                        className="flex-shrink-0 w-16 h-24 rounded overflow-hidden cursor-pointer bg-neutral-700"
                                                         onClick={() => navigate(item.mediaType === 'movie' ? `/movie/${item.mediaId}` : `/tv/${item.mediaId}`)}
                                                     >
                                                         {item.posterPath ? (
                                                             <img
-                                                                src={`https://image.tmdb.org/t/p/w500${item.posterPath}`}
+                                                                src={`https://image.tmdb.org/t/p/w200${item.posterPath}`}
                                                                 alt={item.title}
-                                                                className={`w-full h-full object-cover ${showTitlesOnPosters ? '' : 'group-hover:blur-sm transition-all duration-300'}`}
+                                                                className="w-full h-full object-cover"
                                                             />
                                                         ) : (
-                                                            <div className="w-full h-full flex items-center justify-center bg-neutral-700 text-neutral-500">
+                                                            <div className="w-full h-full flex items-center justify-center text-neutral-500 text-xs">
                                                                 No Poster
                                                             </div>
                                                         )}
-                                                        {!showTitlesOnPosters && (
-                                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-all duration-300 delay-[50ms] flex flex-col items-center justify-center p-4 opacity-0 group-hover:opacity-100">
-                                                                <h3 className="font-bold text-white text-center text-lg mb-1">{item.title}</h3>
-                                                                {item.mediaType === 'tv' && item.seasonNumber && item.episodeNumber && (
-                                                                    <p className="text-gray-300 text-sm mb-1">
-                                                                        S{item.seasonNumber}E{item.episodeNumber}
-                                                                    </p>
-                                                                )}
-                                                                <p className="text-gray-400 text-xs">
-                                                                    {new Date(item.timestamp).toLocaleDateString()}
-                                                                </p>
-                                                            </div>
-                                                        )}
                                                     </div>
+
+                                                    {/* Info */}
+                                                    <div
+                                                        className="flex-1 min-w-0 cursor-pointer"
+                                                        onClick={() => navigate(item.mediaType === 'movie' ? `/movie/${item.mediaId}` : `/tv/${item.mediaId}`)}
+                                                    >
+                                                        <h3 className="font-semibold text-white text-base truncate">{item.title}</h3>
+                                                        <div className="flex items-center gap-2 mt-1 text-sm text-gray-400">
+                                                            {item.mediaType === 'tv' && item.seasonNumber && item.episodeNumber && (
+                                                                <>
+                                                                    <span>S{item.seasonNumber}E{item.episodeNumber}</span>
+                                                                    {item.episodeName && (
+                                                                        <>
+                                                                            <span>·</span>
+                                                                            <span className="truncate">{item.episodeName}</span>
+                                                                        </>
+                                                                    )}
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-xs text-gray-500 mt-1">
+                                                            {new Date(item.timestamp).toLocaleString()}
+                                                        </p>
+                                                    </div>
+
+                                                    {/* Delete button */}
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation()
@@ -631,28 +648,11 @@ export default function LibraryPage() {
                                                                 setHistory(prev => prev.filter(h => h.id !== item.id))
                                                             })
                                                         }}
-                                                        className="absolute top-2 right-2 p-2 bg-black/60 hover:bg-red-500 rounded-full transition-colors z-10 opacity-0 group-hover:opacity-100"
-                                                        title="Remove from history"
+                                                        className="flex-shrink-0 p-2 rounded-full text-gray-400 hover:bg-red-500 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
                                                     >
-                                                        <X className="w-4 h-4 text-white" />
+                                                        <X className="w-5 h-5" />
                                                     </button>
                                                 </div>
-                                                {showTitlesOnPosters && (
-                                                    <div
-                                                        onClick={() => navigate(item.mediaType === 'movie' ? `/movie/${item.mediaId}` : `/tv/${item.mediaId}`)}
-                                                        className="mt-2 cursor-pointer text-center transition-transform duration-300 group-hover:-translate-y-1"
-                                                    >
-                                                        <h3 className="font-bold text-white text-base px-1">{item.title}</h3>
-                                                        {item.mediaType === 'tv' && item.seasonNumber && item.episodeNumber && (
-                                                            <p className="text-gray-400 text-xs mt-1">
-                                                                S{item.seasonNumber}E{item.episodeNumber}
-                                                            </p>
-                                                        )}
-                                                        <p className="text-gray-500 text-xs mt-1">
-                                                            {new Date(item.timestamp).toLocaleDateString()}
-                                                        </p>
-                                                    </div>
-                                                )}
                                             </div>
                                         ))}
                                     </div>

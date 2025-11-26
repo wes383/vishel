@@ -7,11 +7,13 @@
     "dev": "vite",
     "build": "tsc && vite build && electron-builder",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "rebuild": "npm rebuild better-sqlite3 --runtime=electron --target=30.0.1 --dist-url=https://electronjs.org/headers"
   },
   "dependencies": {
     "@marsaud/smb2": "^0.18.0",
     "axios": "^1.13.2",
+    "better-sqlite3": "^12.4.6",
     "clsx": "^2.1.1",
     "electron-store": "^11.0.2",
     "lowdb": "^7.0.1",
@@ -25,6 +27,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.17",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/react": "^18.2.64",
     "@types/react-dom": "^18.2.21",
     "@typescript-eslint/eslint-plugin": "^7.1.1",
@@ -33,6 +36,7 @@
     "autoprefixer": "^10.4.22",
     "electron": "^30.0.1",
     "electron-builder": "^24.13.3",
+    "electron-rebuild": "^3.2.9",
     "eslint": "^8.57.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",

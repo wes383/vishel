@@ -5,6 +5,7 @@ import { listLocalDirectory } from './localFileService'
 import { listDirectory as listSMBDirectory } from './smbService'
 import store, { DataSource } from './store'
 import path from 'node:path'
+import { getImdbRating, downloadAndImportImdbRatings } from './imdbDatabase'
 
 const cleanFilename = (filename: string): { name: string, year?: number } => {
     let name = path.parse(filename).name
@@ -184,6 +185,17 @@ const scanDirectoryRecursive = async (
 
                                                 const logoPath = details.images?.logos?.find((l: any) => l.iso_639_1 === 'en')?.file_path
 
+                                                // Query IMDb rating
+                                                let imdbRating: number | undefined
+                                                let imdbVotes: number | undefined
+                                                if (details.external_ids?.imdb_id) {
+                                                    const imdbData = getImdbRating(details.external_ids.imdb_id)
+                                                    if (imdbData) {
+                                                        imdbRating = imdbData.rating
+                                                        imdbVotes = imdbData.votes
+                                                    }
+                                                }
+
                                                 state.newTVShows.set(tvId, {
                                                     id: details.id,
                                                     name: details.name,
@@ -196,6 +208,8 @@ const scanDirectoryRecursive = async (
                                                     genres: details.genres?.map((g: any) => g.name),
                                                     voteAverage: details.vote_average,
                                                     popularity: details.popularity,
+                                                    imdbRating,
+                                                    imdbVotes,
                                                     status: details.status,
                                                     cast,
                                                     createdBy,
@@ -322,6 +336,17 @@ const scanDirectoryRecursive = async (
 
                                                 const logoPath = details.images?.logos?.find((l: any) => l.iso_639_1 === 'en')?.file_path
 
+                                                // Query IMDb rating
+                                                let imdbRating: number | undefined
+                                                let imdbVotes: number | undefined
+                                                if (details.external_ids?.imdb_id) {
+                                                    const imdbData = getImdbRating(details.external_ids.imdb_id)
+                                                    if (imdbData) {
+                                                        imdbRating = imdbData.rating
+                                                        imdbVotes = imdbData.votes
+                                                    }
+                                                }
+
                                                 state.newMovies.set(movieId, {
                                                     id: details.id,
                                                     title: details.title,
@@ -333,6 +358,8 @@ const scanDirectoryRecursive = async (
                                                     runtime: details.runtime,
                                                     voteAverage: details.vote_average,
                                                     popularity: details.popularity,
+                                                    imdbRating,
+                                                    imdbVotes,
                                                     genres: details.genres?.map((g: any) => g.name),
                                                     sourceId: source.id,
                                                     status: details.status,
@@ -419,6 +446,57 @@ export const scanMovies = async (onProgress?: (data: any) => void) => {
         db.data.movies = Array.from(state.newMovies.values())
         db.data.tvShows = Array.from(state.newTVShows.values())
         db.data.unscannedFiles = state.unscannedFiles
+
+        onProgress?.({ status: 'Updating IMDb ratings...' })
+        const allImdbIds: string[] = []
+
+        db.data.movies.forEach(m => {
+            if (m.externalIds?.imdb_id) allImdbIds.push(m.externalIds.imdb_id)
+        })
+        db.data.tvShows.forEach(t => {
+            if (t.externalIds?.imdb_id) allImdbIds.push(t.externalIds.imdb_id)
+        })
+
+        if (allImdbIds.length > 0) {
+            try {
+                console.log(`Fetching IMDb ratings for ${allImdbIds.length} items...`)
+                await downloadAndImportImdbRatings(
+                    (progress) => {
+                        if (progress.stage === 'downloading') {
+                            onProgress?.({ status: `Downloading IMDb data... ${(progress.progress / 1024 / 1024).toFixed(1)}MB` })
+                        } else if (progress.stage === 'importing') {
+                            onProgress?.({ status: `Importing ratings... ${progress.progress} / ${progress.total}` })
+                        }
+                    },
+                    allImdbIds
+                )
+
+                let updatedCount = 0
+                db.data.movies.forEach(m => {
+                    if (m.externalIds?.imdb_id) {
+                        const rating = getImdbRating(m.externalIds.imdb_id)
+                        if (rating) {
+                            m.imdbRating = rating.rating
+                            m.imdbVotes = rating.votes
+                            updatedCount++
+                        }
+                    }
+                })
+                db.data.tvShows.forEach(t => {
+                    if (t.externalIds?.imdb_id) {
+                        const rating = getImdbRating(t.externalIds.imdb_id)
+                        if (rating) {
+                            t.imdbRating = rating.rating
+                            t.imdbVotes = rating.votes
+                            updatedCount++
+                        }
+                    }
+                })
+                console.log(`Updated IMDb ratings for ${updatedCount} items`)
+            } catch (error) {
+                console.error('Failed to update IMDb ratings:', error)
+            }
+        }
 
         await db.write()
 

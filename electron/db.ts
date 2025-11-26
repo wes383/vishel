@@ -25,6 +25,8 @@ export interface Movie {
     runtime?: number
     voteAverage?: number
     popularity?: number
+    imdbRating?: number
+    imdbVotes?: number
     tagline?: string
     status?: string
     cast?: { name: string, character: string, profilePath: string }[]
@@ -64,6 +66,8 @@ export interface TVShow {
     genres?: string[]
     voteAverage?: number
     popularity?: number
+    imdbRating?: number
+    imdbVotes?: number
     status?: string
     cast?: { name: string, character: string, profilePath: string }[]
     createdBy?: { name: string, profilePath: string }[]

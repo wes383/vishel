@@ -14,7 +14,7 @@ export default defineConfig({
         vite: {
           build: {
             rollupOptions: {
-              external: ['@marsaud/smb2']
+              external: ['@marsaud/smb2', 'better-sqlite3']
             }
           }
         }

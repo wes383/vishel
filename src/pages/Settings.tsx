@@ -162,6 +162,10 @@ export default function SettingsPage() {
                     </div>
                 </section>
 
+
+
+                <hr className="border-neutral-800" />
+
                 <div className="pt-px">
                     <button
                         onClick={handleSave}

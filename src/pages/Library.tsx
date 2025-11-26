@@ -9,6 +9,7 @@ interface Movie {
     releaseDate: string
     voteAverage?: number
     popularity?: number
+    imdbVotes?: number
 }
 
 interface TVShow {
@@ -18,6 +19,7 @@ interface TVShow {
     firstAirDate: string
     voteAverage?: number
     popularity?: number
+    imdbVotes?: number
 }
 
 interface UnscannedFile {
@@ -123,7 +125,7 @@ export default function LibraryPage() {
             case 'date-asc':
                 return (a.releaseDate || '').localeCompare(b.releaseDate || '')
             case 'rating-desc':
-                return (b.popularity || 0) - (a.popularity || 0)
+                return (b.imdbVotes || 0) - (a.imdbVotes || 0)
             default:
                 return 0
         }
@@ -140,7 +142,7 @@ export default function LibraryPage() {
             case 'date-asc':
                 return (a.firstAirDate || '').localeCompare(b.firstAirDate || '')
             case 'rating-desc':
-                return (b.popularity || 0) - (a.popularity || 0)
+                return (b.imdbVotes || 0) - (a.imdbVotes || 0)
             default:
                 return 0
         }
@@ -162,7 +164,7 @@ export default function LibraryPage() {
             case 'date-asc':
                 return (a.sortDate || '').localeCompare(b.sortDate || '')
             case 'rating-desc':
-                return (b.popularity || 0) - (a.popularity || 0)
+                return (b.imdbVotes || 0) - (a.imdbVotes || 0)
             default:
                 return 0
         }

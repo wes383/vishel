@@ -6,6 +6,7 @@ import { getDb } from './db'
 import { testConnection, listDirectory } from './webdavService'
 import { testLocalConnection, listLocalDirectory } from './localFileService'
 import { testConnection as testSMBConnection, listDirectory as listSMBDirectory } from './smbService'
+import { getImdbDbStatus } from './imdbDatabase'
 
 export const setupIpcHandlers = () => {
     // Settings
@@ -43,7 +44,15 @@ export const setupIpcHandlers = () => {
 
     // Library
     ipcMain.handle('scan-library', async () => {
-        return await scanMovies()
+        console.log('IPC: scan-library called')
+        try {
+            await scanMovies()
+            console.log('IPC: scan-library finished')
+            return true
+        } catch (error) {
+            console.error('IPC: scan-library failed', error)
+            throw error
+        }
     })
 
     ipcMain.handle('get-scan-status', () => {
@@ -94,5 +103,14 @@ export const setupIpcHandlers = () => {
     // System
     ipcMain.handle('open-external', async (_, url) => {
         await shell.openExternal(url)
+    })
+
+    // IMDb Database
+
+
+
+
+    ipcMain.handle('get-imdb-db-status', async () => {
+        return getImdbDbStatus()
     })
 }

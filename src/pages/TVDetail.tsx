@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Play, Calendar, Star, User, X, ChevronDown } from 'lucide-react'
+import { Play, Calendar, User, X, ChevronDown } from 'lucide-react'
 import { DataSource } from '../../electron/store'
 
 interface VideoFile {
@@ -37,6 +37,8 @@ interface TVShow {
     firstAirDate: string
     genres?: string[]
     voteAverage?: number
+    imdbRating?: number
+    imdbVotes?: number
     cast?: { name: string, character: string, profilePath: string }[]
     createdBy?: { name: string, profilePath: string }[]
     seasons: Season[]
@@ -208,10 +210,24 @@ export default function TVDetail() {
                                 <span>{show.firstAirDate.split('-')[0]}</span>
                             </div>
                         )}
-                        {show.voteAverage && (
-                            <div className="flex items-center gap-2">
-                                <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                                <span>{show.voteAverage.toFixed(1)}</span>
+                        {/* Ratings */}
+                        {(show.voteAverage || show.imdbRating) && (
+                            <div className="flex gap-3">
+                                {show.voteAverage && (
+                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg">
+                                        <span className="text-[#01b4e4] font-bold text-sm">TMDb</span>
+                                        <span className="font-semibold">{show.voteAverage.toFixed(1)}</span>
+                                    </div>
+                                )}
+                                {show.imdbRating && (
+                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg">
+                                        <span className="text-[#f5c518] font-bold text-sm">IMDb</span>
+                                        <span className="font-semibold">{show.imdbRating.toFixed(1)}</span>
+                                        {show.imdbVotes && (
+                                            <span className="text-xs text-gray-200">({(show.imdbVotes).toLocaleString()})</span>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         )}
                         {show.genres && show.genres.length > 0 && (
@@ -435,3 +451,4 @@ export default function TVDetail() {
         </div >
     )
 }
+

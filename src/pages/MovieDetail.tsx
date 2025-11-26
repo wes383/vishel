@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Play, Calendar, Clock, Star, User, X } from 'lucide-react'
+import { Play, Calendar, Clock, User, X } from 'lucide-react'
 import { DataSource } from '../../electron/store'
 
 interface Cast {
@@ -29,6 +29,8 @@ interface Movie {
     genres?: string[]
     runtime?: number
     voteAverage?: number
+    imdbRating?: number
+    imdbVotes?: number
     tagline?: string
     status?: string
     cast?: Cast[]
@@ -178,10 +180,24 @@ export default function MovieDetail() {
                                 <span>{formatRuntime(movie.runtime)}</span>
                             </div>
                         )}
-                        {movie.voteAverage && (
-                            <div className="flex items-center gap-2">
-                                <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                                <span>{movie.voteAverage.toFixed(1)}</span>
+                        {/* Ratings */}
+                        {(movie.voteAverage || movie.imdbRating) && (
+                            <div className="flex gap-3">
+                                {movie.voteAverage && (
+                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg">
+                                        <span className="text-[#01b4e4] font-bold text-sm">TMDb</span>
+                                        <span className="font-semibold">{movie.voteAverage.toFixed(1)}</span>
+                                    </div>
+                                )}
+                                {movie.imdbRating && (
+                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg">
+                                        <span className="text-[#f5c518] font-bold text-sm">IMDb</span>
+                                        <span className="font-semibold">{movie.imdbRating.toFixed(1)}</span>
+                                        {movie.imdbVotes && (
+                                            <span className="text-xs text-gray-200">({(movie.imdbVotes).toLocaleString()})</span>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         )}
                         {movie.genres && movie.genres.length > 0 && (

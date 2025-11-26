@@ -28,6 +28,8 @@ interface UnscannedFile {
     id: string
     name: string
     filePath: string
+    sourceName?: string
+    webdavUrl?: string
 }
 
 interface HistoryItem {
@@ -53,7 +55,7 @@ export default function LibraryPage() {
     const [searchQuery, setSearchQuery] = useState('')
     const [filterMenuOpen, setFilterMenuOpen] = useState(false)
     const [sortBy, setSortBy] = useState<'name-asc' | 'name-desc' | 'date-desc' | 'date-asc' | 'rating-desc' | 'imdb-rating-desc'>(() => {
-        return (sessionStorage.getItem('library_sort_by') as 'name-asc' | 'name-desc' | 'date-desc' | 'date-asc' | 'rating-desc' | 'imdb-rating-desc') || 'name-asc'
+        return (localStorage.getItem('library_sort_by') as 'name-asc' | 'name-desc' | 'date-desc' | 'date-asc' | 'rating-desc' | 'imdb-rating-desc') || 'name-asc'
     })
     const [activeTab, setActiveTab] = useState<'all' | 'movies' | 'tv' | 'history'>(() => {
         return (sessionStorage.getItem('library_active_tab') as 'all' | 'movies' | 'tv' | 'history') || 'all'
@@ -69,7 +71,7 @@ export default function LibraryPage() {
     }, [activeTab])
 
     useEffect(() => {
-        sessionStorage.setItem('library_sort_by', sortBy)
+        localStorage.setItem('library_sort_by', sortBy)
     }, [sortBy])
 
     const fetchData = async () => {
@@ -141,6 +143,10 @@ export default function LibraryPage() {
         ? tvShows.filter(show => show.name.toLowerCase().includes(searchQuery.toLowerCase()))
         : tvShows
 
+    const filteredHistory = searchQuery
+        ? history.filter(item => item.title.toLowerCase().includes(searchQuery.toLowerCase()))
+        : history
+
     const sortedMovies = [...filteredMovies].sort((a, b) => {
         switch (sortBy) {
             case 'name-asc':
@@ -207,84 +213,115 @@ export default function LibraryPage() {
         <div className="h-full flex flex-col">
             {/* Main Content */}
             <div ref={scrollRef} className="flex-1 overflow-auto p-8">
-                <div className="relative flex items-center justify-between mb-8">
-                    <h2 className="text-3xl font-bold ml-[5px]">Vishel</h2>
+                <div className="mb-8">
+                    <div className="relative flex items-center justify-between">
+                        <h2 className="text-3xl font-bold ml-[5px]">Vishel</h2>
 
-                    <div className="absolute left-1/2 -translate-x-1/2 flex bg-neutral-800 rounded-full p-1">
-                        <button
-                            onClick={() => setActiveTab('all')}
-                            className={`flex items-center gap-2 px-6 py-2 rounded-full transition-all ${activeTab === 'all' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
-                        >
-                            All
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('movies')}
-                            className={`flex items-center gap-2 px-6 py-2 rounded-full transition-all ${activeTab === 'movies' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
-                        >
-                            Movies
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('tv')}
-                            className={`flex items-center gap-2 px-6 py-2 rounded-full transition-all ${activeTab === 'tv' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
-                        >
-                            TV Shows
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('history')}
-                            className={`flex items-center gap-2 px-6 py-2 rounded-full transition-all ${activeTab === 'history' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
-                        >
-                            History
-                        </button>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <div className="relative" ref={filterMenuRef}>
+                        <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 bg-neutral-800 rounded-full p-1">
                             <button
-                                onClick={() => setFilterMenuOpen(!filterMenuOpen)}
+                                onClick={() => setActiveTab('all')}
+                                className={`flex items-center gap-2 px-6 py-2 rounded-full transition-all ${activeTab === 'all' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
+                            >
+                                All
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('movies')}
+                                className={`flex items-center gap-2 px-6 py-2 rounded-full transition-all ${activeTab === 'movies' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
+                            >
+                                Movies
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('tv')}
+                                className={`flex items-center gap-2 px-6 py-2 rounded-full transition-all ${activeTab === 'tv' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
+                            >
+                                TV Shows
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('history')}
+                                className={`flex items-center gap-2 px-6 py-2 rounded-full transition-all ${activeTab === 'history' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
+                            >
+                                History
+                            </button>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <div className="relative" ref={filterMenuRef}>
+                                <button
+                                    onClick={() => setFilterMenuOpen(!filterMenuOpen)}
+                                    className="p-2 rounded-full text-gray-400 hover:bg-neutral-800 hover:text-white transition-colors"
+                                >
+                                    <ArrowUpDown className="w-6 h-6" />
+                                </button>
+                                {filterMenuOpen && (
+                                    <div className="absolute right-0 mt-2 w-56 bg-neutral-800 rounded-lg shadow-xl border border-neutral-700 py-2 z-50">
+                                        <div className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase">Sort By</div>
+                                        {[
+                                            { value: 'name-asc', label: 'Name (A-Z)' },
+                                            { value: 'name-desc', label: 'Name (Z-A)' },
+                                            { value: 'date-desc', label: 'Date (Newest)' },
+                                            { value: 'date-asc', label: 'Date (Oldest)' },
+                                            { value: 'rating-desc', label: 'Popularity (Highest)' },
+                                            { value: 'imdb-rating-desc', label: 'IMDb Rating' },
+                                        ].map(option => (
+                                            <button
+                                                key={option.value}
+                                                onClick={() => {
+                                                    setSortBy(option.value as any)
+                                                    setFilterMenuOpen(false)
+                                                }}
+                                                className="w-full px-4 py-2 text-left text-sm hover:bg-neutral-700 transition-colors flex items-center justify-between"
+                                            >
+                                                <span className="text-white">{option.label}</span>
+                                                {sortBy === option.value && <Check className="w-4 h-4 text-white" />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            <button
+                                onClick={() => setSearchExpanded(!searchExpanded)}
                                 className="p-2 rounded-full text-gray-400 hover:bg-neutral-800 hover:text-white transition-colors"
                             >
-                                <ArrowUpDown className="w-6 h-6" />
+                                <Search className="w-6 h-6" />
                             </button>
-                            {filterMenuOpen && (
-                                <div className="absolute right-0 mt-2 w-56 bg-neutral-800 rounded-lg shadow-xl border border-neutral-700 py-2 z-50">
-                                    <div className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase">Sort By</div>
-                                    {[
-                                        { value: 'name-asc', label: 'Name (A-Z)' },
-                                        { value: 'name-desc', label: 'Name (Z-A)' },
-                                        { value: 'date-desc', label: 'Date (Newest)' },
-                                        { value: 'date-asc', label: 'Date (Oldest)' },
-                                        { value: 'rating-desc', label: 'Popularity (Highest)' },
-                                        { value: 'imdb-rating-desc', label: 'IMDb Rating' },
-                                    ].map(option => (
-                                        <button
-                                            key={option.value}
-                                            onClick={() => {
-                                                setSortBy(option.value as any)
-                                                setFilterMenuOpen(false)
-                                            }}
-                                            className="w-full px-4 py-2 text-left text-sm hover:bg-neutral-700 transition-colors flex items-center justify-between"
-                                        >
-                                            <span className="text-white">{option.label}</span>
-                                            {sortBy === option.value && <Check className="w-4 h-4 text-white" />}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
+                            <button
+                                onClick={() => navigate('/settings')}
+                                className="p-2 rounded-full text-gray-400 hover:bg-neutral-800 hover:text-white transition-colors"
+                            >
+                                <Settings className="w-6 h-6" />
+                            </button>
                         </div>
-                        <button
-                            onClick={() => setSearchExpanded(!searchExpanded)}
-                            className="p-2 rounded-full text-gray-400 hover:bg-neutral-800 hover:text-white transition-colors"
-                        >
-                            <Search className="w-6 h-6" />
-                        </button>
-                        <button
-                            onClick={() => navigate('/settings')}
-                            className="p-2 rounded-full text-gray-400 hover:bg-neutral-800 hover:text-white transition-colors"
-                        >
-                            <Settings className="w-6 h-6" />
-                        </button>
                     </div>
-                </div >
+
+                    <div className="flex md:hidden justify-center mt-4">
+                        <div className="flex bg-neutral-800 rounded-full p-1 text-sm">
+                            <button
+                                onClick={() => setActiveTab('all')}
+                                className={`flex items-center gap-1 px-3 py-1.5 rounded-full transition-all ${activeTab === 'all' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
+                            >
+                                All
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('movies')}
+                                className={`flex items-center gap-1 px-3 py-1.5 rounded-full transition-all ${activeTab === 'movies' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
+                            >
+                                Movies
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('tv')}
+                                className={`flex items-center gap-1 px-3 py-1.5 rounded-full transition-all ${activeTab === 'tv' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
+                            >
+                                TV Shows
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('history')}
+                                className={`flex items-center gap-1 px-3 py-1.5 rounded-full transition-all ${activeTab === 'history' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
+                            >
+                                History
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
                 {searchExpanded && (
                     <div className="mb-6 relative">
@@ -292,8 +329,15 @@ export default function LibraryPage() {
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
+                            onBlur={() => {
+                                if (!searchQuery) {
+                                    setTimeout(() => {
+                                        setSearchExpanded(false)
+                                    }, 100)
+                                }
+                            }}
                             placeholder="Search movies and TV shows..."
-                            className="w-full bg-neutral-800 text-white px-4 py-3 pr-10 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/20"
+                            className="w-full bg-neutral-800 text-white px-4 py-3 pr-10 rounded-full focus:outline-none focus:ring-2 focus:ring-white/20"
                             autoFocus
                         />
                         {searchQuery && (
@@ -329,7 +373,7 @@ export default function LibraryPage() {
                                         )}
                                     </div>
                                 ) : (
-                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
                                         {combinedItems.map(item => (
                                             <div key={`${item.type}-${item.id}`} className="group">
                                                 <div className={`relative rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 ${showTitlesOnPosters ? 'group-hover:-translate-y-1' : ''}`}>
@@ -387,12 +431,28 @@ export default function LibraryPage() {
                                     {unscannedExpanded && (
                                         <div className="bg-neutral-800 rounded-xl overflow-hidden">
                                             {unscannedFiles.map(file => (
-                                                <div key={file.id} className="p-4 border-b border-neutral-700 last:border-0 flex items-center justify-between hover:bg-neutral-700/50 transition-colors">
+                                                <div
+                                                    key={file.id}
+                                                    className="p-4 border-b border-neutral-700 last:border-0 flex items-center justify-between hover:bg-neutral-700/50 transition-colors cursor-pointer group/item"
+                                                    onClick={() => {
+                                                        if (file.webdavUrl) {
+                                                            // @ts-ignore
+                                                            window.electron.ipcRenderer.invoke('play-video', {
+                                                                url: file.webdavUrl,
+                                                                title: file.name
+                                                            })
+                                                        }
+                                                    }}
+                                                >
                                                     <div className="overflow-hidden">
                                                         <p className="font-medium text-white truncate">{file.name}</p>
-                                                        <p className="text-sm text-gray-500 truncate">{file.filePath}</p>
+                                                        <p className="text-sm text-gray-500 truncate">
+                                                            {file.sourceName ? <span>{file.sourceName}</span> : null}
+                                                            {file.sourceName ? ' - ' : ''}
+                                                            {file.filePath}
+                                                        </p>
                                                     </div>
-                                                    <div className="text-xs text-neutral-500 px-2 py-1 bg-neutral-900 rounded ml-4 whitespace-nowrap">
+                                                    <div className="text-xs text-neutral-500 px-2 py-1 bg-neutral-900 rounded whitespace-nowrap">
                                                         Unidentified
                                                     </div>
                                                 </div>
@@ -418,7 +478,7 @@ export default function LibraryPage() {
                                         )}
                                     </div>
                                 ) : (
-                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
                                         {sortedMovies.map(movie => (
                                             <div key={movie.id} className="group">
                                                 <div className={`relative rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 ${showTitlesOnPosters ? 'group-hover:-translate-y-1' : ''}`}>
@@ -474,7 +534,7 @@ export default function LibraryPage() {
                                         )}
                                     </div>
                                 ) : (
-                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
                                         {sortedTvShows.map(show => (
                                             <div key={show.id} className="group">
                                                 <div className={`relative rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 ${showTitlesOnPosters ? 'group-hover:-translate-y-1' : ''}`}>
@@ -515,14 +575,23 @@ export default function LibraryPage() {
                             )}
 
                             {activeTab === 'history' && (
-                                history.length === 0 ? (
+                                filteredHistory.length === 0 ? (
                                     <div className="text-center text-gray-400 mt-20">
-                                        <p className="text-xl mb-2">No history found</p>
-                                        <p>Start watching movies or TV shows to see them here.</p>
+                                        {searchQuery ? (
+                                            <>
+                                                <p className="text-xl mb-2">No history found</p>
+                                                <p>Try adjusting your search terms.</p>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <p className="text-xl mb-2">No history found</p>
+                                                <p>Start watching movies or TV shows to see them here.</p>
+                                            </>
+                                        )}
                                     </div>
                                 ) : (
-                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                                        {history.map(item => (
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                                        {filteredHistory.map(item => (
                                             <div key={item.id} className="group">
                                                 <div className={`relative rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 ${showTitlesOnPosters ? 'group-hover:-translate-y-1' : ''}`}>
                                                     <div

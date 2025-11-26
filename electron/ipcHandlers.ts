@@ -81,25 +81,28 @@ export const setupIpcHandlers = () => {
 
     ipcMain.handle('get-unscanned-files', async () => {
         const db = await getDb()
-        return db.data.unscannedFiles || []
+        const sources = store.get('sources') as any[] || []
+
+        return (db.data.unscannedFiles || []).map(file => {
+            const source = sources.find(s => s.id === file.sourceId)
+            return {
+                ...file,
+                sourceName: source ? source.name : 'Unknown Source'
+            }
+        })
     })
 
-    // Player
     // Player
     ipcMain.handle('play-video', async (_, { url, title, history }) => {
         if (history) {
             const db = await getDb()
-
-            // Remove existing entry for the same media (same movie or same episode)
             db.data.history = db.data.history.filter(item => {
                 if (item.mediaId !== history.mediaId || item.mediaType !== history.mediaType) {
                     return true
                 }
-                // For TV shows, also check season and episode
                 if (history.mediaType === 'tv') {
                     return item.seasonNumber !== history.seasonNumber || item.episodeNumber !== history.episodeNumber
                 }
-                // For movies, filter out if same mediaId
                 return false
             })
 

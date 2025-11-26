@@ -217,28 +217,28 @@ export default function LibraryPage() {
                     <div className="relative flex items-center justify-between">
                         <h2 className="text-3xl font-bold ml-[5px]">Vishel</h2>
 
-                        <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 bg-neutral-800 rounded-full p-1">
+                        <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 bg-neutral-800 rounded-full p-1 transition-all duration-300">
                             <button
                                 onClick={() => setActiveTab('all')}
-                                className={`flex items-center gap-2 px-6 py-2 rounded-full transition-all ${activeTab === 'all' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
+                                className={`flex items-center gap-1 lg:gap-2 px-3 py-1.5 lg:px-6 lg:py-2 text-sm lg:text-base rounded-full transition-all ${activeTab === 'all' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
                             >
                                 All
                             </button>
                             <button
                                 onClick={() => setActiveTab('movies')}
-                                className={`flex items-center gap-2 px-6 py-2 rounded-full transition-all ${activeTab === 'movies' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
+                                className={`flex items-center gap-1 lg:gap-2 px-3 py-1.5 lg:px-6 lg:py-2 text-sm lg:text-base rounded-full transition-all ${activeTab === 'movies' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
                             >
                                 Movies
                             </button>
                             <button
                                 onClick={() => setActiveTab('tv')}
-                                className={`flex items-center gap-2 px-6 py-2 rounded-full transition-all ${activeTab === 'tv' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
+                                className={`flex items-center gap-1 lg:gap-2 px-3 py-1.5 lg:px-6 lg:py-2 text-sm lg:text-base rounded-full transition-all ${activeTab === 'tv' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
                             >
                                 TV Shows
                             </button>
                             <button
                                 onClick={() => setActiveTab('history')}
-                                className={`flex items-center gap-2 px-6 py-2 rounded-full transition-all ${activeTab === 'history' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
+                                className={`flex items-center gap-1 lg:gap-2 px-3 py-1.5 lg:px-6 lg:py-2 text-sm lg:text-base rounded-full transition-all ${activeTab === 'history' ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
                             >
                                 History
                             </button>

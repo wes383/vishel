@@ -461,6 +461,14 @@ export const addToHistory = (item: HistoryItem) => {
     `)
 
     db.transaction(() => {
+        if (item.mediaType === 'movie') {
+            db.prepare('DELETE FROM history WHERE mediaType = ? AND mediaId = ?')
+                .run(item.mediaType, item.mediaId)
+        } else if (item.mediaType === 'tv') {
+            db.prepare('DELETE FROM history WHERE mediaType = ? AND mediaId = ? AND seasonNumber = ? AND episodeNumber = ?')
+                .run(item.mediaType, item.mediaId, item.seasonNumber, item.episodeNumber)
+        }
+
         insert.run({
             id: item.id,
             mediaId: item.mediaId,

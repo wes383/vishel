@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Play, Calendar, User, X, ChevronDown } from 'lucide-react'
+import { Play, Calendar, User, X, ChevronDown, Loader2 } from 'lucide-react'
 import { DataSource } from '../../electron/store'
 
 interface VideoFile {
@@ -59,6 +59,8 @@ export default function TVDetail() {
     const [sources, setSources] = useState<DataSource[]>([])
     const [hideSpoilers, setHideSpoilers] = useState(false)
     const [revealedEpisodes, setRevealedEpisodes] = useState<Set<number>>(new Set())
+    const [playingEpisodeId, setPlayingEpisodeId] = useState<number | null>(null)
+    const [error, setError] = useState<string | null>(null)
     const dropdownRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
@@ -120,24 +122,33 @@ export default function TVDetail() {
     }
 
 
-    const playVideo = (file: VideoFile, episode: Episode) => {
+    const playVideo = async (file: VideoFile, episode: Episode) => {
         if (!show) return
-        // @ts-ignore
-        window.electron.ipcRenderer.invoke('play-video', {
-            url: file.webdavUrl,
-            title: `${show.name} - S${episode.seasonNumber}E${episode.episodeNumber} - ${episode.name}`,
-            history: {
-                mediaId: show.id,
-                mediaType: 'tv',
-                title: show.name,
-                posterPath: show.posterPath,
-                filePath: file.filePath,
-                seasonNumber: episode.seasonNumber,
-                episodeNumber: episode.episodeNumber,
-                episodeName: episode.name
-            }
-        })
-        setSelectedEpisode(null)
+        setPlayingEpisodeId(episode.id)
+        setError(null)
+        try {
+            // @ts-ignore
+            await window.electron.ipcRenderer.invoke('play-video', {
+                url: file.webdavUrl,
+                title: `${show.name} - S${episode.seasonNumber}E${episode.episodeNumber} - ${episode.name}`,
+                history: {
+                    mediaId: show.id,
+                    mediaType: 'tv',
+                    title: show.name,
+                    posterPath: show.posterPath,
+                    filePath: file.filePath,
+                    seasonNumber: episode.seasonNumber,
+                    episodeNumber: episode.episodeNumber,
+                    episodeName: episode.name
+                }
+            })
+            setSelectedEpisode(null)
+        } catch (err: any) {
+            setError(err?.message || 'Failed to launch player')
+            setTimeout(() => setError(null), 5000)
+        } finally {
+            setPlayingEpisodeId(null)
+        }
     }
 
     const toggleSpoiler = (episodeId: number) => {
@@ -172,6 +183,13 @@ export default function TVDetail() {
 
     return (
         <div className="relative min-h-screen bg-neutral-900 text-white">
+            {/* Error Message */}
+            {error && (
+                <div className="fixed top-8 left-1/2 transform -translate-x-1/2 z-50 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
+                    <X className="w-5 h-5" />
+                    <span>{error}</span>
+                </div>
+            )}
             {/* Backdrop Image */}
             <div className="absolute inset-0 h-[60vh] w-full overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-neutral-900/60 to-neutral-900 z-10" />
@@ -391,9 +409,14 @@ export default function TVDetail() {
                                     )}
                                     <button
                                         onClick={() => handlePlayClick(episode)}
-                                        className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity"
+                                        disabled={playingEpisodeId === episode.id}
+                                        className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity disabled:opacity-100"
                                     >
-                                        <Play className="w-10 h-10 text-white fill-current" />
+                                        {playingEpisodeId === episode.id ? (
+                                            <Loader2 className="w-10 h-10 text-white animate-spin" />
+                                        ) : (
+                                            <Play className="w-10 h-10 text-white fill-current" />
+                                        )}
                                     </button>
                                 </div>
 

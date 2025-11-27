@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Play, Calendar, Clock, User, X } from 'lucide-react'
+import { Play, Calendar, Clock, User, X, Loader2 } from 'lucide-react'
 import { DataSource } from '../../electron/store'
 
 interface Cast {
@@ -48,6 +48,8 @@ export default function MovieDetail() {
     const [loading, setLoading] = useState(true)
     const [showVersionSelector, setShowVersionSelector] = useState(false)
     const [sources, setSources] = useState<DataSource[]>([])
+    const [playing, setPlaying] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
         const fetchMovie = async () => {
@@ -80,21 +82,30 @@ export default function MovieDetail() {
         }
     }
 
-    const playVideo = (file: VideoFile) => {
+    const playVideo = async (file: VideoFile) => {
         if (!movie) return
-        // @ts-ignore
-        window.electron.ipcRenderer.invoke('play-video', {
-            url: file.webdavUrl,
-            title: movie.title,
-            history: {
-                mediaId: movie.id,
-                mediaType: 'movie',
+        setPlaying(true)
+        setError(null)
+        try {
+            // @ts-ignore
+            await window.electron.ipcRenderer.invoke('play-video', {
+                url: file.webdavUrl,
                 title: movie.title,
-                posterPath: movie.posterPath,
-                filePath: file.filePath
-            }
-        })
-        setShowVersionSelector(false)
+                history: {
+                    mediaId: movie.id,
+                    mediaType: 'movie',
+                    title: movie.title,
+                    posterPath: movie.posterPath,
+                    filePath: file.filePath
+                }
+            })
+            setShowVersionSelector(false)
+        } catch (err: any) {
+            setError(err?.message || 'Failed to launch player')
+            setTimeout(() => setError(null), 5000)
+        } finally {
+            setPlaying(false)
+        }
     }
 
     const openExternal = (url: string) => {
@@ -132,6 +143,13 @@ export default function MovieDetail() {
 
     return (
         <div className="relative min-h-screen bg-neutral-900 text-white">
+            {/* Error Message */}
+            {error && (
+                <div className="fixed top-8 left-1/2 transform -translate-x-1/2 z-50 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
+                    <X className="w-5 h-5" />
+                    <span>{error}</span>
+                </div>
+            )}
             {/* Backdrop Image */}
             <div className="absolute inset-0 h-[70vh] w-full overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-neutral-900/60 to-neutral-900 z-10" />
@@ -311,9 +329,14 @@ export default function MovieDetail() {
                     <div className="flex items-center gap-4">
                         <button
                             onClick={handlePlayClick}
-                            className="bg-white hover:bg-gray-200 px-10 py-4 rounded-full transition-colors shadow-lg flex items-center justify-center"
+                            disabled={playing}
+                            className="bg-white hover:bg-gray-200 px-10 py-4 rounded-full transition-colors shadow-lg flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            <Play className="w-5 h-5 text-gray-500 fill-current ml-1" />
+                            {playing ? (
+                                <Loader2 className="w-5 h-5 text-gray-500 animate-spin" />
+                            ) : (
+                                <Play className="w-5 h-5 text-gray-500 fill-current ml-1" />
+                            )}
                         </button>
                         {movie.videoFiles && movie.videoFiles.length > 0 && (
                             <span className="text-gray-400 text-sm">

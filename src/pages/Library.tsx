@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Settings, ChevronDown, Search, X, ArrowUpDown, Check } from 'lucide-react'
+import { Settings, ChevronDown, Search, X, ArrowUpDown, Check, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 interface Movie {
@@ -594,12 +594,12 @@ export default function LibraryPage() {
                                         {filteredHistory.map(item => (
                                             <div
                                                 key={item.id}
-                                                className="group bg-neutral-800 rounded-lg overflow-hidden hover:bg-neutral-700 transition-colors"
+                                                className="group bg-neutral-800 rounded-xl overflow-hidden hover:bg-neutral-700 transition-colors"
                                             >
                                                 <div className="flex items-center gap-4 p-3">
                                                     {/* Poster */}
                                                     <div
-                                                        className="flex-shrink-0 w-16 h-24 rounded overflow-hidden cursor-pointer bg-neutral-700"
+                                                        className="flex-shrink-0 w-16 h-24 rounded-lg overflow-hidden cursor-pointer bg-neutral-700"
                                                         onClick={() => navigate(item.mediaType === 'movie' ? `/movie/${item.mediaId}` : `/tv/${item.mediaId}`)}
                                                     >
                                                         {item.posterPath ? (
@@ -648,9 +648,9 @@ export default function LibraryPage() {
                                                                 setHistory(prev => prev.filter(h => h.id !== item.id))
                                                             })
                                                         }}
-                                                        className="flex-shrink-0 p-2 rounded-full text-gray-400 hover:bg-red-500 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+                                                        className="flex-shrink-0 p-2 mr-2 rounded-full text-gray-400 hover:bg-red-500 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
                                                     >
-                                                        <X className="w-5 h-5" />
+                                                        <Trash2 className="w-5 h-5" />
                                                     </button>
                                                 </div>
                                             </div>

@@ -127,6 +127,7 @@ export default function TVDetail() {
         setPlayingEpisodeId(episode.id)
         setError(null)
         try {
+            setSelectedEpisode(null)
             // @ts-ignore
             await window.electron.ipcRenderer.invoke('play-video', {
                 url: file.webdavUrl,
@@ -142,7 +143,6 @@ export default function TVDetail() {
                     episodeName: episode.name
                 }
             })
-            setSelectedEpisode(null)
         } catch (err: any) {
             setError(err?.message || 'Failed to launch player')
             setTimeout(() => setError(null), 5000)

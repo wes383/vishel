@@ -87,6 +87,7 @@ export default function MovieDetail() {
         setPlaying(true)
         setError(null)
         try {
+            setShowVersionSelector(false)
             // @ts-ignore
             await window.electron.ipcRenderer.invoke('play-video', {
                 url: file.webdavUrl,
@@ -99,7 +100,6 @@ export default function MovieDetail() {
                     filePath: file.filePath
                 }
             })
-            setShowVersionSelector(false)
         } catch (err: any) {
             setError(err?.message || 'Failed to launch player')
             setTimeout(() => setError(null), 5000)

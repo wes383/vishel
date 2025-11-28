@@ -64,10 +64,16 @@ export const playVideo = async (fileUrl: string, title?: string) => {
 
     try {
         console.log(`Resolving URL: ${fileUrl}`)
-        const resolved = await axios.head(fileUrl, {
+        const resolved = await axios.get(fileUrl, {
             ...authConfig,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Range': 'bytes=0-0',
+                ...((authConfig as any).headers || {})
+            },
             maxRedirects: 5,
-            timeout: 5000
+            timeout: 5000,
+            validateStatus: (status) => status >= 200 && status < 400
         })
 
         if (resolved.request.res.responseUrl && resolved.request.res.responseUrl !== fileUrl) {
@@ -82,9 +88,19 @@ export const playVideo = async (fileUrl: string, title?: string) => {
 
     const args = [finalUrl]
 
-    if (playerPath.toLowerCase().includes('mpv') && title) {
+    if (title) {
         const sanitizedTitle = title.replace(/[\x00-\x1F\x7F]/g, '')
-        args.push(`--force-media-title=${sanitizedTitle}`)
+        const lowerPath = playerPath.toLowerCase()
+
+        if (lowerPath.includes('mpv')) {
+            args.push(`--force-media-title=${sanitizedTitle}`)
+        } else if (lowerPath.includes('vlc')) {
+            args.push(`--meta-title=${sanitizedTitle}`)
+        } else if (lowerPath.includes('iina')) {
+            args.push(`--mpv-force-media-title=${sanitizedTitle}`)
+        } else if (lowerPath.includes('potplayer')) {
+            args[0] = `${finalUrl}\\${sanitizedTitle}`
+        }
     }
 
     const child = spawn(playerPath, args, {
@@ -92,9 +108,24 @@ export const playVideo = async (fileUrl: string, title?: string) => {
         stdio: 'ignore'
     })
 
-    child.on('error', (err) => {
-        console.error('Failed to start player process:', err)
-    })
+    return new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+            child.unref()
+            resolve()
+        }, 2000)
 
-    child.unref()
+        child.on('error', (err) => {
+            clearTimeout(timeout)
+            reject(err)
+        })
+
+        child.on('close', (code) => {
+            clearTimeout(timeout)
+            if (code !== 0) {
+                reject(new Error(`Player exited immediately with code ${code}`))
+            } else {
+                resolve()
+            }
+        })
+    })
 }

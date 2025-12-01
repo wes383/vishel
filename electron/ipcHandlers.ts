@@ -56,7 +56,7 @@ export const setupIpcHandlers = () => {
         }
     })
 
-    // Full rescan (convenience method)
+    // Full rescan
     ipcMain.handle('full-rescan-library', async () => {
         console.log('IPC: full-rescan-library called')
         try {
@@ -140,11 +140,29 @@ export const setupIpcHandlers = () => {
     })
 
     // IMDb Database
-
-
-
-
     ipcMain.handle('get-imdb-db-status', async () => {
         return getImdbDbStatus()
+    })
+
+    // Manual Match
+    ipcMain.handle('search-tmdb', async (_, { query, type }) => {
+        if (type === 'movie') {
+            const { searchMovie } = await import('./tmdbService')
+            return await searchMovie(query)
+        } else {
+            const { searchTVShow } = await import('./tmdbService')
+            return await searchTVShow(query)
+        }
+    })
+
+    ipcMain.handle('manual-match-file', async (_, { fileId, tmdbId, mediaType, episodeInfo }) => {
+        const { manualMatchFile } = await import('./manualMatch')
+        return await manualMatchFile(fileId, tmdbId, mediaType, episodeInfo)
+    })
+
+    ipcMain.handle('delete-unscanned-file', async (_, fileId: string) => {
+        const { deleteUnscannedFile } = await import('./db')
+        deleteUnscannedFile(fileId)
+        return true
     })
 }

@@ -31,7 +31,6 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters
         if ('type' in item) return item.type
         if (type === 'movie') return 'movie'
         if (type === 'tv') return 'tv'
-        // Fallback or inference if needed, but for now strict typing helps
         return 'movie'
     }
 
@@ -62,7 +61,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters
                                     <LazyImage
                                         src={`https://image.tmdb.org/t/p/w500${item.posterPath}`}
                                         alt={title}
-                                        className={`w-full h-full object-cover ${showTitlesOnPosters ? '' : 'group-hover:blur-sm transition-all duration-[100ms]'}`}
+                                        className={`w-full h-full object-cover ${showTitlesOnPosters ? '' : 'group-hover:blur-sm'}`}
                                         placeholderClassName="w-full h-full"
                                     />
                                 ) : (

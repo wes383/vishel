@@ -199,7 +199,7 @@ export default function LibraryPage() {
                                         )
                                     }
                                 />
-                                <UnscannedFiles files={unscannedFiles} />
+                                <UnscannedFiles files={unscannedFiles} onRefresh={fetchData} />
                             </>
                         )}
 

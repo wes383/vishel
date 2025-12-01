@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Play, Calendar, Clock, User, X, Loader2 } from 'lucide-react'
 import { DataSource } from '../../electron/store'
+import { formatVoteCount } from '../utils/formatNumber'
 
 interface Cast {
     name: string
@@ -151,7 +152,6 @@ export default function MovieDetail() {
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-neutral-900/60 to-neutral-900 z-10" />
                 {movie.backdropPath && (
                     <>
-                        {/* Low Res Placeholder */}
                         <img
                             src={`https://image.tmdb.org/t/p/w300${movie.backdropPath}`}
                             alt={movie.title}
@@ -218,7 +218,7 @@ export default function MovieDetail() {
                                         <span className="text-[#f5c518] font-bold text-sm">IMDb</span>
                                         <span className="font-semibold">{movie.imdbRating.toFixed(1)}</span>
                                         {movie.imdbVotes && (
-                                            <span className="text-xs text-gray-200">({(movie.imdbVotes).toLocaleString()})</span>
+                                            <span className="text-xs text-gray-200">({formatVoteCount(movie.imdbVotes)})</span>
                                         )}
                                     </div>
                                 )}

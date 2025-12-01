@@ -82,7 +82,6 @@ export const downloadAndImportImdbRatings = async (
     const filterSet = filterIds ? new Set(filterIds) : null
 
     try {
-        console.log('Starting IMDb dataset download from IMDb servers...')
         onProgress?.({ stage: 'downloading', progress: 0 })
 
         await new Promise<void>((resolve, reject) => {

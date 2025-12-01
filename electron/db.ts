@@ -10,6 +10,7 @@ export interface VideoFile {
     filePath: string
     webdavUrl: string
     sourceId: string
+    manuallyMatched?: boolean
 }
 
 export interface Movie {
@@ -172,6 +173,7 @@ export const getDb = (): Database.Database => {
             filePath TEXT,
             webdavUrl TEXT,
             sourceId TEXT,
+            manuallyMatched INTEGER DEFAULT 0,
             FOREIGN KEY (movieId) REFERENCES movies(id) ON DELETE CASCADE,
             FOREIGN KEY (episodeId) REFERENCES episodes(id) ON DELETE CASCADE
         );
@@ -208,7 +210,10 @@ export const getAllMovies = (): Movie[] => {
     const movies = db.prepare('SELECT * FROM movies ORDER BY title').all() as any[]
 
     return movies.map(m => {
-        const videoFiles = db.prepare('SELECT * FROM video_files WHERE movieId = ?').all(m.id) as VideoFile[]
+        const videoFiles = (db.prepare('SELECT * FROM video_files WHERE movieId = ?').all(m.id) as any[]).map(f => ({
+            ...f,
+            manuallyMatched: f.manuallyMatched === 1
+        }))
         return {
             ...m,
             genres: JSON.parse(m.genres || '[]'),
@@ -225,7 +230,10 @@ export const getMovie = (id: number): Movie | undefined => {
     const movie = db.prepare('SELECT * FROM movies WHERE id = ?').get(id) as any
     if (!movie) return undefined
 
-    const videoFiles = db.prepare('SELECT * FROM video_files WHERE movieId = ?').all(id) as VideoFile[]
+    const videoFiles = (db.prepare('SELECT * FROM video_files WHERE movieId = ?').all(id) as any[]).map(f => ({
+        ...f,
+        manuallyMatched: f.manuallyMatched === 1
+    }))
     return {
         ...movie,
         genres: JSON.parse(movie.genres || '[]'),
@@ -251,8 +259,8 @@ export const saveMovie = (movie: Movie) => {
     `)
 
     const insertFile = db.prepare(`
-        INSERT OR REPLACE INTO video_files (id, movieId, name, filePath, webdavUrl, sourceId)
-        VALUES (@id, @movieId, @name, @filePath, @webdavUrl, @sourceId)
+        INSERT OR REPLACE INTO video_files (id, movieId, name, filePath, webdavUrl, sourceId, manuallyMatched)
+        VALUES (@id, @movieId, @name, @filePath, @webdavUrl, @sourceId, @manuallyMatched)
     `)
 
     db.transaction(() => {
@@ -281,7 +289,11 @@ export const saveMovie = (movie: Movie) => {
         db.prepare('DELETE FROM video_files WHERE movieId = ?').run(movie.id)
 
         for (const file of movie.videoFiles) {
-            insertFile.run({ ...file, movieId: movie.id })
+            insertFile.run({ 
+                ...file, 
+                movieId: movie.id,
+                manuallyMatched: file.manuallyMatched ? 1 : 0
+            })
         }
     })()
 }
@@ -296,7 +308,10 @@ export const getAllTVShows = (): TVShow[] => {
         const fullSeasons = seasons.map(season => {
             const episodes = db.prepare('SELECT * FROM episodes WHERE tvShowId = ? AND seasonNumber = ? ORDER BY episodeNumber').all(s.id, season.seasonNumber) as any[]
             const fullEpisodes = episodes.map(ep => {
-                const videoFiles = db.prepare('SELECT * FROM video_files WHERE episodeId = ?').all(ep.id) as VideoFile[]
+                const videoFiles = (db.prepare('SELECT * FROM video_files WHERE episodeId = ?').all(ep.id) as any[]).map(f => ({
+                    ...f,
+                    manuallyMatched: f.manuallyMatched === 1
+                }))
                 return {
                     ...ep,
                     id: ep.tmdbId,
@@ -327,7 +342,10 @@ export const getTVShow = (id: number): TVShow | undefined => {
     const fullSeasons = seasons.map(season => {
         const episodes = db.prepare('SELECT * FROM episodes WHERE tvShowId = ? AND seasonNumber = ? ORDER BY episodeNumber').all(id, season.seasonNumber) as any[]
         const fullEpisodes = episodes.map(ep => {
-            const videoFiles = db.prepare('SELECT * FROM video_files WHERE episodeId = ?').all(ep.id) as VideoFile[]
+            const videoFiles = (db.prepare('SELECT * FROM video_files WHERE episodeId = ?').all(ep.id) as any[]).map(f => ({
+                ...f,
+                manuallyMatched: f.manuallyMatched === 1
+            }))
             return {
                 ...ep,
                 id: ep.tmdbId,
@@ -378,8 +396,8 @@ export const saveTVShow = (show: TVShow) => {
     `)
 
     const insertFile = db.prepare(`
-        INSERT OR REPLACE INTO video_files (id, episodeId, name, filePath, webdavUrl, sourceId)
-        VALUES (@id, @episodeId, @name, @filePath, @webdavUrl, @sourceId)
+        INSERT OR REPLACE INTO video_files (id, episodeId, name, filePath, webdavUrl, sourceId, manuallyMatched)
+        VALUES (@id, @episodeId, @name, @filePath, @webdavUrl, @sourceId, @manuallyMatched)
     `)
 
     db.transaction(() => {
@@ -436,7 +454,11 @@ export const saveTVShow = (show: TVShow) => {
                 db.prepare('DELETE FROM video_files WHERE episodeId = ?').run(epId)
 
                 for (const file of episode.videoFiles) {
-                    insertFile.run({ ...file, episodeId: epId })
+                    insertFile.run({ 
+                        ...file, 
+                        episodeId: epId,
+                        manuallyMatched: file.manuallyMatched ? 1 : 0
+                    })
                 }
             }
         }
@@ -510,6 +532,11 @@ export const addUnscannedFile = (file: VideoFile) => {
 export const clearUnscannedFiles = () => {
     const db = getDb()
     db.prepare('DELETE FROM unscanned_files').run()
+}
+
+export const deleteUnscannedFile = (id: string) => {
+    const db = getDb()
+    db.prepare('DELETE FROM unscanned_files WHERE id = ?').run(id)
 }
 
 export const deleteEmptyMovies = () => {

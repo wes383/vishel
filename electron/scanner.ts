@@ -81,7 +81,6 @@ interface ScanState {
     pendingSeasons: Map<string, Promise<void>>
     unscannedFiles: VideoFile[]
 
-    // Incremental scan tracking
     foundFilePaths: Set<string>
     fileMap: Map<string, { type: 'movie', object: Movie, file: VideoFile } | { type: 'episode', object: TVShow, file: VideoFile }>
     dirtyIds: Set<number> // IDs of movies/shows that need saving
@@ -135,16 +134,25 @@ const scanDirectoryRecursive = async (
             } else if (item.type === 'file' && isVideoFile(item.filename)) {
                 state.foundFilePaths.add(item.filename)
 
-                // Check if file is already known
                 const existing = state.fileMap.get(item.filename)
-                if (existing && !state.forceRefresh) {
-                    // Update WebDAV URL in case config changed
-                    const newFile = createVideoFile(source, item.filename)
-                    if (existing.file.webdavUrl !== newFile.webdavUrl) {
-                        existing.file.webdavUrl = newFile.webdavUrl
-                        state.dirtyIds.add(existing.object.id)
+                if (existing) {
+                    if (existing.file.manuallyMatched) {
+                        const newFile = createVideoFile(source, item.filename)
+                        if (existing.file.webdavUrl !== newFile.webdavUrl) {
+                            existing.file.webdavUrl = newFile.webdavUrl
+                            state.dirtyIds.add(existing.object.id)
+                        }
+                        return
                     }
-                    return // Skip processing
+                    
+                    if (!state.forceRefresh) {
+                        const newFile = createVideoFile(source, item.filename)
+                        if (existing.file.webdavUrl !== newFile.webdavUrl) {
+                            existing.file.webdavUrl = newFile.webdavUrl
+                            state.dirtyIds.add(existing.object.id)
+                        }
+                        return
+                    }
                 }
 
                 const episodeInfo = parseEpisodeInfo(item.filename)
@@ -296,10 +304,8 @@ const scanDirectoryRecursive = async (
                                     const newFile = createVideoFile(source, item.filename)
                                     episode.videoFiles.push(newFile)
 
-                                    // Mark as dirty since we modified it
                                     state.dirtyIds.add(tvShow.id)
 
-                                    // Update fileMap so we don't process it again if encountered twice (unlikely but safe)
                                     state.fileMap.set(item.filename, { type: 'episode', object: tvShow, file: newFile })
                                 }
                             }
@@ -432,7 +438,6 @@ export const scanMovies = async (onProgress?: (data: any) => void, forceRefresh:
         const currentMovies = getAllMovies()
         const currentTVShows = getAllTVShows()
 
-        // Build file map for fast lookup
         const fileMap = new Map<string, { type: 'movie', object: Movie, file: VideoFile } | { type: 'episode', object: TVShow, file: VideoFile }>()
 
         currentMovies.forEach(m => {
@@ -517,35 +522,26 @@ export const scanMovies = async (onProgress?: (data: any) => void, forceRefresh:
         }
 
         console.log(`Pruned ${prunedCount} missing files`)
-        console.log(`Modified items marked as dirty: ${state.dirtyIds.size}`)
 
         onProgress?.({ status: 'Saving metadata...' })
 
         const db = getDb()
 
         const saveTransaction = db.transaction(() => {
-            // Save new items
-            console.log(`Saving ${state.newMovies.size} new movies`)
             for (const movie of state.newMovies.values()) {
                 saveMovie(movie)
             }
-            console.log(`Saving ${state.newTVShows.size} new TV shows`)
             for (const show of state.newTVShows.values()) {
                 saveTVShow(show)
             }
 
-            // Save modified existing items
-            console.log(`Saving ${state.dirtyIds.size} modified items`)
             for (const id of state.dirtyIds) {
                 const movie = state.currentMovies.find(m => m.id === id)
                 if (movie) {
-                    console.log(`Updating movie: ${movie.title} (${movie.videoFiles.length} files)`)
                     saveMovie(movie)
                 } else {
                     const show = state.currentTVShows.find(s => s.id === id)
                     if (show) {
-                        const totalEpisodes = show.seasons.reduce((sum, s) => sum + s.episodes.length, 0)
-                        console.log(`Updating TV show: ${show.name} (${totalEpisodes} episodes)`)
                         saveTVShow(show)
                     }
                 }
@@ -555,8 +551,6 @@ export const scanMovies = async (onProgress?: (data: any) => void, forceRefresh:
                 addUnscannedFile(file)
             }
 
-            // Cleanup empty items
-            console.log('Cleaning up empty records...')
             deleteEmptyMovies()
             deleteEmptyTVShows()
         })
@@ -566,7 +560,6 @@ export const scanMovies = async (onProgress?: (data: any) => void, forceRefresh:
         onProgress?.({ status: 'Updating IMDb ratings...' })
         const allImdbIds: string[] = []
 
-        // Collect IMDb IDs from new items
         state.newMovies.forEach(m => {
             if (m.externalIds?.imdb_id) allImdbIds.push(m.externalIds.imdb_id)
         })
@@ -574,7 +567,6 @@ export const scanMovies = async (onProgress?: (data: any) => void, forceRefresh:
             if (t.externalIds?.imdb_id) allImdbIds.push(t.externalIds.imdb_id)
         })
 
-        // If force refresh, also update IMDb for all existing items
         if (forceRefresh) {
             state.currentMovies.forEach(m => {
                 if (m.externalIds?.imdb_id && !allImdbIds.includes(m.externalIds.imdb_id)) {
@@ -630,25 +622,15 @@ export const scanMovies = async (onProgress?: (data: any) => void, forceRefresh:
                         }
                     }
 
-                    // Also update existing items if force refresh
                     if (forceRefresh) {
-                        console.log(`Checking IMDb updates for ${state.currentMovies.length} movies and ${state.currentTVShows.length} TV shows`)
-
                         for (const movie of state.currentMovies) {
                             if (movie.externalIds?.imdb_id) {
                                 const rating = getImdbRating(movie.externalIds.imdb_id)
-                                if (rating) {
-                                    if (movie.imdbRating !== rating.rating || movie.imdbVotes !== rating.votes) {
-                                        console.log(`Updating ${movie.title}: ${movie.imdbRating} -> ${rating.rating}`)
-                                        movie.imdbRating = rating.rating
-                                        movie.imdbVotes = rating.votes
-                                        saveMovie(movie)
-                                        updatedCount++
-                                    } else {
-                                        console.log(`${movie.title} already has current rating: ${rating.rating}`)
-                                    }
-                                } else {
-                                    console.log(`No IMDb rating found for ${movie.title} (${movie.externalIds.imdb_id})`)
+                                if (rating && (movie.imdbRating !== rating.rating || movie.imdbVotes !== rating.votes)) {
+                                    movie.imdbRating = rating.rating
+                                    movie.imdbVotes = rating.votes
+                                    saveMovie(movie)
+                                    updatedCount++
                                 }
                             }
                         }
@@ -656,16 +638,11 @@ export const scanMovies = async (onProgress?: (data: any) => void, forceRefresh:
                         for (const show of state.currentTVShows) {
                             if (show.externalIds?.imdb_id) {
                                 const rating = getImdbRating(show.externalIds.imdb_id)
-                                if (rating) {
-                                    if (show.imdbRating !== rating.rating || show.imdbVotes !== rating.votes) {
-                                        console.log(`Updating ${show.name}: ${show.imdbRating} -> ${rating.rating}`)
-                                        show.imdbRating = rating.rating
-                                        show.imdbVotes = rating.votes
-                                        saveTVShow(show)
-                                        updatedCount++
-                                    }
-                                } else {
-                                    console.log(`No IMDb rating found for ${show.name} (${show.externalIds.imdb_id})`)
+                                if (rating && (show.imdbRating !== rating.rating || show.imdbVotes !== rating.votes)) {
+                                    show.imdbRating = rating.rating
+                                    show.imdbVotes = rating.votes
+                                    saveTVShow(show)
+                                    updatedCount++
                                 }
                             }
                         }

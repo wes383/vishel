@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Play, Calendar, User, X, ChevronDown, Loader2 } from 'lucide-react'
 import { DataSource } from '../../electron/store'
+import { formatVoteCount } from '../utils/formatNumber'
 
 interface VideoFile {
     id: string
@@ -248,7 +249,7 @@ export default function TVDetail() {
                                         <span className="text-[#f5c518] font-bold text-sm">IMDb</span>
                                         <span className="font-semibold">{show.imdbRating.toFixed(1)}</span>
                                         {show.imdbVotes && (
-                                            <span className="text-xs text-gray-200">({(show.imdbVotes).toLocaleString()})</span>
+                                            <span className="text-xs text-gray-200">({formatVoteCount(show.imdbVotes)})</span>
                                         )}
                                     </div>
                                 )}

@@ -27,7 +27,6 @@ export default function FileBrowser({ config, type, onSelect, selectedPaths }: F
         setLoading(true)
         setError('')
         try {
-            // @ts-ignore
             const result = await window.electron.ipcRenderer.invoke('list-directory', { config: { ...config, type }, path })
             setItems(result)
             setCurrentPath(path)

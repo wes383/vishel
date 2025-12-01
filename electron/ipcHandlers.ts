@@ -42,15 +42,29 @@ export const setupIpcHandlers = () => {
         return await listDirectory(config, path)
     })
 
+
     // Library
-    ipcMain.handle('scan-library', async () => {
-        console.log('IPC: scan-library called')
+    ipcMain.handle('scan-library', async (_, forceRefresh: boolean = false) => {
+        console.log(`IPC: scan-library called (forceRefresh: ${forceRefresh})`)
         try {
-            await scanMovies()
+            await scanMovies(undefined, forceRefresh)
             console.log('IPC: scan-library finished')
             return true
         } catch (error) {
             console.error('IPC: scan-library failed', error)
+            throw error
+        }
+    })
+
+    // Full rescan (convenience method)
+    ipcMain.handle('full-rescan-library', async () => {
+        console.log('IPC: full-rescan-library called')
+        try {
+            await scanMovies(undefined, true)
+            console.log('IPC: full-rescan-library finished')
+            return true
+        } catch (error) {
+            console.error('IPC: full-rescan-library failed', error)
             throw error
         }
     })

@@ -511,3 +511,27 @@ export const clearUnscannedFiles = () => {
     const db = getDb()
     db.prepare('DELETE FROM unscanned_files').run()
 }
+
+export const deleteEmptyMovies = () => {
+    const db = getDb()
+    const result = db.prepare('DELETE FROM movies WHERE id NOT IN (SELECT DISTINCT movieId FROM video_files WHERE movieId IS NOT NULL)').run()
+    console.log(`Deleted ${result.changes} empty movies`)
+    return result.changes
+}
+
+export const deleteEmptyTVShows = () => {
+    const db = getDb()
+    // Delete episodes with no video files
+    const episodesResult = db.prepare('DELETE FROM episodes WHERE id NOT IN (SELECT DISTINCT episodeId FROM video_files WHERE episodeId IS NOT NULL)').run()
+    console.log(`Deleted ${episodesResult.changes} empty episodes`)
+
+    // Delete seasons with no episodes
+    const seasonsResult = db.prepare('DELETE FROM seasons WHERE (tvShowId, seasonNumber) NOT IN (SELECT tvShowId, seasonNumber FROM episodes)').run()
+    console.log(`Deleted ${seasonsResult.changes} empty seasons`)
+
+    // Delete shows with no seasons
+    const showsResult = db.prepare('DELETE FROM tv_shows WHERE id NOT IN (SELECT DISTINCT tvShowId FROM seasons)').run()
+    console.log(`Deleted ${showsResult.changes} empty TV shows`)
+
+    return episodesResult.changes + seasonsResult.changes + showsResult.changes
+}

@@ -26,31 +26,37 @@ export default function SettingsPage() {
     const navigate = useNavigate()
 
     useEffect(() => {
-        // @ts-ignore
         window.electron.ipcRenderer.invoke('get-settings').then((data: SettingsData) => {
             const sources = Array.isArray(data.sources) ? data.sources : []
             setSettings({ ...data, sources })
         })
 
         // Check scan status
-        // @ts-ignore
         window.electron.ipcRenderer.invoke('get-scan-status').then((isScanning: boolean) => {
             setScanning(isScanning)
         })
     }, [])
 
     const autoSave = async (newSettings: SettingsData) => {
-        // @ts-ignore
         await window.electron.ipcRenderer.invoke('save-settings', newSettings)
     }
 
     const handleScan = async () => {
         setScanning(true)
         try {
-            // @ts-ignore
-            await window.electron.ipcRenderer.invoke('scan-library')
+            await window.electron.ipcRenderer.invoke('scan-library', false)
         } catch (error) {
             console.error('Scan error:', error)
+        }
+        setScanning(false)
+    }
+
+    const handleFullRescan = async () => {
+        setScanning(true)
+        try {
+            await window.electron.ipcRenderer.invoke('full-rescan-library')
+        } catch (error) {
+            console.error('Full rescan error:', error)
         }
         setScanning(false)
     }
@@ -61,7 +67,6 @@ export default function SettingsPage() {
             sources: [...settings.sources, source]
         }
         setSettings(newSettings)
-        // @ts-ignore
         window.electron.ipcRenderer.invoke('save-settings', newSettings)
     }
 
@@ -71,7 +76,6 @@ export default function SettingsPage() {
             sources: settings.sources.filter(s => s.id !== id)
         }
         setSettings(newSettings)
-        // @ts-ignore
         window.electron.ipcRenderer.invoke('save-settings', newSettings)
     }
 
@@ -99,7 +103,15 @@ export default function SettingsPage() {
                                 className={`flex items-center gap-2 bg-white hover:bg-gray-200 text-black px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${scanning ? 'opacity-50 cursor-not-allowed' : ''}`}
                             >
                                 <RefreshCw className={`w-4 h-4 ${scanning ? 'animate-spin' : ''}`} />
-                                {scanning ? 'Scanning...' : 'Scan Library'}
+                                {scanning ? 'Scanning...' : 'Quick Scan'}
+                            </button>
+                            <button
+                                onClick={handleFullRescan}
+                                disabled={scanning}
+                                className={`flex items-center gap-2 bg-white hover:bg-gray-200 text-black px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${scanning ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            >
+                                <RefreshCw className={`w-4 h-4 ${scanning ? 'animate-spin' : ''}`} />
+                                {scanning ? 'Scanning...' : 'Full Rescan'}
                             </button>
                             <button
                                 onClick={() => setShowAddModal(true)}
@@ -109,6 +121,15 @@ export default function SettingsPage() {
                                 Add Source
                             </button>
                         </div>
+                    </div>
+
+                    <div className="mb-4 px-1">
+                        <p className="text-sm text-gray-400 mb-1">
+                            <span className="font-semibold text-gray-300">Quick Scan:</span> Fast scan that only checks for new or deleted files.
+                        </p>
+                        <p className="text-sm text-gray-400">
+                            <span className="font-semibold text-gray-300">Full Rescan:</span> Complete refresh of all metadata.
+                        </p>
                     </div>
 
                     <DataSourceList

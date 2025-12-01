@@ -55,7 +55,6 @@ export default function MovieDetail() {
         const fetchMovie = async () => {
             if (!id) return
             try {
-                // @ts-ignore
                 const data = await window.electron.ipcRenderer.invoke('get-movie', parseInt(id))
                 setMovie(data)
             } catch (error) {
@@ -66,7 +65,6 @@ export default function MovieDetail() {
         }
         fetchMovie()
 
-        // @ts-ignore
         window.electron.ipcRenderer.invoke('get-settings').then((data: any) => {
             setSources(data.sources || [])
         })
@@ -88,7 +86,6 @@ export default function MovieDetail() {
         setError(null)
         try {
             setShowVersionSelector(false)
-            // @ts-ignore
             await window.electron.ipcRenderer.invoke('play-video', {
                 url: file.webdavUrl,
                 title: movie.title,
@@ -109,7 +106,6 @@ export default function MovieDetail() {
     }
 
     const openExternal = (url: string) => {
-        // @ts-ignore
         window.electron.ipcRenderer.invoke('open-external', url)
     }
 

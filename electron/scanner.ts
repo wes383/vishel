@@ -1,4 +1,4 @@
-import { getDb, saveMovie, saveTVShow, addUnscannedFile, clearUnscannedFiles, Movie, TVShow, VideoFile } from './db'
+import { getDb, saveMovie, saveTVShow, addUnscannedFile, clearUnscannedFiles, getAllMovies, getAllTVShows, deleteEmptyMovies, deleteEmptyTVShows, Movie, TVShow, VideoFile } from './db'
 import { searchMovie, getMovieDetails, searchTVShow, getTVShowDetails, getSeasonDetails } from './tmdbService'
 import { listDirectory } from './webdavService'
 import { listLocalDirectory } from './localFileService'
@@ -70,8 +70,6 @@ const createVideoFile = (source: DataSource, filename: string): VideoFile => {
     }
 }
 
-
-
 interface ScanState {
     newMovies: Map<number, Movie>
     currentMovies: Movie[]
@@ -82,6 +80,12 @@ interface ScanState {
     pendingTVShows: Map<number, Promise<void>>
     pendingSeasons: Map<string, Promise<void>>
     unscannedFiles: VideoFile[]
+
+    // Incremental scan tracking
+    foundFilePaths: Set<string>
+    fileMap: Map<string, { type: 'movie', object: Movie, file: VideoFile } | { type: 'episode', object: TVShow, file: VideoFile }>
+    dirtyIds: Set<number> // IDs of movies/shows that need saving
+    forceRefresh: boolean // Force re-fetch metadata from TMDB
 }
 
 const scanDirectoryRecursive = async (
@@ -112,7 +116,6 @@ const scanDirectoryRecursive = async (
                 try {
                     await scanDirectoryRecursive(source, targetPath, state)
                 } catch (err) {
-                    // Only retry decoding for WebDAV and SMB, local paths shouldn't need it usually
                     if (source.type === 'webdav' || source.type === 'smb') {
                         console.warn(`Failed to scan subdirectory ${targetPath} with raw path. Retrying with decoded path...`)
                         try {
@@ -130,6 +133,20 @@ const scanDirectoryRecursive = async (
                     }
                 }
             } else if (item.type === 'file' && isVideoFile(item.filename)) {
+                state.foundFilePaths.add(item.filename)
+
+                // Check if file is already known
+                const existing = state.fileMap.get(item.filename)
+                if (existing && !state.forceRefresh) {
+                    // Update WebDAV URL in case config changed
+                    const newFile = createVideoFile(source, item.filename)
+                    if (existing.file.webdavUrl !== newFile.webdavUrl) {
+                        existing.file.webdavUrl = newFile.webdavUrl
+                        state.dirtyIds.add(existing.object.id)
+                    }
+                    return // Skip processing
+                }
+
                 const episodeInfo = parseEpisodeInfo(item.filename)
 
                 const findBestMatch = (results: any[], fileYear?: number): any => {
@@ -158,74 +175,68 @@ const scanDirectoryRecursive = async (
                             const bestMatch = findBestMatch(searchResults, year)
                             const tvId = bestMatch.id
 
-                            if (!state.newTVShows.has(tvId)) {
+                            // Check if show exists in current or new
+                            let tvShow = state.currentTVShows.find(s => s.id === tvId) || state.newTVShows.get(tvId)
+
+                            if (!tvShow) {
                                 if (state.pendingTVShows.has(tvId)) {
                                     await state.pendingTVShows.get(tvId)
+                                    tvShow = state.newTVShows.get(tvId)
                                 } else {
                                     const processPromise = (async () => {
-                                        const existingShow = state.currentTVShows.find(s => s.id === tvId)
+                                        const details = await getTVShowDetails(tvId)
+                                        if (details) {
+                                            const cast = details.credits?.cast?.slice(0, 10).map((c: any) => ({
+                                                name: c.name,
+                                                character: c.character,
+                                                profilePath: c.profile_path
+                                            }))
+                                            const createdBy = details.created_by?.map((c: any) => ({
+                                                name: c.name,
+                                                profilePath: c.profile_path
+                                            }))
 
-                                        if (existingShow && existingShow.cast && existingShow.cast.length > 0 && existingShow.externalIds && existingShow.logoPath !== undefined && existingShow.popularity !== undefined) {
-                                            state.newTVShows.set(tvId, {
-                                                ...existingShow,
-                                                seasons: []
-                                            })
-                                        } else {
-                                            const details = await getTVShowDetails(tvId)
-                                            if (details) {
-                                                const cast = details.credits?.cast?.slice(0, 10).map((c: any) => ({
-                                                    name: c.name,
-                                                    character: c.character,
-                                                    profilePath: c.profile_path
-                                                }))
-                                                const createdBy = details.created_by?.map((c: any) => ({
-                                                    name: c.name,
-                                                    profilePath: c.profile_path
-                                                }))
+                                            const logoPath = details.images?.logos?.find((l: any) => l.iso_639_1 === 'en')?.file_path
 
-                                                const logoPath = details.images?.logos?.find((l: any) => l.iso_639_1 === 'en')?.file_path
-
-                                                // Query IMDb rating
-                                                let imdbRating: number | undefined
-                                                let imdbVotes: number | undefined
-                                                if (details.external_ids?.imdb_id) {
-                                                    const imdbData = getImdbRating(details.external_ids.imdb_id)
-                                                    if (imdbData) {
-                                                        imdbRating = imdbData.rating
-                                                        imdbVotes = imdbData.votes
-                                                    }
+                                            let imdbRating: number | undefined
+                                            let imdbVotes: number | undefined
+                                            if (details.external_ids?.imdb_id) {
+                                                const imdbData = getImdbRating(details.external_ids.imdb_id)
+                                                if (imdbData) {
+                                                    imdbRating = imdbData.rating
+                                                    imdbVotes = imdbData.votes
                                                 }
-
-                                                state.newTVShows.set(tvId, {
-                                                    id: details.id,
-                                                    name: details.name,
-                                                    logoPath: logoPath || '',
-                                                    posterPath: details.poster_path,
-                                                    backdropPath: details.backdrop_path,
-                                                    overview: details.overview,
-                                                    firstAirDate: details.first_air_date,
-                                                    sourceId: source.id,
-                                                    genres: details.genres?.map((g: any) => g.name),
-                                                    voteAverage: details.vote_average,
-                                                    popularity: details.popularity,
-                                                    imdbRating,
-                                                    imdbVotes,
-                                                    status: details.status,
-                                                    cast,
-                                                    createdBy,
-                                                    seasons: [],
-                                                    externalIds: details.external_ids
-                                                })
                                             }
+
+                                            const newShow: TVShow = {
+                                                id: details.id,
+                                                name: details.name,
+                                                logoPath: logoPath || '',
+                                                posterPath: details.poster_path,
+                                                backdropPath: details.backdrop_path,
+                                                overview: details.overview,
+                                                firstAirDate: details.first_air_date,
+                                                sourceId: source.id,
+                                                genres: details.genres?.map((g: any) => g.name),
+                                                voteAverage: details.vote_average,
+                                                popularity: details.popularity,
+                                                imdbRating,
+                                                imdbVotes,
+                                                status: details.status,
+                                                cast,
+                                                createdBy,
+                                                seasons: [],
+                                                externalIds: details.external_ids
+                                            }
+                                            state.newTVShows.set(tvId, newShow)
                                         }
                                     })()
                                     state.pendingTVShows.set(tvId, processPromise)
                                     await processPromise
                                     state.pendingTVShows.delete(tvId)
+                                    tvShow = state.newTVShows.get(tvId)
                                 }
                             }
-
-                            const tvShow = state.newTVShows.get(tvId)
 
                             if (tvShow) {
                                 const seasonCacheKey = `${tvId}:${episodeInfo.season}`
@@ -255,7 +266,7 @@ const scanDirectoryRecursive = async (
                                                 posterPath: seasonDetails?.poster_path || '',
                                                 episodes: []
                                             }
-                                            tvShow.seasons.push(newSeason)
+                                            tvShow!.seasons.push(newSeason)
                                         })()
                                         state.pendingSeasons.set(seasonCacheKey, seasonPromise)
                                         await seasonPromise
@@ -266,26 +277,30 @@ const scanDirectoryRecursive = async (
 
                                 if (season) {
                                     const seasonDetails = state.seasonDetailsCache.get(seasonCacheKey)
-                                    // Find episode metadata from season details
                                     const episodeMeta = seasonDetails?.episodes?.find((e: any) => e.episode_number === episodeInfo.episode)
 
-                                    const episode = {
-                                        id: episodeMeta?.id || 0,
-                                        episodeNumber: episodeInfo.episode,
-                                        seasonNumber: episodeInfo.season,
-                                        name: episodeMeta?.name || `Episode ${episodeInfo.episode}`,
-                                        overview: episodeMeta?.overview || '',
-                                        stillPath: episodeMeta?.still_path || '',
-                                        videoFiles: [createVideoFile(source, item.filename)]
-                                    }
-
-                                    const existingEpisode = season.episodes.find((e: any) => e.episodeNumber === episodeInfo.episode)
-
-                                    if (existingEpisode) {
-                                        existingEpisode.videoFiles.push(createVideoFile(source, item.filename))
-                                    } else {
+                                    let episode = season.episodes.find(e => e.episodeNumber === episodeInfo.episode)
+                                    if (!episode) {
+                                        episode = {
+                                            id: episodeMeta?.id || 0,
+                                            episodeNumber: episodeInfo.episode,
+                                            seasonNumber: episodeInfo.season,
+                                            name: episodeMeta?.name || `Episode ${episodeInfo.episode}`,
+                                            overview: episodeMeta?.overview || '',
+                                            stillPath: episodeMeta?.still_path || '',
+                                            videoFiles: []
+                                        }
                                         season.episodes.push(episode)
                                     }
+
+                                    const newFile = createVideoFile(source, item.filename)
+                                    episode.videoFiles.push(newFile)
+
+                                    // Mark as dirty since we modified it
+                                    state.dirtyIds.add(tvShow.id)
+
+                                    // Update fileMap so we don't process it again if encountered twice (unlikely but safe)
+                                    state.fileMap.set(item.filename, { type: 'episode', object: tvShow, file: newFile })
                                 }
                             }
                         } else {
@@ -307,79 +322,76 @@ const scanDirectoryRecursive = async (
                             const bestMatch = searchResults[0]
                             const movieId = bestMatch.id
 
-                            if (!state.newMovies.has(movieId)) {
+                            let movie = state.currentMovies.find(m => m.id === movieId) || state.newMovies.get(movieId)
+
+                            if (!movie) {
                                 if (state.pendingMovies.has(movieId)) {
                                     await state.pendingMovies.get(movieId)
+                                    movie = state.newMovies.get(movieId)
                                 } else {
                                     const processPromise = (async () => {
-                                        const existingMovie = state.currentMovies.find(m => m.id === bestMatch.id)
+                                        const details = await getMovieDetails(movieId)
+                                        if (details) {
+                                            const cast = details.credits?.cast?.slice(0, 10).map((c: any) => ({
+                                                name: c.name,
+                                                character: c.character,
+                                                profilePath: c.profile_path
+                                            }))
 
-                                        if (existingMovie && existingMovie.cast && existingMovie.cast.length > 0 && typeof existingMovie.director !== 'string' && existingMovie.externalIds && existingMovie.logoPath !== undefined && existingMovie.popularity !== undefined) {
-                                            state.newMovies.set(movieId, {
-                                                ...existingMovie,
-                                                videoFiles: []
-                                            })
-                                        } else {
-                                            const details = await getMovieDetails(movieId)
-                                            if (details) {
-                                                const cast = details.credits?.cast?.slice(0, 10).map((c: any) => ({
-                                                    name: c.name,
-                                                    character: c.character,
-                                                    profilePath: c.profile_path
-                                                }))
+                                            const directors = details.credits?.crew?.filter((c: any) => c.job === 'Director')
+                                            const directorObj = directors && directors.length > 0 ? {
+                                                name: directors[0].name,
+                                                profilePath: directors[0].profile_path || null
+                                            } : undefined
 
-                                                const directors = details.credits?.crew?.filter((c: any) => c.job === 'Director')
-                                                const directorObj: { name: string, profilePath: string | null } | undefined = directors && directors.length > 0 ? {
-                                                    name: directors[0].name,
-                                                    profilePath: directors[0].profile_path || null
-                                                } : undefined
+                                            const logoPath = details.images?.logos?.find((l: any) => l.iso_639_1 === 'en')?.file_path
 
-                                                const logoPath = details.images?.logos?.find((l: any) => l.iso_639_1 === 'en')?.file_path
-
-                                                // Query IMDb rating
-                                                let imdbRating: number | undefined
-                                                let imdbVotes: number | undefined
-                                                if (details.external_ids?.imdb_id) {
-                                                    const imdbData = getImdbRating(details.external_ids.imdb_id)
-                                                    if (imdbData) {
-                                                        imdbRating = imdbData.rating
-                                                        imdbVotes = imdbData.votes
-                                                    }
+                                            let imdbRating: number | undefined
+                                            let imdbVotes: number | undefined
+                                            if (details.external_ids?.imdb_id) {
+                                                const imdbData = getImdbRating(details.external_ids.imdb_id)
+                                                if (imdbData) {
+                                                    imdbRating = imdbData.rating
+                                                    imdbVotes = imdbData.votes
                                                 }
-
-                                                state.newMovies.set(movieId, {
-                                                    id: details.id,
-                                                    title: details.title,
-                                                    logoPath: logoPath || '',
-                                                    overview: details.overview,
-                                                    posterPath: details.poster_path,
-                                                    backdropPath: details.backdrop_path,
-                                                    releaseDate: details.release_date,
-                                                    runtime: details.runtime,
-                                                    voteAverage: details.vote_average,
-                                                    popularity: details.popularity,
-                                                    imdbRating,
-                                                    imdbVotes,
-                                                    genres: details.genres?.map((g: any) => g.name),
-                                                    sourceId: source.id,
-                                                    status: details.status,
-                                                    cast,
-                                                    director: directorObj,
-                                                    videoFiles: [],
-                                                    externalIds: details.external_ids
-                                                })
                                             }
+
+                                            const newMovie: Movie = {
+                                                id: details.id,
+                                                title: details.title,
+                                                logoPath: logoPath || '',
+                                                overview: details.overview,
+                                                posterPath: details.poster_path,
+                                                backdropPath: details.backdrop_path,
+                                                releaseDate: details.release_date,
+                                                runtime: details.runtime,
+                                                voteAverage: details.vote_average,
+                                                popularity: details.popularity,
+                                                imdbRating,
+                                                imdbVotes,
+                                                genres: details.genres?.map((g: any) => g.name),
+                                                sourceId: source.id,
+                                                status: details.status,
+                                                cast,
+                                                director: directorObj,
+                                                videoFiles: [],
+                                                externalIds: details.external_ids
+                                            }
+                                            state.newMovies.set(movieId, newMovie)
                                         }
                                     })()
                                     state.pendingMovies.set(movieId, processPromise)
                                     await processPromise
                                     state.pendingMovies.delete(movieId)
+                                    movie = state.newMovies.get(movieId)
                                 }
                             }
 
-                            const movie = state.newMovies.get(movieId)
                             if (movie) {
-                                movie.videoFiles.push(createVideoFile(source, item.filename))
+                                const newFile = createVideoFile(source, item.filename)
+                                movie.videoFiles.push(newFile)
+                                state.dirtyIds.add(movie.id)
+                                state.fileMap.set(item.filename, { type: 'movie', object: movie, file: newFile })
                             }
                         } else {
                             console.warn(`No movie match found for: ${item.filename}`)
@@ -404,7 +416,7 @@ export let isScanning = false
 
 export const getScanStatus = () => isScanning
 
-export const scanMovies = async (onProgress?: (data: any) => void) => {
+export const scanMovies = async (onProgress?: (data: any) => void, forceRefresh: boolean = false) => {
     if (isScanning) {
         console.log('Scan already in progress, skipping...')
         return
@@ -417,18 +429,45 @@ export const scanMovies = async (onProgress?: (data: any) => void) => {
         clearUnscannedFiles()
 
         const sources = store.get('sources') as DataSource[]
+        const currentMovies = getAllMovies()
+        const currentTVShows = getAllTVShows()
+
+        // Build file map for fast lookup
+        const fileMap = new Map<string, { type: 'movie', object: Movie, file: VideoFile } | { type: 'episode', object: TVShow, file: VideoFile }>()
+
+        currentMovies.forEach(m => {
+            m.videoFiles.forEach(f => {
+                fileMap.set(f.filePath, { type: 'movie', object: m, file: f })
+            })
+        })
+
+        currentTVShows.forEach(s => {
+            s.seasons.forEach(season => {
+                season.episodes.forEach(ep => {
+                    ep.videoFiles.forEach(f => {
+                        fileMap.set(f.filePath, { type: 'episode', object: s, file: f })
+                    })
+                })
+            })
+        })
 
         const state: ScanState = {
             newMovies: new Map(),
-            currentMovies: [],
+            currentMovies,
             newTVShows: new Map(),
-            currentTVShows: [],
+            currentTVShows,
             seasonDetailsCache: new Map(),
             pendingMovies: new Map(),
             pendingTVShows: new Map(),
             pendingSeasons: new Map(),
-            unscannedFiles: []
+            unscannedFiles: [],
+            foundFilePaths: new Set(),
+            fileMap,
+            dirtyIds: new Set(),
+            forceRefresh
         }
+
+        console.log(`Scan mode: ${forceRefresh ? 'Full Rescan (Force Refresh)' : 'Quick Scan (Incremental)'}`)
 
         for (const source of sources) {
             console.log(`Scanning source: ${source.name} (${source.type})`)
@@ -444,22 +483,82 @@ export const scanMovies = async (onProgress?: (data: any) => void) => {
             }
         }
 
+        onProgress?.({ status: 'Processing changes...' })
+
+        // Prune missing files
+        let prunedCount = 0
+
+        // Check Movies
+        for (const movie of state.currentMovies) {
+            const originalCount = movie.videoFiles.length
+            movie.videoFiles = movie.videoFiles.filter(f => state.foundFilePaths.has(f.filePath))
+            if (movie.videoFiles.length !== originalCount) {
+                state.dirtyIds.add(movie.id)
+                prunedCount += (originalCount - movie.videoFiles.length)
+            }
+        }
+
+        // Check TV Shows
+        for (const show of state.currentTVShows) {
+            let showChanged = false
+            for (const season of show.seasons) {
+                for (const episode of season.episodes) {
+                    const originalCount = episode.videoFiles.length
+                    episode.videoFiles = episode.videoFiles.filter(f => state.foundFilePaths.has(f.filePath))
+                    if (episode.videoFiles.length !== originalCount) {
+                        showChanged = true
+                        prunedCount += (originalCount - episode.videoFiles.length)
+                    }
+                }
+            }
+            if (showChanged) {
+                state.dirtyIds.add(show.id)
+            }
+        }
+
+        console.log(`Pruned ${prunedCount} missing files`)
+        console.log(`Modified items marked as dirty: ${state.dirtyIds.size}`)
+
         onProgress?.({ status: 'Saving metadata...' })
 
         const db = getDb()
 
         const saveTransaction = db.transaction(() => {
-            db.prepare('DELETE FROM movies').run()
-            db.prepare('DELETE FROM tv_shows').run()
+            // Save new items
+            console.log(`Saving ${state.newMovies.size} new movies`)
             for (const movie of state.newMovies.values()) {
                 saveMovie(movie)
             }
+            console.log(`Saving ${state.newTVShows.size} new TV shows`)
             for (const show of state.newTVShows.values()) {
                 saveTVShow(show)
             }
+
+            // Save modified existing items
+            console.log(`Saving ${state.dirtyIds.size} modified items`)
+            for (const id of state.dirtyIds) {
+                const movie = state.currentMovies.find(m => m.id === id)
+                if (movie) {
+                    console.log(`Updating movie: ${movie.title} (${movie.videoFiles.length} files)`)
+                    saveMovie(movie)
+                } else {
+                    const show = state.currentTVShows.find(s => s.id === id)
+                    if (show) {
+                        const totalEpisodes = show.seasons.reduce((sum, s) => sum + s.episodes.length, 0)
+                        console.log(`Updating TV show: ${show.name} (${totalEpisodes} episodes)`)
+                        saveTVShow(show)
+                    }
+                }
+            }
+
             for (const file of state.unscannedFiles) {
                 addUnscannedFile(file)
             }
+
+            // Cleanup empty items
+            console.log('Cleaning up empty records...')
+            deleteEmptyMovies()
+            deleteEmptyTVShows()
         })
 
         saveTransaction()
@@ -467,12 +566,27 @@ export const scanMovies = async (onProgress?: (data: any) => void) => {
         onProgress?.({ status: 'Updating IMDb ratings...' })
         const allImdbIds: string[] = []
 
+        // Collect IMDb IDs from new items
         state.newMovies.forEach(m => {
             if (m.externalIds?.imdb_id) allImdbIds.push(m.externalIds.imdb_id)
         })
         state.newTVShows.forEach(t => {
             if (t.externalIds?.imdb_id) allImdbIds.push(t.externalIds.imdb_id)
         })
+
+        // If force refresh, also update IMDb for all existing items
+        if (forceRefresh) {
+            state.currentMovies.forEach(m => {
+                if (m.externalIds?.imdb_id && !allImdbIds.includes(m.externalIds.imdb_id)) {
+                    allImdbIds.push(m.externalIds.imdb_id)
+                }
+            })
+            state.currentTVShows.forEach(t => {
+                if (t.externalIds?.imdb_id && !allImdbIds.includes(t.externalIds.imdb_id)) {
+                    allImdbIds.push(t.externalIds.imdb_id)
+                }
+            })
+        }
 
         if (allImdbIds.length > 0) {
             try {
@@ -491,6 +605,7 @@ export const scanMovies = async (onProgress?: (data: any) => void) => {
                 const updateRatingsTransaction = db.transaction(() => {
                     let updatedCount = 0
 
+                    // Update new items
                     for (const movie of state.newMovies.values()) {
                         if (movie.externalIds?.imdb_id) {
                             const rating = getImdbRating(movie.externalIds.imdb_id)
@@ -514,6 +629,48 @@ export const scanMovies = async (onProgress?: (data: any) => void) => {
                             }
                         }
                     }
+
+                    // Also update existing items if force refresh
+                    if (forceRefresh) {
+                        console.log(`Checking IMDb updates for ${state.currentMovies.length} movies and ${state.currentTVShows.length} TV shows`)
+
+                        for (const movie of state.currentMovies) {
+                            if (movie.externalIds?.imdb_id) {
+                                const rating = getImdbRating(movie.externalIds.imdb_id)
+                                if (rating) {
+                                    if (movie.imdbRating !== rating.rating || movie.imdbVotes !== rating.votes) {
+                                        console.log(`Updating ${movie.title}: ${movie.imdbRating} -> ${rating.rating}`)
+                                        movie.imdbRating = rating.rating
+                                        movie.imdbVotes = rating.votes
+                                        saveMovie(movie)
+                                        updatedCount++
+                                    } else {
+                                        console.log(`${movie.title} already has current rating: ${rating.rating}`)
+                                    }
+                                } else {
+                                    console.log(`No IMDb rating found for ${movie.title} (${movie.externalIds.imdb_id})`)
+                                }
+                            }
+                        }
+
+                        for (const show of state.currentTVShows) {
+                            if (show.externalIds?.imdb_id) {
+                                const rating = getImdbRating(show.externalIds.imdb_id)
+                                if (rating) {
+                                    if (show.imdbRating !== rating.rating || show.imdbVotes !== rating.votes) {
+                                        console.log(`Updating ${show.name}: ${show.imdbRating} -> ${rating.rating}`)
+                                        show.imdbRating = rating.rating
+                                        show.imdbVotes = rating.votes
+                                        saveTVShow(show)
+                                        updatedCount++
+                                    }
+                                } else {
+                                    console.log(`No IMDb rating found for ${show.name} (${show.externalIds.imdb_id})`)
+                                }
+                            }
+                        }
+                    }
+
                     console.log(`Updated IMDb ratings for ${updatedCount} items`)
                 })
 
@@ -524,7 +681,7 @@ export const scanMovies = async (onProgress?: (data: any) => void) => {
             }
         }
 
-        console.log(`Scan complete: Found ${state.newMovies.size} movies and ${state.newTVShows.size} TV shows`)
+        console.log(`Scan complete: Added ${state.newMovies.size} movies and ${state.newTVShows.size} TV shows`)
         onProgress?.({ status: 'Scan complete!', done: true })
     } catch (error) {
         console.error('Scan failed:', error)

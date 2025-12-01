@@ -80,7 +80,6 @@ export default function TVDetail() {
         const fetchShow = async () => {
             if (!id) return
             try {
-                // @ts-ignore
                 const data = await window.electron.ipcRenderer.invoke('get-tv-show', parseInt(id))
                 setShow(data)
                 if (data && data.seasons.length > 0) {
@@ -94,7 +93,6 @@ export default function TVDetail() {
         }
         fetchShow()
 
-        // @ts-ignore
         window.electron.ipcRenderer.invoke('get-settings').then((data: any) => {
             setSources(data.sources || [])
             setHideSpoilers(data.hideEpisodeSpoilers || false)
@@ -112,7 +110,6 @@ export default function TVDetail() {
     }
 
     const openExternal = (url: string) => {
-        // @ts-ignore
         window.electron.ipcRenderer.invoke('open-external', url)
     }
 
@@ -128,7 +125,6 @@ export default function TVDetail() {
         setError(null)
         try {
             setSelectedEpisode(null)
-            // @ts-ignore
             await window.electron.ipcRenderer.invoke('play-video', {
                 url: file.webdavUrl,
                 title: `${show.name} - S${episode.seasonNumber}E${episode.episodeNumber} - ${episode.name}`,

@@ -28,7 +28,6 @@ export default function AddSourceModal({ onClose, onAdd }: AddSourceModalProps) 
         setTesting(true)
         setError('')
         try {
-            // @ts-ignore
             const success = await window.electron.ipcRenderer.invoke('test-connection', { ...config, type })
             if (success) {
                 setStep(2)
@@ -221,7 +220,6 @@ export default function AddSourceModal({ onClose, onAdd }: AddSourceModalProps) 
                                         />
                                         <button
                                             onClick={async () => {
-                                                // @ts-ignore
                                                 const path = await window.electron.ipcRenderer.invoke('open-directory-dialog')
                                                 if (path) {
                                                     setConfig({ ...config, path })

@@ -6,12 +6,10 @@
 
 - **Smart Organization**: Automatically sorts Movies & TV Shows with rich metadata from TMDB.
 - **Universal Sources**: Supports Local folders, SMB shares (NAS), and WebDAV.
-- **External Player**: Plays media in your favorite player (VLC, PotPlayer, mpv) with auto-auth handling.
+- **External Player**: Plays media in your favorite player (mpv, PotPlayer, VLC, etc.) with auto-auth handling.
 
 ## Screenshots
-<img width="2853" height="1653" alt="image" src="https://github.com/user-attachments/assets/3b251878-7005-46e5-bb8a-51ee3819961a" />
-<img width="2858" height="1659" alt="image" src="https://github.com/user-attachments/assets/771f3651-e96f-4f1d-bc84-3e5488896620" />
-
+<img width="2858" height="1659" alt="image" src="https://github.com/user-attachments/assets/3084309f-c2b2-4ac0-ac80-6ea5eb90d900" />
 
 ## Getting Started
 
@@ -47,11 +45,11 @@ Once the app is running, go to the **Settings** page to set up your environment.
 - **TMDB API Key**: Paste your Read Access Token here. This is **required** for the library to work.
 - **External Player Path**: Enter the full path to your video player executable.
 
-### 2. Adding Data Sources
+### 2. Add Data Sources
 Click **"Add Source"** to connect your media folders.
 
-### 3. Scanning
-Click **"Scan Library"** in Settings to start indexing your files. Vishel will:
+### 3. Scan
+Click **"Full Rescan"** in Settings to start indexing your files. Vishel will:
 1.  Walk through all configured paths.
 2.  Identify video files.
 3.  Parse filenames for titles, years, and episode numbers.

@@ -271,6 +271,10 @@ const scanDirectoryRecursive = async (
                                 }
 
                                 if (!season) {
+                                    season = tvShow.seasons.find(s => s.seasonNumber === episodeInfo.season)
+                                }
+
+                                if (!season) {
                                     const seasonDetails = state.seasonDetailsCache.get(seasonCacheKey)
                                     const newSeason = {
                                         seasonNumber: episodeInfo.season,
@@ -279,7 +283,7 @@ const scanDirectoryRecursive = async (
                                         episodes: []
                                     }
                                     tvShow!.seasons.push(newSeason)
-                                    season = tvShow.seasons.find(s => s.seasonNumber === episodeInfo.season)
+                                    season = newSeason
                                 }
 
                                 if (season) {
@@ -523,14 +527,14 @@ export const scanMovies = async (onProgress?: (data: any) => void, forceRefresh:
                         try {
                             const seasonCacheKey = `${show.id}:${season.seasonNumber}`
                             const seasonDetails = await getSeasonDetails(show.id, season.seasonNumber)
-                            
+
                             if (seasonDetails) {
                                 state.seasonDetailsCache.set(seasonCacheKey, seasonDetails)
-                                
+
                                 if (seasonDetails.poster_path) {
                                     season.posterPath = seasonDetails.poster_path
                                 }
-                                
+
                                 for (const episode of season.episodes) {
                                     const episodeMeta = seasonDetails.episodes?.find((e: any) => e.episode_number === episode.episodeNumber)
                                     if (episodeMeta) {
@@ -618,6 +622,19 @@ export const scanMovies = async (onProgress?: (data: any) => void, forceRefresh:
         const db = getDb()
 
         const saveTransaction = db.transaction(() => {
+            if (state.newMovies.size > 0 || state.newTVShows.size > 0) {
+                console.log('--- Save Transaction Summary ---')
+                console.log(`New Movies: ${state.newMovies.size}`)
+                console.log(`New TV Shows: ${state.newTVShows.size}`)
+                state.newTVShows.forEach(s => {
+                    console.log(`  Show: ${s.name} (S:${s.seasons.length} seasons)`)
+                    s.seasons.forEach(se => {
+                        console.log(`    Season ${se.seasonNumber}: ${se.episodes.length} episodes`)
+                    })
+                })
+                console.log('--------------------------------')
+            }
+
             for (const movie of state.newMovies.values()) {
                 saveMovie(movie)
             }

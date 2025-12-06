@@ -518,6 +518,34 @@ export const scanMovies = async (onProgress?: (data: any) => void, forceRefresh:
 
                         state.dirtyIds.add(show.id)
                     }
+
+                    for (const season of show.seasons) {
+                        try {
+                            const seasonCacheKey = `${show.id}:${season.seasonNumber}`
+                            const seasonDetails = await getSeasonDetails(show.id, season.seasonNumber)
+                            
+                            if (seasonDetails) {
+                                state.seasonDetailsCache.set(seasonCacheKey, seasonDetails)
+                                
+                                if (seasonDetails.poster_path) {
+                                    season.posterPath = seasonDetails.poster_path
+                                }
+                                
+                                for (const episode of season.episodes) {
+                                    const episodeMeta = seasonDetails.episodes?.find((e: any) => e.episode_number === episode.episodeNumber)
+                                    if (episodeMeta) {
+                                        episode.id = episodeMeta.id || episode.id
+                                        episode.name = episodeMeta.name || episode.name
+                                        episode.overview = episodeMeta.overview || episode.overview
+                                        episode.stillPath = episodeMeta.still_path || episode.stillPath
+                                        state.dirtyIds.add(show.id)
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            console.error(`Failed to refresh season ${season.seasonNumber} metadata for TV show ${show.name}:`, e)
+                        }
+                    }
                 } catch (e) {
                     console.error(`Failed to refresh metadata for TV show ${show.name}:`, e)
                 }

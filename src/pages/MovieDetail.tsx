@@ -155,12 +155,12 @@ export default function MovieDetail() {
                         <img
                             src={`https://image.tmdb.org/t/p/w300${movie.backdropPath}`}
                             alt={movie.title}
-                            className="absolute inset-0 w-full h-full object-cover opacity-50 blur-md"
+                            className="absolute inset-0 w-full h-full object-cover object-top opacity-50 blur-md"
                         />
                         <img
                             src={`https://image.tmdb.org/t/p/original${movie.backdropPath}`}
                             alt={movie.title}
-                            className="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-700 ease-in-out"
+                            className="absolute inset-0 w-full h-full object-cover object-top opacity-0 transition-opacity duration-700 ease-in-out"
                             onLoad={(e) => e.currentTarget.classList.remove('opacity-0')}
                         />
                     </>

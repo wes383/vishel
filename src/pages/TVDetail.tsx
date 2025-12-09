@@ -188,19 +188,19 @@ export default function TVDetail() {
                 </div>
             )}
             {/* Backdrop Image */}
-            <div className="absolute inset-0 h-[60vh] w-full overflow-hidden">
+            <div className="absolute inset-0 h-[70vh] w-full overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-neutral-900/60 to-neutral-900 z-10" />
                 {show.backdropPath && (
                     <>
                         <img
                             src={`https://image.tmdb.org/t/p/w300${show.backdropPath}`}
                             alt={show.name}
-                            className="absolute inset-0 w-full h-full object-cover opacity-50 blur-md"
+                            className="absolute inset-0 w-full h-full object-cover object-top opacity-50 blur-md"
                         />
                         <img
                             src={`https://image.tmdb.org/t/p/original${show.backdropPath}`}
                             alt={show.name}
-                            className="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-700 ease-in-out"
+                            className="absolute inset-0 w-full h-full object-cover object-top opacity-0 transition-opacity duration-700 ease-in-out"
                             onLoad={(e) => e.currentTarget.classList.remove('opacity-0')}
                         />
                     </>

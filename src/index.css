@@ -51,3 +51,8 @@ button:disabled {
 *::-webkit-scrollbar-thumb:hover {
     background: #737373;
 }
+
+.titlebar-drag-region {
+    -webkit-app-region: drag;
+    user-select: none;
+}

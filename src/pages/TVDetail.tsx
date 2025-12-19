@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Play, Calendar, User, X, ChevronDown, Loader2 } from 'lucide-react'
+import { Play, Calendar, User, X, ChevronDown, Loader2, ChevronLeft } from 'lucide-react'
+
+
 import { DataSource } from '../../electron/store'
 import { formatVoteCount } from '../utils/formatNumber'
 
@@ -209,9 +211,9 @@ export default function TVDetail() {
 
             <button
                 onClick={() => navigate('/')}
-                className="absolute top-8 right-8 z-50 p-2 hover:bg-white/10 rounded-full transition-colors"
+                className="absolute top-12 left-8 z-40 p-2 hover:bg-white/10 rounded-full transition-colors"
             >
-                <X className="w-6 h-6" />
+                <ChevronLeft className="w-6 h-6" />
             </button>
 
             {/* Content */}

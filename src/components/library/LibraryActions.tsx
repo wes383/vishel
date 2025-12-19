@@ -32,7 +32,7 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({ sortBy, onSortCh
         { value: 'name-desc', label: 'Name (Z-A)' },
         { value: 'date-desc', label: 'Date (Newest)' },
         { value: 'date-asc', label: 'Date (Oldest)' },
-        { value: 'rating-desc', label: 'Popularity (Highest)' },
+        { value: 'rating-desc', label: 'Number of Ratings' },
         { value: 'imdb-rating-desc', label: 'IMDb Rating' },
     ]
 

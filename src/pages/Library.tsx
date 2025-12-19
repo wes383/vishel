@@ -154,18 +154,22 @@ export default function LibraryPage() {
 
     return (
         <div className="h-full flex flex-col">
-            <div ref={scrollRef} className="flex-1 overflow-auto p-8">
+            <div ref={scrollRef} className="flex-1 overflow-auto pt-12 px-8 pb-8">
                 <div className="mb-8">
-                    <div className="relative flex items-center justify-between">
-                        <h2 className="text-3xl font-bold ml-[5px]">Vishel</h2>
+                    <div className="relative flex flex-wrap md:flex-nowrap items-center justify-between gap-y-4">
+                        <h2 className="text-3xl font-bold ml-[5px] font-['Montserrat'] text-white/50 order-1">Vishel</h2>
 
-                        <LibraryTabs activeTab={activeTab} onTabChange={setActiveTab} />
+                        <div className="order-3 md:order-2 w-full md:w-auto">
+                            <LibraryTabs activeTab={activeTab} onTabChange={setActiveTab} />
+                        </div>
 
-                        <LibraryActions
-                            sortBy={sortBy}
-                            onSortChange={setSortBy}
-                            onSearchToggle={() => setSearchExpanded(!searchExpanded)}
-                        />
+                        <div className="order-2 md:order-3">
+                            <LibraryActions
+                                sortBy={sortBy}
+                                onSortChange={setSortBy}
+                                onSearchToggle={() => setSearchExpanded(!searchExpanded)}
+                            />
+                        </div>
                     </div>
                 </div>
 

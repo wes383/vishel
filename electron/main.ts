@@ -29,6 +29,12 @@ function createWindow() {
   win = new BrowserWindow({
     title: 'Vishel',
     icon: path.join(process.env.VITE_PUBLIC, 'icon.png'),
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: '#00000000',
+      symbolColor: '#ffffff',
+      height: 32,
+    },
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
     },

@@ -71,7 +71,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters
                                 )}
                                 {!showTitlesOnPosters && (
                                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-all duration-300 delay-[50ms] flex items-center justify-center p-4 opacity-0 group-hover:opacity-100">
-                                        <h3 className="font-bold text-white text-center text-lg">
+                                        <h3 className="font-medium text-white text-center text-lg font-['Inter']">
                                             {title}
                                         </h3>
                                     </div>
@@ -83,7 +83,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters
                                 onClick={() => handleNavigate(item)}
                                 className="mt-2 cursor-pointer transition-transform duration-300 group-hover:-translate-y-1"
                             >
-                                <h3 className="font-bold text-white text-base text-center px-1">
+                                <h3 className="font-medium text-white text-base text-center px-1 font-['Inter']">
                                     {title}
                                 </h3>
                             </div>

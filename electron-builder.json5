@@ -4,6 +4,7 @@
   "appId": "com.weswei.vishel",
   "asar": true,
   "productName": "Vishel",
+  "author": "Wes Wei",
   "icon": "public/icon.png",
   "directories": {
     "output": "release/${version}"

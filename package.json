@@ -2,6 +2,7 @@
   "name": "vishel",
   "private": true,
   "version": "1.0.1",
+  "author": "Wes Wei",
   "type": "module",
   "scripts": {
     "dev": "vite",

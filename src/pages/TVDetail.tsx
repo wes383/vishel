@@ -222,7 +222,7 @@ export default function TVDetail() {
                 <div className="mb-12 pt-4">
                     {show.logoPath ? (
                         <img
-                            src={`https://image.tmdb.org/t/p/w500${show.logoPath}`}
+                            src={`https://image.tmdb.org/t/p/original${show.logoPath}`}
                             alt={show.name}
                             className="max-w-[400px] max-h-[150px] object-contain mb-6 origin-left"
                         />
@@ -397,7 +397,7 @@ export default function TVDetail() {
                                 <div className="md:w-48 flex-shrink-0 relative aspect-video md:aspect-auto">
                                     {episode.stillPath ? (
                                         <img
-                                            src={`https://image.tmdb.org/t/p/w500${episode.stillPath}`}
+                                            src={`https://image.tmdb.org/t/p/w1280${episode.stillPath}`}
                                             alt={episode.name}
                                             className="w-full h-full object-cover"
                                         />

@@ -1,7 +1,8 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, Tray, Menu, nativeImage } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { setupIpcHandlers } from './ipcHandlers'
+import store from './store'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -24,6 +25,51 @@ export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 'public') : RENDERER_DIST
 
 let win: BrowserWindow | null
+let tray: Tray | null = null
+let isQuitting = false
+
+function createTray() {
+  if (tray) return
+
+  const iconPath = path.join(process.env.VITE_PUBLIC, 'icon.png')
+  const icon = nativeImage.createFromPath(iconPath)
+  tray = new Tray(icon.resize({ width: 64, height: 64 }))
+  tray.setToolTip('Vishel')
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Show App', click: () => {
+        if (win) {
+          win.show()
+          win.focus()
+        }
+      }
+    },
+    {
+      label: 'Quit', click: () => {
+        isQuitting = true
+        app.quit()
+      }
+    }
+  ])
+
+  tray.setContextMenu(contextMenu)
+
+  tray.on('click', () => {
+    if (win) {
+      if (win.isVisible()) {
+        if (win.isFocused()) {
+          win.hide()
+        } else {
+          win.focus()
+        }
+      } else {
+        win.show()
+        win.focus()
+      }
+    }
+  })
+}
 
 function createWindow() {
   win = new BrowserWindow({
@@ -46,6 +92,18 @@ function createWindow() {
   // Test active push message to Renderer-process.
   win.webContents.on('did-finish-load', () => {
     win?.webContents.send('main-process-message', (new Date).toLocaleString())
+  })
+
+  // Handle Close Event
+  win.on('close', (e) => {
+    if (!isQuitting) {
+      const minimizeToTray = store.get('minimizeToTray', false)
+      if (minimizeToTray) {
+        e.preventDefault()
+        win?.hide()
+        return
+      }
+    }
   })
 
   if (VITE_DEV_SERVER_URL) {
@@ -76,5 +134,6 @@ app.on('activate', () => {
 
 app.whenReady().then(() => {
   setupIpcHandlers()
+  createTray()
   createWindow()
 })

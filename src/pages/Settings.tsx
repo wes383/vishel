@@ -10,6 +10,7 @@ interface SettingsData {
     playerPath: string
     hideEpisodeSpoilers: boolean
     showTitlesOnPosters: boolean
+    minimizeToTray: boolean
     sources: DataSource[]
 }
 
@@ -19,6 +20,7 @@ export default function SettingsPage() {
         playerPath: '',
         hideEpisodeSpoilers: false,
         showTitlesOnPosters: false,
+        minimizeToTray: false,
         sources: []
     })
     const [scanning, setScanning] = useState(false)
@@ -208,6 +210,23 @@ export default function SettingsPage() {
                             </button>
                         </div>
                         <p className="text-xs text-gray-500 mt-1">Display titles below posters instead of on hover</p>
+                    </div>
+
+                    <div>
+                        <div className="flex items-center justify-between bg-neutral-800 p-4 rounded-lg">
+                            <h3 className="font-medium">Minimize to Tray on Close</h3>
+                            <button
+                                onClick={() => {
+                                    const newSettings = { ...settings, minimizeToTray: !settings.minimizeToTray }
+                                    setSettings(newSettings)
+                                    autoSave(newSettings)
+                                }}
+                                className={`w-12 h-6 rounded-full transition-colors relative ${settings.minimizeToTray ? 'bg-white' : 'bg-neutral-600'}`}
+                            >
+                                <div className={`absolute top-1 w-4 h-4 rounded-full bg-black transition-transform ${settings.minimizeToTray ? 'left-7' : 'left-1'}`} />
+                            </button>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Keep application running in background when closed</p>
                     </div>
                 </section>
 

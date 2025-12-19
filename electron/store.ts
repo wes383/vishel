@@ -20,6 +20,7 @@ interface Settings {
     playerPath: string
     hideEpisodeSpoilers: boolean
     showTitlesOnPosters: boolean
+    minimizeToTray: boolean
     sources: DataSource[]
 }
 
@@ -28,6 +29,7 @@ const schema = {
     playerPath: { type: 'string', default: '' },
     hideEpisodeSpoilers: { type: 'boolean', default: false },
     showTitlesOnPosters: { type: 'boolean', default: false },
+    minimizeToTray: { type: 'boolean', default: false },
     sources: {
         type: 'array',
         default: [],

@@ -182,7 +182,7 @@ export default function MovieDetail() {
                 <div className="pt-4">
                     {movie.logoPath ? (
                         <img
-                            src={`https://image.tmdb.org/t/p/w500${movie.logoPath}`}
+                            src={`https://image.tmdb.org/t/p/original${movie.logoPath}`}
                             alt={movie.title}
                             className="max-w-[400px] max-h-[150px] object-contain mb-6 origin-left"
                         />

@@ -1,4 +1,4 @@
-import { getDb, saveMovie, saveTVShow, addUnscannedFile, clearUnscannedFiles, getAllMovies, getAllTVShows, deleteEmptyMovies, deleteEmptyTVShows, Movie, TVShow, VideoFile } from './db'
+import { getDb, saveMovie, saveTVShow, addUnscannedFile, clearUnscannedFiles, getAllMovies, getAllTVShows, deleteEmptyMovies, deleteEmptyTVShows, Movie, TVShow, VideoFile, syncFavoritesPosters, syncHistoryPosters } from './db'
 import { searchMovie, getMovieDetails, searchTVShow, getTVShowDetails, getSeasonDetails } from './tmdbService'
 import { listDirectory } from './webdavService'
 import { listLocalDirectory } from './localFileService'
@@ -663,6 +663,13 @@ export const scanMovies = async (onProgress?: (data: any) => void, forceRefresh:
         })
 
         saveTransaction()
+
+        // Sync favorites and history posters during full rescan
+        if (forceRefresh) {
+            onProgress?.({ status: 'Syncing favorites and history...' })
+            syncFavoritesPosters()
+            syncHistoryPosters()
+        }
 
         onProgress?.({ status: 'Updating IMDb ratings...' })
         const allImdbIds: string[] = []

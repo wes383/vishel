@@ -10,7 +10,7 @@ export const LibraryTabs: React.FC<LibraryTabsProps> = ({ activeTab, onTabChange
         { id: 'all', label: 'All' },
         { id: 'movies', label: 'Movies' },
         { id: 'tv', label: 'TV Shows' },
-        { id: 'history', label: 'History' },
+        { id: 'history', label: 'Me' },
     ] as const
 
     return (

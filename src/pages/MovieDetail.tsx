@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Play, Calendar, Clock, User, X, Loader2, ChevronLeft } from 'lucide-react'
+import { Play, Calendar, Clock, User, X, Loader2, ChevronLeft, Heart } from 'lucide-react'
 
 
 import { DataSource } from '../../electron/store'
@@ -53,6 +53,7 @@ export default function MovieDetail() {
     const [sources, setSources] = useState<DataSource[]>([])
     const [playing, setPlaying] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [isFavorited, setIsFavorited] = useState(false)
 
     // Keyboard shortcuts
     useEffect(() => {
@@ -99,6 +100,12 @@ export default function MovieDetail() {
         window.electron.ipcRenderer.invoke('get-settings').then((data: any) => {
             setSources(data.sources || [])
         })
+
+        // Check favorite status
+        if (id) {
+            window.electron.ipcRenderer.invoke('is-favorite', { mediaId: parseInt(id), mediaType: 'movie' })
+                .then(setIsFavorited)
+        }
     }, [id])
 
     const handlePlayClick = () => {
@@ -261,6 +268,26 @@ export default function MovieDetail() {
                                 ))}
                             </div>
                         )}
+                        {/* Favorite Button */}
+                        <button
+                            onClick={async () => {
+                                if (isFavorited) {
+                                    await window.electron.ipcRenderer.invoke('remove-favorite', { mediaId: movie.id, mediaType: 'movie' })
+                                    setIsFavorited(false)
+                                } else {
+                                    await window.electron.ipcRenderer.invoke('add-favorite', {
+                                        mediaId: movie.id,
+                                        mediaType: 'movie',
+                                        title: movie.title,
+                                        posterPath: movie.posterPath
+                                    })
+                                    setIsFavorited(true)
+                                }
+                            }}
+                            className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                        >
+                            <Heart className={`w-5 h-5 ${isFavorited ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
+                        </button>
                     </div>
 
                     <p className="text-lg text-gray-300 leading-relaxed max-w-3xl mb-6">
@@ -290,6 +317,12 @@ export default function MovieDetail() {
                             className="text-gray-400 hover:text-white transition-colors text-sm border-b border-transparent hover:border-white"
                         >
                             View on TMDb
+                        </button>
+                        <button
+                            onClick={() => openExternal(`https://letterboxd.com/tmdb/${movie.id}`)}
+                            className="text-gray-400 hover:text-white transition-colors text-sm border-b border-transparent hover:border-white"
+                        >
+                            View on Letterboxd
                         </button>
                         <button
                             onClick={() => openExternal(`https://www.douban.com/search?source=suggest&q=${encodeURIComponent(movie.title)}`)}
@@ -342,8 +375,8 @@ export default function MovieDetail() {
                                                 </div>
                                             )}
                                             <div className="overflow-hidden">
-                                                <p className="font-medium text-sm truncate" title={actor.name}>{actor.name}</p>
-                                                <p className="text-xs text-gray-400 truncate" title={actor.character}>{actor.character}</p>
+                                                <p className="font-medium text-sm truncate">{actor.name}</p>
+                                                <p className="text-xs text-gray-400 truncate">{actor.character}</p>
                                             </div>
                                         </div>
                                     ))}

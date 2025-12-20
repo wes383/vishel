@@ -41,6 +41,16 @@ export interface HistoryItem {
     episodeName?: string
 }
 
+export interface FavoriteItem {
+    id: string
+    mediaId: number
+    mediaType: 'movie' | 'tv'
+    title: string
+    posterPath: string
+    timestamp: number
+}
+
 export type CombinedItem =
     | (Movie & { type: 'movie', sortKey: string, sortDate: string })
     | (TVShow & { type: 'tv', sortKey: string, sortDate: string })
+

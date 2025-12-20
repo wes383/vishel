@@ -2,7 +2,7 @@ import { ipcMain, dialog, shell } from 'electron'
 import store from './store'
 import { scanMovies, getScanStatus } from './scanner'
 import { playVideo } from './player'
-import { getAllMovies, getMovie, getAllTVShows, getTVShow, getHistory, addToHistory, deleteHistoryItem, getUnscannedFiles } from './db'
+import { getAllMovies, getMovie, getAllTVShows, getTVShow, getHistory, addToHistory, deleteHistoryItem, getUnscannedFiles, getFavorites, addFavorite, removeFavorite, isFavorite } from './db'
 import { testConnection, listDirectory } from './webdavService'
 import { testLocalConnection, listLocalDirectory } from './localFileService'
 import { testConnection as testSMBConnection, listDirectory as listSMBDirectory } from './smbService'
@@ -164,5 +164,28 @@ export const setupIpcHandlers = () => {
         const { deleteUnscannedFile } = await import('./db')
         deleteUnscannedFile(fileId)
         return true
+    })
+
+    // Favorites
+    ipcMain.handle('get-favorites', async () => {
+        return getFavorites()
+    })
+
+    ipcMain.handle('add-favorite', async (_, item) => {
+        addFavorite({
+            ...item,
+            id: crypto.randomUUID(),
+            timestamp: Date.now()
+        })
+        return true
+    })
+
+    ipcMain.handle('remove-favorite', async (_, { mediaId, mediaType }) => {
+        removeFavorite(mediaId, mediaType)
+        return true
+    })
+
+    ipcMain.handle('is-favorite', async (_, { mediaId, mediaType }) => {
+        return isFavorite(mediaId, mediaType)
     })
 }

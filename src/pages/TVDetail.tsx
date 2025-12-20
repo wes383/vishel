@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Play, Calendar, User, X, ChevronDown, Loader2, ChevronLeft } from 'lucide-react'
+import { Play, Calendar, User, X, ChevronDown, Loader2, ChevronLeft, Heart } from 'lucide-react'
 
 
 import { DataSource } from '../../electron/store'
@@ -64,6 +64,7 @@ export default function TVDetail() {
     const [revealedEpisodes, setRevealedEpisodes] = useState<Set<number>>(new Set())
     const [playingEpisodeId, setPlayingEpisodeId] = useState<number | null>(null)
     const [error, setError] = useState<string | null>(null)
+    const [isFavorited, setIsFavorited] = useState(false)
     const dropdownRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
@@ -126,6 +127,12 @@ export default function TVDetail() {
             setSources(data.sources || [])
             setHideSpoilers(data.hideEpisodeSpoilers || false)
         })
+
+        // Check favorite status
+        if (id) {
+            window.electron.ipcRenderer.invoke('is-favorite', { mediaId: parseInt(id), mediaType: 'tv' })
+                .then(setIsFavorited)
+        }
     }, [id])
 
     const handlePlayClick = (episode: Episode) => {
@@ -290,6 +297,26 @@ export default function TVDetail() {
                                 ))}
                             </div>
                         )}
+                        {/* Favorite Button */}
+                        <button
+                            onClick={async () => {
+                                if (isFavorited) {
+                                    await window.electron.ipcRenderer.invoke('remove-favorite', { mediaId: show.id, mediaType: 'tv' })
+                                    setIsFavorited(false)
+                                } else {
+                                    await window.electron.ipcRenderer.invoke('add-favorite', {
+                                        mediaId: show.id,
+                                        mediaType: 'tv',
+                                        title: show.name,
+                                        posterPath: show.posterPath
+                                    })
+                                    setIsFavorited(true)
+                                }
+                            }}
+                            className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                        >
+                            <Heart className={`w-5 h-5 ${isFavorited ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
+                        </button>
                     </div>
 
                     <p className="text-lg text-gray-300 leading-relaxed max-w-3xl mb-6">
@@ -367,8 +394,8 @@ export default function TVDetail() {
                                                 </div>
                                             )}
                                             <div className="overflow-hidden">
-                                                <p className="font-medium text-sm truncate" title={actor.name}>{actor.name}</p>
-                                                <p className="text-xs text-gray-400 truncate" title={actor.character}>{actor.character}</p>
+                                                <p className="font-medium text-sm truncate">{actor.name}</p>
+                                                <p className="text-xs text-gray-400 truncate">{actor.character}</p>
                                             </div>
                                         </div>
                                     ))}

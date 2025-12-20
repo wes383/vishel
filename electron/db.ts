@@ -93,6 +93,15 @@ export interface HistoryItem {
     episodeName?: string
 }
 
+export interface FavoriteItem {
+    id: string
+    mediaId: number
+    mediaType: 'movie' | 'tv'
+    title: string
+    posterPath: string
+    timestamp: number
+}
+
 let dbInstance: Database.Database | null = null
 
 export const getDb = (): Database.Database => {
@@ -198,6 +207,16 @@ export const getDb = (): Database.Database => {
             webdavUrl TEXT,
             sourceId TEXT
         );
+
+        CREATE TABLE IF NOT EXISTS favorites (
+            id TEXT PRIMARY KEY,
+            mediaId INTEGER,
+            mediaType TEXT,
+            title TEXT,
+            posterPath TEXT,
+            timestamp INTEGER,
+            UNIQUE(mediaId, mediaType)
+        );
     `)
 
     return dbInstance
@@ -289,8 +308,8 @@ export const saveMovie = (movie: Movie) => {
         db.prepare('DELETE FROM video_files WHERE movieId = ?').run(movie.id)
 
         for (const file of movie.videoFiles) {
-            insertFile.run({ 
-                ...file, 
+            insertFile.run({
+                ...file,
                 movieId: movie.id,
                 manuallyMatched: file.manuallyMatched ? 1 : 0
             })
@@ -454,8 +473,8 @@ export const saveTVShow = (show: TVShow) => {
                 db.prepare('DELETE FROM video_files WHERE episodeId = ?').run(epId)
 
                 for (const file of episode.videoFiles) {
-                    insertFile.run({ 
-                        ...file, 
+                    insertFile.run({
+                        ...file,
                         episodeId: epId,
                         manuallyMatched: file.manuallyMatched ? 1 : 0
                     })
@@ -561,4 +580,75 @@ export const deleteEmptyTVShows = () => {
     console.log(`Deleted ${showsResult.changes} empty TV shows`)
 
     return episodesResult.changes + seasonsResult.changes + showsResult.changes
+}
+
+// Favorites
+
+export const getFavorites = (): FavoriteItem[] => {
+    const db = getDb()
+    return db.prepare('SELECT * FROM favorites ORDER BY timestamp DESC').all() as FavoriteItem[]
+}
+
+export const addFavorite = (item: FavoriteItem) => {
+    const db = getDb()
+    db.prepare(`
+        INSERT OR REPLACE INTO favorites (id, mediaId, mediaType, title, posterPath, timestamp)
+        VALUES (@id, @mediaId, @mediaType, @title, @posterPath, @timestamp)
+    `).run(item)
+}
+
+export const removeFavorite = (mediaId: number, mediaType: string) => {
+    const db = getDb()
+    db.prepare('DELETE FROM favorites WHERE mediaId = ? AND mediaType = ?').run(mediaId, mediaType)
+}
+
+export const isFavorite = (mediaId: number, mediaType: string): boolean => {
+    const db = getDb()
+    const result = db.prepare('SELECT id FROM favorites WHERE mediaId = ? AND mediaType = ?').get(mediaId, mediaType)
+    return !!result
+}
+
+// Sync posters for favorites and history after full rescan
+export const syncFavoritesPosters = () => {
+    const db = getDb()
+
+    // Update movie favorites
+    db.prepare(`
+        UPDATE favorites SET 
+            posterPath = (SELECT posterPath FROM movies WHERE movies.id = favorites.mediaId),
+            title = (SELECT title FROM movies WHERE movies.id = favorites.mediaId)
+        WHERE mediaType = 'movie' AND EXISTS (SELECT 1 FROM movies WHERE movies.id = favorites.mediaId)
+    `).run()
+
+    // Update TV show favorites
+    db.prepare(`
+        UPDATE favorites SET 
+            posterPath = (SELECT posterPath FROM tv_shows WHERE tv_shows.id = favorites.mediaId),
+            title = (SELECT name FROM tv_shows WHERE tv_shows.id = favorites.mediaId)
+        WHERE mediaType = 'tv' AND EXISTS (SELECT 1 FROM tv_shows WHERE tv_shows.id = favorites.mediaId)
+    `).run()
+
+    console.log('Synced favorites posters with latest media data')
+}
+
+export const syncHistoryPosters = () => {
+    const db = getDb()
+
+    // Update movie history
+    db.prepare(`
+        UPDATE history SET 
+            posterPath = (SELECT posterPath FROM movies WHERE movies.id = history.mediaId),
+            title = (SELECT title FROM movies WHERE movies.id = history.mediaId)
+        WHERE mediaType = 'movie' AND EXISTS (SELECT 1 FROM movies WHERE movies.id = history.mediaId)
+    `).run()
+
+    // Update TV show history
+    db.prepare(`
+        UPDATE history SET 
+            posterPath = (SELECT posterPath FROM tv_shows WHERE tv_shows.id = history.mediaId),
+            title = (SELECT name FROM tv_shows WHERE tv_shows.id = history.mediaId)
+        WHERE mediaType = 'tv' AND EXISTS (SELECT 1 FROM tv_shows WHERE tv_shows.id = history.mediaId)
+    `).run()
+
+    console.log('Synced history posters with latest media data')
 }

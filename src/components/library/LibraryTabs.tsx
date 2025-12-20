@@ -20,7 +20,10 @@ export const LibraryTabs: React.FC<LibraryTabsProps> = ({ activeTab, onTabChange
                 {tabs.map((tab) => (
                     <button
                         key={tab.id}
-                        onClick={() => onTabChange(tab.id)}
+                        onClick={(e) => {
+                            onTabChange(tab.id)
+                                ; (e.target as HTMLButtonElement).blur()
+                        }}
                         className={`flex items-center gap-1 lg:gap-2 px-3 py-1.5 lg:px-6 lg:py-2 text-sm lg:text-base rounded-full transition-all ${activeTab === tab.id ? 'bg-white/10 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}
                     >
                         {tab.label}
@@ -34,7 +37,10 @@ export const LibraryTabs: React.FC<LibraryTabsProps> = ({ activeTab, onTabChange
                     {tabs.map((tab) => (
                         <button
                             key={tab.id}
-                            onClick={() => onTabChange(tab.id)}
+                            onClick={(e) => {
+                                onTabChange(tab.id)
+                                    ; (e.target as HTMLButtonElement).blur()
+                            }}
                             className={`flex items-center gap-1 px-3 py-1.5 rounded-full transition-all ${activeTab === tab.id ? 'bg-white/10 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}
                         >
                             {tab.label}

@@ -54,6 +54,34 @@ export default function MovieDetail() {
     const [playing, setPlaying] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
+    // Keyboard shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Escape - close modal or go back
+            if (e.key === 'Escape') {
+                if (showVersionSelector) {
+                    setShowVersionSelector(false)
+                } else {
+                    navigate('/')
+                }
+                e.preventDefault()
+            }
+
+            if (e.key === ' ' && !showVersionSelector && movie && !playing) {
+                e.preventDefault()
+            }
+
+            // Ctrl/Cmd + , - Open settings
+            if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+                navigate('/settings')
+                e.preventDefault()
+            }
+        }
+
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [navigate, showVersionSelector, movie, playing])
+
     useEffect(() => {
         const fetchMovie = async () => {
             if (!id) return

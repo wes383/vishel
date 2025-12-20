@@ -79,6 +79,32 @@ export default function TVDetail() {
         }
     }, [])
 
+    // Keyboard shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Escape - close modal or go back
+            if (e.key === 'Escape') {
+                if (selectedEpisode) {
+                    setSelectedEpisode(null)
+                } else if (isSeasonOpen) {
+                    setIsSeasonOpen(false)
+                } else {
+                    navigate('/')
+                }
+                e.preventDefault()
+            }
+
+            // Ctrl/Cmd + , - Open settings
+            if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+                navigate('/settings')
+                e.preventDefault()
+            }
+        }
+
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [navigate, selectedEpisode, isSeasonOpen])
+
     useEffect(() => {
         const fetchShow = async () => {
             if (!id) return

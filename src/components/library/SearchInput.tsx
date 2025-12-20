@@ -26,6 +26,13 @@ export const SearchInput: React.FC<SearchInputProps> = ({ value, onChange, onClo
                 type="text"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
+                onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                        onChange('')
+                        onClose()
+                        e.preventDefault()
+                    }
+                }}
                 onBlur={() => {
                     if (!value) {
                         // Small delay to allow clicking the close button or other elements

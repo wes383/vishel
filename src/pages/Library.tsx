@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { LibraryTabs } from '../components/library/LibraryTabs'
 import { LibraryActions, SortOption } from '../components/library/LibraryActions'
 import { SearchInput } from '../components/library/SearchInput'
@@ -24,6 +25,23 @@ export default function LibraryPage() {
     const [showTitlesOnPosters, setShowTitlesOnPosters] = useState(false)
     const scrollRef = useRef<HTMLDivElement>(null)
 
+    // Keyboard shortcuts
+    const handleSearchShortcut = useCallback(() => {
+        setSearchExpanded(true)
+    }, [])
+
+    const handleEscapeShortcut = useCallback(() => {
+        if (searchExpanded) {
+            setSearchExpanded(false)
+            setSearchQuery('')
+        }
+    }, [searchExpanded])
+
+    useKeyboardShortcuts({
+        onSearch: handleSearchShortcut,
+        onEscape: handleEscapeShortcut
+    })
+
     useEffect(() => {
         sessionStorage.setItem('library_active_tab', activeTab)
     }, [activeTab])
@@ -31,6 +49,13 @@ export default function LibraryPage() {
     useEffect(() => {
         localStorage.setItem('library_sort_by', sortBy)
     }, [sortBy])
+
+    // Ensure arrow keys work for scrolling after navigation
+    useEffect(() => {
+        if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur()
+        }
+    }, [])
 
     const fetchData = async () => {
         setLoading(true)

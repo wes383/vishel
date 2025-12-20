@@ -39,6 +39,27 @@ export default function SettingsPage() {
         })
     }, [])
 
+    // Keyboard shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const target = e.target as HTMLElement
+            const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA'
+
+            // Escape - go back
+            if (e.key === 'Escape') {
+                if (showAddModal) {
+                    setShowAddModal(false)
+                } else if (!isInputField) {
+                    navigate('/')
+                }
+                e.preventDefault()
+            }
+        }
+
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [navigate, showAddModal])
+
     const autoSave = async (newSettings: SettingsData) => {
         await window.electron.ipcRenderer.invoke('save-settings', newSettings)
     }

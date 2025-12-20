@@ -9,7 +9,7 @@
 - **External Player**: Plays media in your favorite player (mpv, PotPlayer, VLC, etc.) with auto-auth handling.
 
 ## Screenshots
-<img width="2858" height="1659" alt="image" src="https://github.com/user-attachments/assets/3084309f-c2b2-4ac0-ac80-6ea5eb90d900" />
+<img width="2879" height="1641" alt="image" src="https://github.com/user-attachments/assets/978033f8-f00b-43e7-9842-1432b7b4ee94" />
 
 ## Getting Started
 

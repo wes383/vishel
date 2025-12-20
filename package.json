@@ -4,6 +4,10 @@
   "version": "1.1.0",
   "author": "Wes Wei",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wes383/vishel.git"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && electron-builder",

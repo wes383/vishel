@@ -54,4 +54,5 @@ Click **"Full Rescan"** in Settings to start indexing your files. Vishel will:
 2.  Identify video files.
 3.  Parse filenames for titles, years, and episode numbers.
 4.  Fetch metadata from TMDB.
-5.  Populate your library.
+5.  Fetch ratings from [IMDb](https://developer.imdb.com/non-commercial-datasets).
+6.  Populate your library.

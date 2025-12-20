@@ -28,6 +28,46 @@ let win: BrowserWindow | null
 let tray: Tray | null = null
 let isQuitting = false
 
+// Single instance lock - prevent multiple windows
+const gotTheLock = app.requestSingleInstanceLock()
+
+if (!gotTheLock) {
+  // Another instance is already running, quit this one
+  app.quit()
+} else {
+  // This is the first instance, handle second-instance event
+  app.on('second-instance', () => {
+    // Someone tried to run a second instance, focus the existing window
+    if (win) {
+      if (win.isMinimized()) win.restore()
+      if (!win.isVisible()) win.show()
+      win.focus()
+    }
+  })
+
+  // Quit when all windows are closed, except on macOS
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') {
+      app.quit()
+      win = null
+    }
+  })
+
+  app.on('activate', () => {
+    // On OS X it's common to re-create a window in the app when the
+    // dock icon is clicked and there are no other windows open.
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow()
+    }
+  })
+
+  app.whenReady().then(() => {
+    setupIpcHandlers()
+    createTray()
+    createWindow()
+  })
+}
+
 function createTray() {
   if (tray) return
 
@@ -114,26 +154,3 @@ function createWindow() {
   }
 }
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-    win = null
-  }
-})
-
-app.on('activate', () => {
-  // On OS X it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow()
-  }
-})
-
-app.whenReady().then(() => {
-  setupIpcHandlers()
-  createTray()
-  createWindow()
-})

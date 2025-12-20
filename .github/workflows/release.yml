@@ -28,4 +28,4 @@ jobs:
       - name: Build & Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run build
+        run: npm run build -- --publish always

@@ -263,6 +263,20 @@ export const getMovie = (id: number): Movie | undefined => {
     }
 }
 
+
+
+export const getMovieCount = (): number => {
+    const db = getDb()
+    const result = db.prepare('SELECT COUNT(*) as count FROM movies').get() as { count: number }
+    return result.count
+}
+
+export const getTVShowCount = (): number => {
+    const db = getDb()
+    const result = db.prepare('SELECT COUNT(*) as count FROM tv_shows').get() as { count: number }
+    return result.count
+}
+
 export const saveMovie = (movie: Movie) => {
     const db = getDb()
     const insert = db.prepare(`

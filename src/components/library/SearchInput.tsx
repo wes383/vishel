@@ -41,7 +41,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({ value, onChange, onClo
                         }, 100)
                     }
                 }}
-                placeholder="Search movies and TV shows..."
+                placeholder=""
                 className="w-full bg-neutral-800 text-white px-4 py-3 pr-10 rounded-full focus:outline-none focus:ring-2 focus:ring-white/20"
             />
             {value && (

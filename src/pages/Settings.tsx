@@ -14,6 +14,11 @@ interface SettingsData {
     sources: DataSource[]
 }
 
+interface LibraryStats {
+    movies: number
+    tvShows: number
+}
+
 export default function SettingsPage() {
     const [settings, setSettings] = useState<SettingsData>({
         tmdbApiKey: '',
@@ -23,11 +28,19 @@ export default function SettingsPage() {
         minimizeToTray: false,
         sources: []
     })
+    const [stats, setStats] = useState<LibraryStats>({ movies: 0, tvShows: 0 })
     const [scanning, setScanning] = useState(false)
     const [showAddModal, setShowAddModal] = useState(false)
     const navigate = useNavigate()
 
+    const fetchStats = () => {
+        window.electron.ipcRenderer.invoke('get-library-stats').then((data: LibraryStats) => {
+            setStats(data)
+        })
+    }
+
     useEffect(() => {
+        fetchStats()
         window.electron.ipcRenderer.invoke('get-settings').then((data: SettingsData) => {
             const sources = Array.isArray(data.sources) ? data.sources : []
             setSettings({ ...data, sources })
@@ -72,6 +85,7 @@ export default function SettingsPage() {
             console.error('Scan error:', error)
         }
         setScanning(false)
+        fetchStats()
     }
 
     const handleFullRescan = async () => {
@@ -82,6 +96,7 @@ export default function SettingsPage() {
             console.error('Full rescan error:', error)
         }
         setScanning(false)
+        fetchStats()
     }
 
     const handleAddSource = (source: DataSource) => {
@@ -159,6 +174,22 @@ export default function SettingsPage() {
                         sources={settings.sources}
                         onRemove={handleRemoveSource}
                     />
+                </section>
+
+                <hr className="border-neutral-800" />
+
+                {/* Library Statistics */}
+                <section>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-neutral-800 p-4 rounded-lg">
+                            <h3 className="text-sm font-medium text-gray-400 mb-1">Total Movies</h3>
+                            <p className="text-2xl font-bold text-white">{stats.movies}</p>
+                        </div>
+                        <div className="bg-neutral-800 p-4 rounded-lg">
+                            <h3 className="text-sm font-medium text-gray-400 mb-1">Total TV Shows</h3>
+                            <p className="text-2xl font-bold text-white">{stats.tvShows}</p>
+                        </div>
+                    </div>
                 </section>
 
                 <hr className="border-neutral-800" />

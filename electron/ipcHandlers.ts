@@ -2,7 +2,7 @@ import { ipcMain, dialog, shell } from 'electron'
 import store from './store'
 import { scanMovies, getScanStatus } from './scanner'
 import { playVideo } from './player'
-import { getAllMovies, getMovie, getAllTVShows, getTVShow, getHistory, addToHistory, deleteHistoryItem, getUnscannedFiles, getFavorites, addFavorite, removeFavorite, isFavorite } from './db'
+import { getAllMovies, getMovie, getAllTVShows, getTVShow, getHistory, addToHistory, deleteHistoryItem, getUnscannedFiles, getFavorites, addFavorite, removeFavorite, isFavorite, getMovieCount, getTVShowCount } from './db'
 import { testConnection, listDirectory } from './webdavService'
 import { testLocalConnection, listLocalDirectory } from './localFileService'
 import { testConnection as testSMBConnection, listDirectory as listSMBDirectory } from './smbService'
@@ -15,6 +15,14 @@ export const setupIpcHandlers = () => {
         store.set(settings)
         return true
     })
+
+    ipcMain.handle('get-library-stats', async () => {
+        return {
+            movies: getMovieCount(),
+            tvShows: getTVShowCount()
+        }
+    })
+
 
     // Data Sources
     ipcMain.handle('test-connection', async (_, config) => {

@@ -47,6 +47,10 @@ main::-webkit-scrollbar-track,
     margin-top: 32px;
 }
 
+.library-scroll-container {
+    scrollbar-gutter: stable both-edges;
+}
+
 *::-webkit-scrollbar-thumb {
     background: #525252;
     border-radius: 4px;

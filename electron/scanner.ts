@@ -493,6 +493,24 @@ export const scanMovies = async (onProgress?: (data: any) => void, forceRefresh:
                     if (details) {
                         const logoPath = details.images?.logos?.find((l: any) => l.iso_639_1 === 'en')?.file_path
 
+                        const directors = details.credits?.crew?.filter((c: any) => c.job === 'Director')
+                        const directorObj = directors && directors.length > 0 ? {
+                            name: directors[0].name,
+                            profilePath: directors[0].profile_path || null
+                        } : undefined
+
+                        movie.title = details.title
+                        movie.releaseDate = details.release_date
+                        movie.runtime = details.runtime
+                        movie.genres = details.genres?.map((g: any) => g.name)
+                        movie.cast = details.credits?.cast?.slice(0, 10).map((c: any) => ({
+                            name: c.name,
+                            character: c.character,
+                            profilePath: c.profile_path
+                        }))
+                        movie.director = directorObj
+                        movie.externalIds = details.external_ids
+
                         movie.posterPath = details.poster_path
                         movie.backdropPath = details.backdrop_path
                         movie.overview = details.overview
@@ -513,6 +531,22 @@ export const scanMovies = async (onProgress?: (data: any) => void, forceRefresh:
                     if (details) {
                         const logoPath = details.images?.logos?.find((l: any) => l.iso_639_1 === 'en')?.file_path
 
+                        const createdBy = details.created_by?.map((c: any) => ({
+                            name: c.name,
+                            profilePath: c.profile_path
+                        }))
+
+                        show.name = details.name
+                        show.firstAirDate = details.first_air_date
+                        show.genres = details.genres?.map((g: any) => g.name)
+                        show.cast = details.credits?.cast?.slice(0, 10).map((c: any) => ({
+                            name: c.name,
+                            character: c.character,
+                            profilePath: c.profile_path
+                        }))
+                        show.createdBy = createdBy
+                        show.externalIds = details.external_ids
+
                         show.posterPath = details.poster_path
                         show.backdropPath = details.backdrop_path
                         show.overview = details.overview
@@ -531,6 +565,7 @@ export const scanMovies = async (onProgress?: (data: any) => void, forceRefresh:
                             if (seasonDetails) {
                                 state.seasonDetailsCache.set(seasonCacheKey, seasonDetails)
 
+                                season.name = seasonDetails.name || season.name
                                 if (seasonDetails.poster_path) {
                                     season.posterPath = seasonDetails.poster_path
                                 }

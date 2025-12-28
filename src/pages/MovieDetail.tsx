@@ -37,7 +37,7 @@ interface Movie {
     tagline?: string
     status?: string
     cast?: Cast[]
-    director?: { name: string, profilePath: string | null } | string
+    director?: { name: string, profilePath: string | null }[]
     externalIds?: {
         imdb_id?: string
         tvdb_id?: number
@@ -333,27 +333,27 @@ export default function MovieDetail() {
                     </div>
 
                     <div className="flex flex-col gap-8 mb-10">
-                        {movie.director && (
+                        {movie.director && Array.isArray(movie.director) && movie.director.length > 0 && (
                             <div>
-                                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Director</h3>
-                                {typeof movie.director === 'string' ? (
-                                    <p className="text-lg">{movie.director}</p>
-                                ) : (
-                                    <div className="flex items-center gap-2 bg-white/5 pl-3 pr-5 py-2 rounded-full w-fit">
-                                        {movie.director.profilePath ? (
-                                            <img
-                                                src={`https://image.tmdb.org/t/p/w185${movie.director.profilePath}`}
-                                                alt={movie.director.name}
-                                                className="w-6 h-6 rounded-full object-cover"
-                                            />
-                                        ) : (
-                                            <div className="w-6 h-6 rounded-full bg-neutral-700 flex items-center justify-center">
-                                                <User className="w-3 h-3 text-gray-500" />
-                                            </div>
-                                        )}
-                                        <span className="font-medium">{movie.director.name}</span>
-                                    </div>
-                                )}
+                                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Director{movie.director.length > 1 ? 's' : ''}</h3>
+                                <div className="flex flex-wrap gap-4">
+                                    {movie.director.map((director, index) => (
+                                        <div key={index} className="flex items-center gap-2 bg-white/5 pl-3 pr-5 py-2 rounded-full w-fit">
+                                            {director.profilePath ? (
+                                                <img
+                                                    src={`https://image.tmdb.org/t/p/w185${director.profilePath}`}
+                                                    alt={director.name}
+                                                    className="w-6 h-6 rounded-full object-cover"
+                                                />
+                                            ) : (
+                                                <div className="w-6 h-6 rounded-full bg-neutral-700 flex items-center justify-center">
+                                                    <User className="w-3 h-3 text-gray-500" />
+                                                </div>
+                                            )}
+                                            <span className="font-medium">{director.name}</span>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         )}
 

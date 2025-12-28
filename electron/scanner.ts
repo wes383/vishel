@@ -354,10 +354,10 @@ const scanDirectoryRecursive = async (
                                             }))
 
                                             const directors = details.credits?.crew?.filter((c: any) => c.job === 'Director')
-                                            const directorObj = directors && directors.length > 0 ? {
-                                                name: directors[0].name,
-                                                profilePath: directors[0].profile_path || null
-                                            } : undefined
+                                            const directorObj = directors?.map((d: any) => ({
+                                                name: d.name,
+                                                profilePath: d.profile_path || null
+                                            }))
 
                                             const logoPath = details.images?.logos?.find((l: any) => l.iso_639_1 === 'en')?.file_path
 
@@ -494,10 +494,10 @@ export const scanMovies = async (onProgress?: (data: any) => void, forceRefresh:
                         const logoPath = details.images?.logos?.find((l: any) => l.iso_639_1 === 'en')?.file_path
 
                         const directors = details.credits?.crew?.filter((c: any) => c.job === 'Director')
-                        const directorObj = directors && directors.length > 0 ? {
-                            name: directors[0].name,
-                            profilePath: directors[0].profile_path || null
-                        } : undefined
+                        const directorObj = directors?.map((d: any) => ({
+                            name: d.name,
+                            profilePath: d.profile_path || null
+                        }))
 
                         movie.title = details.title
                         movie.releaseDate = details.release_date

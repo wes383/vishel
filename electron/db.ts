@@ -32,7 +32,7 @@ export interface Movie {
     tagline?: string
     status?: string
     cast?: { name: string, character: string, profilePath: string }[]
-    director?: { name: string, profilePath: string | null }
+    director?: { name: string, profilePath: string | null }[]
     externalIds?: {
         imdb_id?: string
         tvdb_id?: number
@@ -237,7 +237,7 @@ export const getAllMovies = (): Movie[] => {
             ...m,
             genres: JSON.parse(m.genres || '[]'),
             cast: JSON.parse(m.cast || '[]'),
-            director: JSON.parse(m.director || 'null'),
+            director: JSON.parse(m.director || '[]'),
             externalIds: JSON.parse(m.externalIds || '{}'),
             videoFiles
         }
@@ -257,7 +257,7 @@ export const getMovie = (id: number): Movie | undefined => {
         ...movie,
         genres: JSON.parse(movie.genres || '[]'),
         cast: JSON.parse(movie.cast || '[]'),
-        director: JSON.parse(movie.director || 'null'),
+        director: JSON.parse(movie.director || '[]'),
         externalIds: JSON.parse(movie.externalIds || '{}'),
         videoFiles
     }
@@ -315,7 +315,7 @@ export const saveMovie = (movie: Movie) => {
             tagline: movie.tagline || null,
             status: movie.status || null,
             cast: JSON.stringify(movie.cast || []),
-            director: JSON.stringify(movie.director || null),
+            director: JSON.stringify(movie.director || []),
             externalIds: JSON.stringify(movie.externalIds || {})
         })
 

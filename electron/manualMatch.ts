@@ -51,7 +51,7 @@ const matchMovie = async (tmdbId: number, file: VideoFile, source: DataSource) =
             ...movie,
             genres: JSON.parse(movie.genres || '[]'),
             cast: JSON.parse(movie.cast || '[]'),
-            director: JSON.parse(movie.director || 'null'),
+            director: JSON.parse(movie.director || '[]'),
             externalIds: JSON.parse(movie.externalIds || '{}'),
             videoFiles: []
         }
@@ -74,10 +74,10 @@ const matchMovie = async (tmdbId: number, file: VideoFile, source: DataSource) =
         }))
 
         const directors = details.credits?.crew?.filter((c: any) => c.job === 'Director')
-        const directorObj = directors && directors.length > 0 ? {
-            name: directors[0].name,
-            profilePath: directors[0].profile_path || null
-        } : undefined
+        const directorObj = directors?.map((d: any) => ({
+            name: d.name,
+            profilePath: d.profile_path || null
+        }))
 
         const logoPath = details.images?.logos?.find((l: any) => l.iso_639_1 === 'en')?.file_path
 
@@ -133,7 +133,7 @@ const matchTVShow = async (
 
     if (show) {
         console.log(`TV show ${tmdbId} already exists, adding episode`)
-        
+
         show = {
             ...show,
             genres: JSON.parse(show.genres || '[]'),
@@ -233,7 +233,7 @@ const matchTVShow = async (
         const episodeMeta = seasonDetails?.episodes?.find((e: any) => e.episode_number === episodeNumber)
 
         file.manuallyMatched = true
-        
+
         episode = {
             id: episodeMeta?.id || 0,
             episodeNumber,

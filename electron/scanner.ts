@@ -136,23 +136,12 @@ const scanDirectoryRecursive = async (
 
                 const existing = state.fileMap.get(item.filename)
                 if (existing) {
-                    if (existing.file.manuallyMatched) {
-                        const newFile = createVideoFile(source, item.filename)
-                        if (existing.file.webdavUrl !== newFile.webdavUrl) {
-                            existing.file.webdavUrl = newFile.webdavUrl
-                            state.dirtyIds.add(existing.object.id)
-                        }
-                        return
+                    const newFile = createVideoFile(source, item.filename)
+                    if (existing.file.webdavUrl !== newFile.webdavUrl) {
+                        existing.file.webdavUrl = newFile.webdavUrl
+                        state.dirtyIds.add(existing.object.id)
                     }
-
-                    if (!state.forceRefresh) {
-                        const newFile = createVideoFile(source, item.filename)
-                        if (existing.file.webdavUrl !== newFile.webdavUrl) {
-                            existing.file.webdavUrl = newFile.webdavUrl
-                            state.dirtyIds.add(existing.object.id)
-                        }
-                        return
-                    }
+                    return
                 }
 
                 const episodeInfo = parseEpisodeInfo(item.filename)

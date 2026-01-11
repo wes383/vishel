@@ -325,7 +325,7 @@ export default function MovieDetail() {
                             View on Letterboxd
                         </button>
                         <button
-                            onClick={() => openExternal(`https://www.douban.com/search?source=suggest&q=${encodeURIComponent(movie.title)}`)}
+                            onClick={() => openExternal(`https://www.douban.com/search?cat=1002&q=${encodeURIComponent(movie.title)}`)}
                             className="text-gray-400 hover:text-white transition-colors text-sm border-b border-transparent hover:border-white"
                         >
                             View on douban

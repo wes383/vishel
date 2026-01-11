@@ -348,7 +348,7 @@ export default function TVDetail() {
                             View on TMDb
                         </button>
                         <button
-                            onClick={() => openExternal(`https://www.douban.com/search?source=suggest&q=${encodeURIComponent(show.name)}`)}
+                            onClick={() => openExternal(`https://www.douban.com/search?cat=1002&q=${encodeURIComponent(show.name)}`)}
                             className="text-gray-400 hover:text-white transition-colors text-sm border-b border-transparent hover:border-white"
                         >
                             View on douban

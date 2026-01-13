@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { DataSource } from '../../electron/store'
 import DataSourceList from '../components/DataSourceList'
 import AddSourceModal from '../components/AddSourceModal'
+import TMDBLogo from '../assets/TMDB_logo.svg'
 
 interface SettingsData {
     tmdbApiKey: string
@@ -287,7 +288,7 @@ export default function SettingsPage() {
                 {/* TMDB Attribution */}
                 <section className="flex items-center justify-center gap-2 py-6">
                     <img 
-                        src="/src/assets/TMDB_logo.svg" 
+                        src={TMDBLogo} 
                         alt="TMDB Logo" 
                         className="h-4 w-auto"
                     />

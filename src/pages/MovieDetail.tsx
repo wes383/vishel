@@ -330,6 +330,12 @@ export default function MovieDetail() {
                         >
                             View on douban
                         </button>
+                        <button
+                            onClick={() => openExternal(`https://screen-info-lookup.vercel.app/movie/${movie.id}`)}
+                            className="text-gray-400 hover:text-white transition-colors text-sm border-b border-transparent hover:border-white"
+                        >
+                            View Detailed Info
+                        </button>
                     </div>
 
                     <div className="flex flex-col gap-8 mb-10">

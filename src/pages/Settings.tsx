@@ -282,6 +282,20 @@ export default function SettingsPage() {
                     </div>
                 </section>
 
+                <hr className="border-neutral-800" />
+
+                {/* TMDB Attribution */}
+                <section className="flex items-center justify-center gap-2 py-6">
+                    <img 
+                        src="/src/assets/TMDB_logo.svg" 
+                        alt="TMDB Logo" 
+                        className="h-4 w-auto"
+                    />
+                    <p className="text-xs text-gray-500">
+                        This product uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.
+                    </p>
+                </section>
+
             </div>
 
             {showAddModal && (

@@ -37,7 +37,9 @@
     "oneClick": false,
     "perMachine": false,
     "allowToChangeInstallationDirectory": true,
-    "deleteAppDataOnUninstall": false
+    "deleteAppDataOnUninstall": false,
+    "include": "build/installer.nsh",
+    "installerHeaderIcon": "public/icon.png"
   },
   "linux": {
     "target": [

@@ -285,15 +285,32 @@ export default function SettingsPage() {
 
                 <hr className="border-neutral-800" />
 
-                {/* TMDB Attribution */}
-                <section className="flex items-center justify-center gap-2 py-6">
-                    <img 
-                        src={TMDBLogo} 
-                        alt="TMDB Logo" 
-                        className="h-4 w-auto"
-                    />
+                {/* TMDB & IMDb Attribution */}
+                <section className="flex flex-col items-center justify-center gap-3 py-6">
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => window.electron.ipcRenderer.invoke('open-external', 'https://www.themoviedb.org')}
+                            className="hover:opacity-80 transition-opacity"
+                        >
+                            <img 
+                                src={TMDBLogo} 
+                                alt="TMDB Logo" 
+                                className="h-4 w-auto"
+                            />
+                        </button>
+                        <p className="text-xs text-gray-500">
+                            This product uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.
+                        </p>
+                    </div>
                     <p className="text-xs text-gray-500">
-                        This product uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.
+                        Information courtesy of{' '}
+                        <button
+                            onClick={() => window.electron.ipcRenderer.invoke('open-external', 'https://www.imdb.com')}
+                            className="hover:text-white transition-colors underline"
+                        >
+                            IMDb
+                        </button>
+                        . Used with permission.
                     </p>
                 </section>
 

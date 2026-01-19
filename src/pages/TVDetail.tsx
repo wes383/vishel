@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Play, Calendar, User, X, ChevronDown, Loader2, ChevronLeft, Heart } from 'lucide-react'
+import { Play, Calendar, User, X, Loader2, ChevronLeft, Heart } from 'lucide-react'
 
 
 import { DataSource } from '../../electron/store'
@@ -58,27 +58,12 @@ export default function TVDetail() {
     const [loading, setLoading] = useState(true)
     const [activeSeason, setActiveSeason] = useState<number>(1)
     const [selectedEpisode, setSelectedEpisode] = useState<Episode | null>(null)
-    const [isSeasonOpen, setIsSeasonOpen] = useState(false)
     const [sources, setSources] = useState<DataSource[]>([])
     const [hideSpoilers, setHideSpoilers] = useState(false)
     const [revealedEpisodes, setRevealedEpisodes] = useState<Set<number>>(new Set())
     const [playingEpisodeId, setPlayingEpisodeId] = useState<number | null>(null)
     const [error, setError] = useState<string | null>(null)
     const [isFavorited, setIsFavorited] = useState(false)
-    const dropdownRef = useRef<HTMLDivElement>(null)
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setIsSeasonOpen(false)
-            }
-        }
-
-        document.addEventListener('mousedown', handleClickOutside)
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside)
-        }
-    }, [])
 
     // Keyboard shortcuts
     useEffect(() => {
@@ -87,8 +72,6 @@ export default function TVDetail() {
             if (e.key === 'Escape') {
                 if (selectedEpisode) {
                     setSelectedEpisode(null)
-                } else if (isSeasonOpen) {
-                    setIsSeasonOpen(false)
                 } else {
                     navigate('/')
                 }
@@ -104,7 +87,7 @@ export default function TVDetail() {
 
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [navigate, selectedEpisode, isSeasonOpen])
+    }, [navigate, selectedEpisode])
 
     useEffect(() => {
         const fetchShow = async () => {
@@ -223,7 +206,7 @@ export default function TVDetail() {
                 </div>
             )}
             {/* Backdrop Image */}
-            <div className="absolute inset-0 h-[70vh] w-full overflow-hidden">
+            <div className="absolute inset-0 h-[80vh] w-full overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-neutral-900/60 to-neutral-900 z-10" />
                 {show.backdropPath && (
                     <>
@@ -250,7 +233,7 @@ export default function TVDetail() {
             </button>
 
             {/* Content */}
-            <div className="relative z-20 container mx-auto px-8 pt-[45vh] pb-8">
+            <div className="relative z-20 container mx-auto px-8 pt-[55vh] pb-8">
 
                 <div className="mb-12 pt-4">
                     {show.logoPath ? (
@@ -364,18 +347,22 @@ export default function TVDetail() {
                     <div className="flex flex-col gap-8">
                         {show.createdBy && show.createdBy.length > 0 && (
                             <div>
-                                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Created By</h3>
-                                <div className="flex gap-4">
+                                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Created By</h3>
+                                <div className="flex flex-wrap gap-4">
                                     {show.createdBy.map((creator, index) => (
-                                        <div key={index} className="flex items-center gap-2 bg-white/5 pl-3 pr-5 py-2 rounded-full">
-                                            {creator.profilePath && (
+                                        <div key={index} className="flex items-center gap-3 bg-white/5 pl-3 pr-5 py-2 rounded-full">
+                                            {creator.profilePath ? (
                                                 <img
                                                     src={`https://image.tmdb.org/t/p/w185${creator.profilePath}`}
                                                     alt={creator.name}
-                                                    className="w-6 h-6 rounded-full object-cover"
+                                                    className="w-10 h-10 rounded-full object-cover"
                                                 />
+                                            ) : (
+                                                <div className="w-10 h-10 rounded-full bg-neutral-700 flex items-center justify-center">
+                                                    <User className="w-5 h-5 text-gray-500" />
+                                                </div>
                                             )}
-                                            <span className="font-medium">{creator.name}</span>
+                                            <span className="font-medium text-sm">{creator.name}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -414,32 +401,20 @@ export default function TVDetail() {
 
             {/* Season Selector */}
             <div className="mb-8 container mx-auto px-8">
-                <div className="relative inline-block" ref={dropdownRef}>
-                    <button
-                        onClick={() => setIsSeasonOpen(!isSeasonOpen)}
-                        className="flex items-center gap-2 px-6 py-3 bg-neutral-800 hover:bg-neutral-600 rounded-full transition-colors font-medium min-w-[200px] justify-between"
-                    >
-                        <span>{show.seasons.find(s => s.seasonNumber === activeSeason)?.name || 'Select Season'}</span>
-                        <ChevronDown className={`w-5 h-5 transition-transform ${isSeasonOpen ? 'rotate-180' : ''}`} />
-                    </button>
-
-                    {isSeasonOpen && (
-                        <div className="absolute top-full left-0 mt-2 w-full bg-neutral-800 rounded-2xl overflow-hidden shadow-xl z-50 border border-white/10 p-2">
-                            {show.seasons.sort((a, b) => a.seasonNumber - b.seasonNumber).map(season => (
-                                <button
-                                    key={season.seasonNumber}
-                                    onClick={() => {
-                                        setActiveSeason(season.seasonNumber)
-                                        setIsSeasonOpen(false)
-                                    }}
-                                    className={`w-full text-left px-6 py-3 hover:bg-white/10 transition-colors rounded-full ${activeSeason === season.seasonNumber ? 'bg-white text-black' : 'text-gray-300'
-                                        }`}
-                                >
-                                    {season.name}
-                                </button>
-                            ))}
-                        </div>
-                    )}
+                <div className="flex flex-wrap items-center gap-3 py-2">
+                    {show.seasons.sort((a, b) => a.seasonNumber - b.seasonNumber).map(season => (
+                        <button
+                            key={season.seasonNumber}
+                            onClick={() => setActiveSeason(season.seasonNumber)}
+                            className={`px-6 py-2.5 rounded-full font-medium font-sans text-sm transition-all duration-300 ${
+                                activeSeason === season.seasonNumber 
+                                    ? 'bg-neutral-300 text-black scale-105' 
+                                    : 'bg-neutral-800/50 text-neutral-400 hover:bg-neutral-700 hover:text-white'
+                            }`}
+                        >
+                            {season.name}
+                        </button>
+                    ))}
                 </div>
             </div>
 
@@ -447,49 +422,68 @@ export default function TVDetail() {
             {currentSeason && (
                 <div className="container mx-auto px-8 pb-20">
                     <div className="space-y-4">
-                        {currentSeason.episodes.sort((a, b) => a.episodeNumber - b.episodeNumber).map(episode => (
+                        {/* Filter out duplicates based on episodeNumber */}
+                        {Object.values(
+                            currentSeason.episodes.reduce((acc, episode) => {
+                                if (!acc[episode.episodeNumber]) {
+                                    acc[episode.episodeNumber] = episode
+                                }
+                                return acc
+                            }, {} as Record<number, Episode>)
+                        )
+                        .sort((a, b) => a.episodeNumber - b.episodeNumber)
+                        .map(episode => (
                             <div
                                 key={episode.id}
-                                className="bg-neutral-800 rounded-xl overflow-hidden flex flex-col md:flex-row gap-4 hover:bg-neutral-750 transition-colors"
+                                className="bg-neutral-800/50 border border-white/5 rounded-2xl p-4 flex flex-col md:flex-row gap-6 hover:bg-neutral-800 transition-colors"
                             >
                                 {/* Episode Still */}
-                                <div className="md:w-48 flex-shrink-0 relative aspect-video md:aspect-auto">
+                                <div className="group md:w-56 flex-shrink-0 relative aspect-video rounded-xl overflow-hidden bg-neutral-900 cursor-pointer">
                                     {episode.stillPath ? (
                                         <img
-                                            src={`https://image.tmdb.org/t/p/w1280${episode.stillPath}`}
+                                            src={`https://image.tmdb.org/t/p/w780${episode.stillPath}`}
                                             alt={episode.name}
-                                            className="w-full h-full object-cover"
+                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                                         />
                                     ) : (
-                                        <div className="w-full h-full bg-neutral-700 flex items-center justify-center text-gray-500">
-                                            No Image
+                                        <div className="w-full h-full flex flex-col items-center justify-center text-gray-600 gap-2">
+                                            <div className="w-8 h-8 rounded-full border-2 border-current flex items-center justify-center opacity-50">
+                                                <span className="text-xs font-bold">TV</span>
+                                            </div>
                                         </div>
                                     )}
+                                    
+                                    {/* Episode Number Badge */}
+                                    <div className="absolute bottom-3 left-3 px-2 py-1 bg-white/30 backdrop-blur-md rounded-md text-xs font-bold text-black shadow-sm">
+                                        EP {episode.episodeNumber}
+                                    </div>
+                                    
+                                    {/* Play Overlay */}
                                     <button
                                         onClick={() => handlePlayClick(episode)}
                                         disabled={playingEpisodeId === episode.id}
-                                        className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity disabled:opacity-100"
+                                        className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-all duration-300 disabled:opacity-100"
                                     >
-                                        {playingEpisodeId === episode.id ? (
-                                            <Loader2 className="w-10 h-10 text-white animate-spin" />
-                                        ) : (
-                                            <Play className="w-10 h-10 text-white fill-current" />
-                                        )}
+                                        <div className="transform scale-75 group-hover:scale-100 transition-transform drop-shadow-lg">
+                                            {playingEpisodeId === episode.id ? (
+                                                <Loader2 className="w-12 h-12 text-white animate-spin" />
+                                            ) : (
+                                                <Play className="w-12 h-12 text-white fill-white" />
+                                            )}
+                                        </div>
                                     </button>
                                 </div>
 
                                 {/* Episode Info */}
-                                <div className="flex-1 p-4 md:p-6">
-                                    <div className="flex items-start justify-between mb-2">
-                                        <h3 className="text-xl font-bold">
-                                            {episode.episodeNumber}. {episode.name}
-                                        </h3>
-                                    </div>
+                                <div className="flex-1 py-1 min-w-0 flex flex-col justify-center">
+                                    <h3 className="text-lg font-bold text-white mb-2 truncate pr-4">
+                                        {episode.name}
+                                    </h3>
                                     <p
-                                        className={`text-gray-400 line-clamp-3 transition-all duration-300 ${hideSpoilers && !revealedEpisodes.has(episode.id) ? 'blur-sm cursor-pointer select-none' : ''}`}
+                                        className={`text-gray-400 text-sm leading-relaxed line-clamp-3 ${hideSpoilers && !revealedEpisodes.has(episode.id) ? 'blur-sm cursor-pointer select-none' : ''}`}
                                         onClick={() => toggleSpoiler(episode.id)}
                                     >
-                                        {episode.overview}
+                                        {episode.overview || "No overview available."}
                                     </p>
                                 </div>
                             </div>

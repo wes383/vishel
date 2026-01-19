@@ -381,8 +381,6 @@ export const getTVShow = (id: number): TVShow | undefined => {
             }))
             return {
                 ...ep,
-                id: ep.tmdbId,
-                _dbId: ep.id,
                 videoFiles
             }
         })
@@ -581,6 +579,20 @@ export const deleteEmptyMovies = () => {
 
 export const deleteEmptyTVShows = () => {
     const db = getDb()
+    
+    // Delete duplicate episodes (keep the one with smallest ID)
+    const duplicatesResult = db.prepare(`
+        DELETE FROM episodes 
+        WHERE id NOT IN (
+            SELECT MIN(id) 
+            FROM episodes 
+            GROUP BY tvShowId, seasonNumber, episodeNumber
+        )
+    `).run()
+    if (duplicatesResult.changes > 0) {
+        console.log(`Deleted ${duplicatesResult.changes} duplicate episodes`)
+    }
+
     // Delete episodes with no video files
     const episodesResult = db.prepare('DELETE FROM episodes WHERE id NOT IN (SELECT DISTINCT episodeId FROM video_files WHERE episodeId IS NOT NULL)').run()
     console.log(`Deleted ${episodesResult.changes} empty episodes`)
@@ -593,7 +605,7 @@ export const deleteEmptyTVShows = () => {
     const showsResult = db.prepare('DELETE FROM tv_shows WHERE id NOT IN (SELECT DISTINCT tvShowId FROM seasons)').run()
     console.log(`Deleted ${showsResult.changes} empty TV shows`)
 
-    return episodesResult.changes + seasonsResult.changes + showsResult.changes
+    return episodesResult.changes + seasonsResult.changes + showsResult.changes + duplicatesResult.changes
 }
 
 // Favorites

@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { ChevronDown } from 'lucide-react'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { LibraryTabs } from '../components/library/LibraryTabs'
 import { LibraryActions, SortOption } from '../components/library/LibraryActions'
@@ -20,17 +19,11 @@ export default function LibraryPage() {
     const [sortBy, setSortBy] = useState<SortOption>(() => {
         return (localStorage.getItem('library_sort_by') as SortOption) || 'name-asc'
     })
-    const [activeTab, setActiveTab] = useState<'all' | 'movies' | 'tv' | 'history'>(() => {
-        return (sessionStorage.getItem('library_active_tab') as 'all' | 'movies' | 'tv' | 'history') || 'all'
+    const [activeTab, setActiveTab] = useState<'all' | 'movies' | 'tv' | 'favorites' | 'history'>(() => {
+        return (sessionStorage.getItem('library_active_tab') as 'all' | 'movies' | 'tv' | 'favorites' | 'history') || 'all'
     })
     const [loading, setLoading] = useState(false)
     const [showTitlesOnPosters, setShowTitlesOnPosters] = useState(false)
-    const [favoritesCollapsed, setFavoritesCollapsed] = useState(() => {
-        return sessionStorage.getItem('me_favorites_collapsed') === 'true'
-    })
-    const [historyCollapsed, setHistoryCollapsed] = useState(() => {
-        return sessionStorage.getItem('me_history_collapsed') === 'true'
-    })
     const scrollRef = useRef<HTMLDivElement>(null)
 
     // Keyboard shortcuts
@@ -57,14 +50,6 @@ export default function LibraryPage() {
     useEffect(() => {
         localStorage.setItem('library_sort_by', sortBy)
     }, [sortBy])
-
-    useEffect(() => {
-        sessionStorage.setItem('me_favorites_collapsed', String(favoritesCollapsed))
-    }, [favoritesCollapsed])
-
-    useEffect(() => {
-        sessionStorage.setItem('me_history_collapsed', String(historyCollapsed))
-    }, [historyCollapsed])
 
     // Ensure arrow keys work for scrolling after navigation
     useEffect(() => {
@@ -103,6 +88,18 @@ export default function LibraryPage() {
         window.electron.ipcRenderer.invoke('get-settings').then((data: any) => {
             setShowTitlesOnPosters(data.showTitlesOnPosters || false)
         })
+
+        // Listen for tab navigation from tray menu
+        const handleNavigateToTab = (_event: any, tab: 'all' | 'movies' | 'tv' | 'favorites' | 'history') => {
+            setActiveTab(tab)
+            sessionStorage.setItem('library_active_tab', tab)
+        }
+
+        window.electron.ipcRenderer.on('navigate-to-tab', handleNavigateToTab)
+
+        return () => {
+            window.electron.ipcRenderer.off('navigate-to-tab', handleNavigateToTab)
+        }
     }, [])
 
     useEffect(() => {
@@ -293,70 +290,56 @@ export default function LibraryPage() {
                             />
                         )}
 
-                        {activeTab === 'history' && (
-                            <>
-                                {/* Favorites Section */}
-                                {favorites.length > 0 && (
-                                    <div className="mb-8">
-                                        <button
-                                            onClick={() => setFavoritesCollapsed(!favoritesCollapsed)}
-                                            className="flex items-center gap-2 text-lg font-semibold text-gray-300 mb-4 hover:text-white transition-colors"
-                                        >
-                                            Favorites
-                                            <ChevronDown className={`w-5 h-5 transition-transform ${favoritesCollapsed ? '-rotate-90' : ''}`} />
-                                        </button>
-                                        {!favoritesCollapsed && (
-                                            <MediaGrid
-                                                items={favorites
-                                                    .filter(f => {
-                                                        if (!searchQuery) return true
-                                                        return f.title.toLowerCase().includes(searchQuery.toLowerCase())
-                                                    })
-                                                    .map(f => ({
-                                                        id: f.mediaId,
-                                                        title: f.title,
-                                                        name: f.title,
-                                                        posterPath: f.posterPath,
-                                                        type: f.mediaType
-                                                    })) as any[]
-                                                }
-                                                showTitlesOnPosters={showTitlesOnPosters}
-                                                emptyMessage={null}
-                                            />
-                                        )}
-                                    </div>
-                                )}
+                        {activeTab === 'favorites' && (
+                            <MediaGrid
+                                items={favorites
+                                    .filter(f => {
+                                        if (!searchQuery) return true
+                                        return f.title.toLowerCase().includes(searchQuery.toLowerCase())
+                                    })
+                                    .map(f => ({
+                                        id: f.mediaId,
+                                        title: f.title,
+                                        name: f.title,
+                                        posterPath: f.posterPath,
+                                        type: f.mediaType
+                                    })) as any[]
+                                }
+                                showTitlesOnPosters={showTitlesOnPosters}
+                                emptyMessage={
+                                    searchQuery ? (
+                                        <>
+                                            <p className="text-xl mb-2">No favorites found</p>
+                                            <p>Try adjusting your search terms.</p>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <p className="text-xl mb-2">No favorites yet</p>
+                                            <p>Click the heart icon on movies or TV shows to add them here.</p>
+                                        </>
+                                    )
+                                }
+                            />
+                        )}
 
-                                {/* History Section */}
-                                <div>
-                                    <button
-                                        onClick={() => setHistoryCollapsed(!historyCollapsed)}
-                                        className="flex items-center gap-2 text-lg font-semibold text-gray-300 mb-4 hover:text-white transition-colors"
-                                    >
-                                        History
-                                        <ChevronDown className={`w-5 h-5 transition-transform ${historyCollapsed ? '-rotate-90' : ''}`} />
-                                    </button>
-                                    {!historyCollapsed && (
-                                        <HistoryList
-                                            items={filteredHistory}
-                                            onDelete={handleDeleteHistory}
-                                            emptyMessage={
-                                                searchQuery ? (
-                                                    <>
-                                                        <p className="text-xl mb-2">No history found</p>
-                                                        <p>Try adjusting your search terms.</p>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <p className="text-xl mb-2">No history yet</p>
-                                                        <p>Start watching movies or TV shows to see them here.</p>
-                                                    </>
-                                                )
-                                            }
-                                        />
-                                    )}
-                                </div>
-                            </>
+                        {activeTab === 'history' && (
+                            <HistoryList
+                                items={filteredHistory}
+                                onDelete={handleDeleteHistory}
+                                emptyMessage={
+                                    searchQuery ? (
+                                        <>
+                                            <p className="text-xl mb-2">No history found</p>
+                                            <p>Try adjusting your search terms.</p>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <p className="text-xl mb-2">No history yet</p>
+                                            <p>Start watching movies or TV shows to see them here.</p>
+                                        </>
+                                    )
+                                }
+                            />
                         )}
                     </>
                 )}

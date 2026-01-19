@@ -85,6 +85,53 @@ function createTray() {
         }
       }
     },
+    { type: 'separator' },
+    {
+      label: 'All', click: () => {
+        if (win) {
+          win.show()
+          win.focus()
+          win.webContents.send('navigate-to-tab', 'all')
+        }
+      }
+    },
+    {
+      label: 'Movies', click: () => {
+        if (win) {
+          win.show()
+          win.focus()
+          win.webContents.send('navigate-to-tab', 'movies')
+        }
+      }
+    },
+    {
+      label: 'TV Shows', click: () => {
+        if (win) {
+          win.show()
+          win.focus()
+          win.webContents.send('navigate-to-tab', 'tv')
+        }
+      }
+    },
+    {
+      label: 'Favorites', click: () => {
+        if (win) {
+          win.show()
+          win.focus()
+          win.webContents.send('navigate-to-tab', 'favorites')
+        }
+      }
+    },
+    {
+      label: 'History', click: () => {
+        if (win) {
+          win.show()
+          win.focus()
+          win.webContents.send('navigate-to-tab', 'history')
+        }
+      }
+    },
+    { type: 'separator' },
     {
       label: 'Quit', click: () => {
         isQuitting = true

@@ -1,8 +1,8 @@
 import React from 'react'
 
 interface LibraryTabsProps {
-    activeTab: 'all' | 'movies' | 'tv' | 'history'
-    onTabChange: (tab: 'all' | 'movies' | 'tv' | 'history') => void
+    activeTab: 'all' | 'movies' | 'tv' | 'favorites' | 'history'
+    onTabChange: (tab: 'all' | 'movies' | 'tv' | 'favorites' | 'history') => void
 }
 
 export const LibraryTabs: React.FC<LibraryTabsProps> = ({ activeTab, onTabChange }) => {
@@ -10,7 +10,8 @@ export const LibraryTabs: React.FC<LibraryTabsProps> = ({ activeTab, onTabChange
         { id: 'all', label: 'All' },
         { id: 'movies', label: 'Movies' },
         { id: 'tv', label: 'TV Shows' },
-        { id: 'history', label: 'Me' },
+        { id: 'favorites', label: 'Favorites' },
+        { id: 'history', label: 'History' },
     ] as const
 
     return (
@@ -24,7 +25,7 @@ export const LibraryTabs: React.FC<LibraryTabsProps> = ({ activeTab, onTabChange
                             onTabChange(tab.id)
                                 ; (e.target as HTMLButtonElement).blur()
                         }}
-                        className={`flex items-center gap-1 lg:gap-2 px-3 py-1.5 lg:px-6 lg:py-2 text-sm lg:text-base rounded-full transition-all ${activeTab === tab.id ? 'bg-white/10 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}
+                        className={`flex items-center gap-1 lg:gap-2 px-3 py-1.5 lg:px-6 lg:py-2 text-sm lg:text-base rounded-full transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-white/10 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}
                     >
                         {tab.label}
                     </button>
@@ -41,7 +42,7 @@ export const LibraryTabs: React.FC<LibraryTabsProps> = ({ activeTab, onTabChange
                                 onTabChange(tab.id)
                                     ; (e.target as HTMLButtonElement).blur()
                             }}
-                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full transition-all ${activeTab === tab.id ? 'bg-white/10 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}
+                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-white/10 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}
                         >
                             {tab.label}
                         </button>

@@ -185,7 +185,7 @@ export default function MovieDetail() {
                 </div>
             )}
             {/* Backdrop Image */}
-            <div className="absolute inset-0 h-[70vh] w-full overflow-hidden">
+            <div className="absolute inset-0 h-[80vh] w-full overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-neutral-900/60 to-neutral-900 z-10" />
                 {movie.backdropPath && (
                     <>
@@ -212,7 +212,7 @@ export default function MovieDetail() {
             </button>
 
             {/* Content */}
-            <div className="relative z-20 container mx-auto px-8 pt-[45vh] pb-20">
+            <div className="relative z-20 container mx-auto px-8 pt-[55vh] pb-20">
 
                 <div className="pt-4">
                     {movie.logoPath ? (
@@ -341,22 +341,22 @@ export default function MovieDetail() {
                     <div className="flex flex-col gap-8 mb-10">
                         {movie.director && Array.isArray(movie.director) && movie.director.length > 0 && (
                             <div>
-                                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Director{movie.director.length > 1 ? 's' : ''}</h3>
+                                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Director{movie.director.length > 1 ? 's' : ''}</h3>
                                 <div className="flex flex-wrap gap-4">
                                     {movie.director.map((director, index) => (
-                                        <div key={index} className="flex items-center gap-2 bg-white/5 pl-3 pr-5 py-2 rounded-full w-fit">
+                                        <div key={index} className="flex items-center gap-3 bg-white/5 pl-3 pr-5 py-2 rounded-full w-fit">
                                             {director.profilePath ? (
                                                 <img
                                                     src={`https://image.tmdb.org/t/p/w185${director.profilePath}`}
                                                     alt={director.name}
-                                                    className="w-6 h-6 rounded-full object-cover"
+                                                    className="w-10 h-10 rounded-full object-cover"
                                                 />
                                             ) : (
-                                                <div className="w-6 h-6 rounded-full bg-neutral-700 flex items-center justify-center">
-                                                    <User className="w-3 h-3 text-gray-500" />
+                                                <div className="w-10 h-10 rounded-full bg-neutral-700 flex items-center justify-center">
+                                                    <User className="w-5 h-5 text-gray-500" />
                                                 </div>
                                             )}
-                                            <span className="font-medium">{director.name}</span>
+                                            <span className="font-medium text-sm">{director.name}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -395,12 +395,12 @@ export default function MovieDetail() {
                         <button
                             onClick={handlePlayClick}
                             disabled={playing}
-                            className="bg-white hover:bg-gray-200 px-10 py-4 rounded-full transition-colors shadow-lg flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="group relative bg-white hover:bg-white w-24 h-12 rounded-full transition-all duration-300 shadow-lg hover:shadow-2xl hover:scale-105 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                         >
                             {playing ? (
-                                <Loader2 className="w-5 h-5 text-gray-500 animate-spin" />
+                                <Loader2 className="w-5 h-5 text-black animate-spin" />
                             ) : (
-                                <Play className="w-5 h-5 text-gray-500 fill-current ml-1" />
+                                <Play className="w-5 h-5 text-black fill-black transition-transform group-hover:scale-110" />
                             )}
                         </button>
                         {movie.videoFiles && movie.videoFiles.length > 0 && (

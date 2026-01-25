@@ -5,7 +5,6 @@ import { listLocalDirectory } from './localFileService'
 import { listDirectory as listSMBDirectory } from './smbService'
 import store, { DataSource } from './store'
 import path from 'node:path'
-import { getImdbRating, downloadAndImportImdbRatings } from './imdbDatabase'
 
 const cleanFilename = (filename: string): { name: string, year?: number } => {
     let name = path.parse(filename).name
@@ -166,7 +165,8 @@ const scanDirectoryRecursive = async (
 
                     try {
                         const searchYear = episodeInfo.season === 1 ? year : undefined
-                        const searchResults = await searchTVShow(episodeInfo.name, searchYear)
+                        const searchData = await searchTVShow(episodeInfo.name, searchYear)
+                        const searchResults = searchData.results
 
                         if (searchResults && searchResults.length > 0) {
                             const bestMatch = findBestMatch(searchResults, year)
@@ -195,16 +195,6 @@ const scanDirectoryRecursive = async (
 
                                             const logoPath = details.images?.logos?.find((l: any) => l.iso_639_1 === 'en')?.file_path
 
-                                            let imdbRating: number | undefined
-                                            let imdbVotes: number | undefined
-                                            if (details.external_ids?.imdb_id) {
-                                                const imdbData = getImdbRating(details.external_ids.imdb_id)
-                                                if (imdbData) {
-                                                    imdbRating = imdbData.rating
-                                                    imdbVotes = imdbData.votes
-                                                }
-                                            }
-
                                             const newShow: TVShow = {
                                                 id: details.id,
                                                 name: details.name,
@@ -217,8 +207,6 @@ const scanDirectoryRecursive = async (
                                                 genres: details.genres?.map((g: any) => g.name),
                                                 voteAverage: details.vote_average,
                                                 popularity: details.popularity,
-                                                imdbRating,
-                                                imdbVotes,
                                                 status: details.status,
                                                 cast,
                                                 createdBy,
@@ -321,7 +309,8 @@ const scanDirectoryRecursive = async (
                         const { name: query, year } = cleanFilename(item.filename)
                         console.log(`Processing movie: ${item.filename} -> ${query} (${year || 'no year'})`)
 
-                        const searchResults = await searchMovie(query, year)
+                        const searchData = await searchMovie(query, year)
+                        const searchResults = searchData.results
                         if (searchResults && searchResults.length > 0) {
                             const bestMatch = searchResults[0]
                             const movieId = bestMatch.id
@@ -350,16 +339,6 @@ const scanDirectoryRecursive = async (
 
                                             const logoPath = details.images?.logos?.find((l: any) => l.iso_639_1 === 'en')?.file_path
 
-                                            let imdbRating: number | undefined
-                                            let imdbVotes: number | undefined
-                                            if (details.external_ids?.imdb_id) {
-                                                const imdbData = getImdbRating(details.external_ids.imdb_id)
-                                                if (imdbData) {
-                                                    imdbRating = imdbData.rating
-                                                    imdbVotes = imdbData.votes
-                                                }
-                                            }
-
                                             const newMovie: Movie = {
                                                 id: details.id,
                                                 title: details.title,
@@ -371,8 +350,6 @@ const scanDirectoryRecursive = async (
                                                 runtime: details.runtime,
                                                 voteAverage: details.vote_average,
                                                 popularity: details.popularity,
-                                                imdbRating,
-                                                imdbVotes,
                                                 genres: details.genres?.map((g: any) => g.name),
                                                 sourceId: source.id,
                                                 status: details.status,
@@ -693,107 +670,6 @@ export const scanMovies = async (onProgress?: (data: any) => void, forceRefresh:
             onProgress?.({ status: 'Syncing favorites and history...' })
             syncFavoritesPosters()
             syncHistoryPosters()
-        }
-
-        onProgress?.({ status: 'Updating IMDb ratings...' })
-        const allImdbIds: string[] = []
-
-        state.newMovies.forEach(m => {
-            if (m.externalIds?.imdb_id) allImdbIds.push(m.externalIds.imdb_id)
-        })
-        state.newTVShows.forEach(t => {
-            if (t.externalIds?.imdb_id) allImdbIds.push(t.externalIds.imdb_id)
-        })
-
-        if (forceRefresh) {
-            state.currentMovies.forEach(m => {
-                if (m.externalIds?.imdb_id && !allImdbIds.includes(m.externalIds.imdb_id)) {
-                    allImdbIds.push(m.externalIds.imdb_id)
-                }
-            })
-            state.currentTVShows.forEach(t => {
-                if (t.externalIds?.imdb_id && !allImdbIds.includes(t.externalIds.imdb_id)) {
-                    allImdbIds.push(t.externalIds.imdb_id)
-                }
-            })
-        }
-
-        if (allImdbIds.length > 0) {
-            try {
-                console.log(`Fetching IMDb ratings for ${allImdbIds.length} items...`)
-                await downloadAndImportImdbRatings(
-                    (progress) => {
-                        if (progress.stage === 'downloading') {
-                            onProgress?.({ status: `Downloading IMDb data... ${(progress.progress / 1024 / 1024).toFixed(1)}MB` })
-                        } else if (progress.stage === 'importing') {
-                            onProgress?.({ status: `Importing ratings... ${progress.progress} / ${progress.total}` })
-                        }
-                    },
-                    allImdbIds
-                )
-
-                const updateRatingsTransaction = db.transaction(() => {
-                    let updatedCount = 0
-
-                    // Update new items
-                    for (const movie of state.newMovies.values()) {
-                        if (movie.externalIds?.imdb_id) {
-                            const rating = getImdbRating(movie.externalIds.imdb_id)
-                            if (rating) {
-                                movie.imdbRating = rating.rating
-                                movie.imdbVotes = rating.votes
-                                saveMovie(movie)
-                                updatedCount++
-                            }
-                        }
-                    }
-
-                    for (const show of state.newTVShows.values()) {
-                        if (show.externalIds?.imdb_id) {
-                            const rating = getImdbRating(show.externalIds.imdb_id)
-                            if (rating) {
-                                show.imdbRating = rating.rating
-                                show.imdbVotes = rating.votes
-                                saveTVShow(show)
-                                updatedCount++
-                            }
-                        }
-                    }
-
-                    if (forceRefresh) {
-                        for (const movie of state.currentMovies) {
-                            if (movie.externalIds?.imdb_id) {
-                                const rating = getImdbRating(movie.externalIds.imdb_id)
-                                if (rating && (movie.imdbRating !== rating.rating || movie.imdbVotes !== rating.votes)) {
-                                    movie.imdbRating = rating.rating
-                                    movie.imdbVotes = rating.votes
-                                    saveMovie(movie)
-                                    updatedCount++
-                                }
-                            }
-                        }
-
-                        for (const show of state.currentTVShows) {
-                            if (show.externalIds?.imdb_id) {
-                                const rating = getImdbRating(show.externalIds.imdb_id)
-                                if (rating && (show.imdbRating !== rating.rating || show.imdbVotes !== rating.votes)) {
-                                    show.imdbRating = rating.rating
-                                    show.imdbVotes = rating.votes
-                                    saveTVShow(show)
-                                    updatedCount++
-                                }
-                            }
-                        }
-                    }
-
-                    console.log(`Updated IMDb ratings for ${updatedCount} items`)
-                })
-
-                updateRatingsTransaction()
-
-            } catch (error) {
-                console.error('Failed to update IMDb ratings:', error)
-            }
         }
 
         console.log(`Scan complete: Added ${state.newMovies.size} movies and ${state.newTVShows.size} TV shows`)

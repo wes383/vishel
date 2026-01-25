@@ -54,6 +54,8 @@ export default function MovieDetail() {
     const [playing, setPlaying] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [isFavorited, setIsFavorited] = useState(false)
+    const [imdbRating, setImdbRating] = useState<{ rating: number, votes: number } | null>(null)
+    const [loadingImdb, setLoadingImdb] = useState(false)
 
     // Keyboard shortcuts
     useEffect(() => {
@@ -88,9 +90,21 @@ export default function MovieDetail() {
             if (!id) return
             try {
                 const data = await window.electron.ipcRenderer.invoke('get-movie', parseInt(id))
+                if (!data) {
+                    // Movie not found, redirect to home
+                    console.warn(`Movie ${id} not found, redirecting to home`)
+                    navigate('/')
+                    return
+                }
                 setMovie(data)
+                
+                // Fetch IMDb rating if available
+                if (data.externalIds?.imdb_id) {
+                    fetchImdbRating(data.externalIds.imdb_id)
+                }
             } catch (error) {
                 console.error('Failed to fetch movie:', error)
+                navigate('/')
             } finally {
                 setLoading(false)
             }
@@ -106,7 +120,27 @@ export default function MovieDetail() {
             window.electron.ipcRenderer.invoke('is-favorite', { mediaId: parseInt(id), mediaType: 'movie' })
                 .then(setIsFavorited)
         }
-    }, [id])
+    }, [id, navigate])
+
+    const fetchImdbRating = async (imdbId: string) => {
+        setLoadingImdb(true)
+        try {
+            const response = await fetch(`https://imdb-ratings-ten.vercel.app/api/rating?imdbId=${imdbId}`)
+            if (response.ok) {
+                const data = await response.json()
+                if (data.rating && data.numVotes) {
+                    setImdbRating({
+                        rating: parseFloat(data.rating),
+                        votes: parseInt(data.numVotes.toString().replace(/,/g, ''))
+                    })
+                }
+            }
+        } catch (error) {
+            console.error('Failed to fetch IMDb rating:', error)
+        } finally {
+            setLoadingImdb(false)
+        }
+    }
 
     const handlePlayClick = () => {
         if (!movie || !movie.videoFiles || movie.videoFiles.length === 0) return
@@ -179,7 +213,7 @@ export default function MovieDetail() {
         <div className="relative min-h-screen bg-neutral-900 text-white">
             {/* Error Message */}
             {error && (
-                <div className="fixed top-8 left-1/2 transform -translate-x-1/2 z-50 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
+                <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
                     <X className="w-5 h-5" />
                     <span>{error}</span>
                 </div>
@@ -242,7 +276,7 @@ export default function MovieDetail() {
                             </div>
                         )}
                         {/* Ratings */}
-                        {(movie.voteAverage || movie.imdbRating) && (
+                        {(movie.voteAverage || imdbRating) && (
                             <div className="flex gap-3">
                                 {movie.voteAverage && (
                                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg">
@@ -250,13 +284,19 @@ export default function MovieDetail() {
                                         <span className="font-semibold">{movie.voteAverage.toFixed(1)}</span>
                                     </div>
                                 )}
-                                {movie.imdbRating && (
+                                {imdbRating && (
                                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg">
                                         <span className="text-[#f5c518] font-bold text-sm">IMDb</span>
-                                        <span className="font-semibold">{movie.imdbRating.toFixed(1)}</span>
-                                        {movie.imdbVotes && (
-                                            <span className="text-xs text-gray-200">({formatVoteCount(movie.imdbVotes)})</span>
+                                        <span className="font-semibold">{imdbRating.rating.toFixed(1)}</span>
+                                        {imdbRating.votes && (
+                                            <span className="text-xs text-gray-200">({formatVoteCount(imdbRating.votes)})</span>
                                         )}
+                                    </div>
+                                )}
+                                {loadingImdb && !imdbRating && movie.externalIds?.imdb_id && (
+                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg">
+                                        <span className="text-[#f5c518] font-bold text-sm">IMDb</span>
+                                        <span className="text-gray-400 text-sm">Loading...</span>
                                     </div>
                                 )}
                             </div>
@@ -417,12 +457,12 @@ export default function MovieDetail() {
             {
                 showVersionSelector && movie.videoFiles && movie.videoFiles.length > 1 && (
                     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-                        <div className="bg-neutral-800 rounded-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-auto">
+                        <div className="bg-white/50 backdrop-blur-md rounded-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-auto">
                             <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-2xl font-bold">Select Version</h2>
+                                <h2 className="text-2xl font-bold text-gray-900">Select Version</h2>
                                 <button
                                     onClick={() => setShowVersionSelector(false)}
-                                    className="p-2 hover:bg-neutral-700 rounded-full transition-colors"
+                                    className="p-2 hover:bg-black/10 rounded-full transition-colors text-gray-900"
                                 >
                                     <X className="w-6 h-6" />
                                 </button>
@@ -432,12 +472,12 @@ export default function MovieDetail() {
                                     <button
                                         key={file.id}
                                         onClick={() => playVideo(file)}
-                                        className="w-full text-left p-4 bg-neutral-700 hover:bg-neutral-600 rounded-lg transition-colors flex items-center gap-3"
+                                        className="w-full text-left p-4 bg-white/30 hover:bg-white/50 rounded-lg transition-colors flex items-center gap-3"
                                     >
-                                        <Play className="w-5 h-5 text-white" />
+                                        <Play className="w-5 h-5 text-gray-900" />
                                         <div className="flex-1">
-                                            <p className="font-medium">{file.name}</p>
-                                            <p className="text-sm text-gray-400">{getSourceName(file.sourceId)} - {file.filePath}</p>
+                                            <p className="font-medium text-gray-900">{file.name}</p>
+                                            <p className="text-sm text-gray-700">{getSourceName(file.sourceId)} - {file.filePath}</p>
                                         </div>
                                     </button>
                                 ))}

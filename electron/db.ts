@@ -27,8 +27,6 @@ export interface Movie {
     runtime?: number
     voteAverage?: number
     popularity?: number
-    imdbRating?: number
-    imdbVotes?: number
     tagline?: string
     status?: string
     cast?: { name: string, character: string, profilePath: string }[]
@@ -68,8 +66,6 @@ export interface TVShow {
     genres?: string[]
     voteAverage?: number
     popularity?: number
-    imdbRating?: number
-    imdbVotes?: number
     status?: string
     cast?: { name: string, character: string, profilePath: string }[]
     createdBy?: { name: string, profilePath: string }[]
@@ -124,8 +120,6 @@ export const getDb = (): Database.Database => {
             runtime INTEGER,
             voteAverage REAL,
             popularity REAL,
-            imdbRating REAL,
-            imdbVotes INTEGER,
             tagline TEXT,
             status TEXT,
             cast TEXT, -- JSON
@@ -145,8 +139,6 @@ export const getDb = (): Database.Database => {
             genres TEXT, -- JSON
             voteAverage REAL,
             popularity REAL,
-            imdbRating REAL,
-            imdbVotes INTEGER,
             status TEXT,
             cast TEXT, -- JSON
             createdBy TEXT, -- JSON
@@ -282,11 +274,11 @@ export const saveMovie = (movie: Movie) => {
     const insert = db.prepare(`
         INSERT OR REPLACE INTO movies (
             id, title, posterPath, backdropPath, logoPath, overview, releaseDate, sourceId,
-            genres, runtime, voteAverage, popularity, imdbRating, imdbVotes, tagline, status,
+            genres, runtime, voteAverage, popularity, tagline, status,
             cast, director, externalIds
         ) VALUES (
             @id, @title, @posterPath, @backdropPath, @logoPath, @overview, @releaseDate, @sourceId,
-            @genres, @runtime, @voteAverage, @popularity, @imdbRating, @imdbVotes, @tagline, @status,
+            @genres, @runtime, @voteAverage, @popularity, @tagline, @status,
             @cast, @director, @externalIds
         )
     `)
@@ -310,8 +302,6 @@ export const saveMovie = (movie: Movie) => {
             runtime: movie.runtime || null,
             voteAverage: movie.voteAverage || null,
             popularity: movie.popularity || null,
-            imdbRating: movie.imdbRating || null,
-            imdbVotes: movie.imdbVotes || null,
             tagline: movie.tagline || null,
             status: movie.status || null,
             cast: JSON.stringify(movie.cast || []),
@@ -403,10 +393,10 @@ export const saveTVShow = (show: TVShow) => {
     const insertShow = db.prepare(`
         INSERT OR REPLACE INTO tv_shows (
             id, name, posterPath, backdropPath, logoPath, overview, firstAirDate, sourceId,
-            genres, voteAverage, popularity, imdbRating, imdbVotes, status, cast, createdBy, externalIds
+            genres, voteAverage, popularity, status, cast, createdBy, externalIds
         ) VALUES (
             @id, @name, @posterPath, @backdropPath, @logoPath, @overview, @firstAirDate, @sourceId,
-            @genres, @voteAverage, @popularity, @imdbRating, @imdbVotes, @status, @cast, @createdBy, @externalIds
+            @genres, @voteAverage, @popularity, @status, @cast, @createdBy, @externalIds
         )
     `)
 
@@ -444,8 +434,6 @@ export const saveTVShow = (show: TVShow) => {
             genres: JSON.stringify(show.genres || []),
             voteAverage: show.voteAverage || null,
             popularity: show.popularity || null,
-            imdbRating: show.imdbRating || null,
-            imdbVotes: show.imdbVotes || null,
             status: show.status || null,
             cast: JSON.stringify(show.cast || []),
             createdBy: JSON.stringify(show.createdBy || []),
@@ -580,7 +568,6 @@ export const deleteEmptyMovies = () => {
 export const deleteEmptyTVShows = () => {
     const db = getDb()
     
-    // Delete duplicate episodes (keep the one with smallest ID)
     const duplicatesResult = db.prepare(`
         DELETE FROM episodes 
         WHERE id NOT IN (
@@ -593,22 +580,17 @@ export const deleteEmptyTVShows = () => {
         console.log(`Deleted ${duplicatesResult.changes} duplicate episodes`)
     }
 
-    // Delete episodes with no video files
     const episodesResult = db.prepare('DELETE FROM episodes WHERE id NOT IN (SELECT DISTINCT episodeId FROM video_files WHERE episodeId IS NOT NULL)').run()
     console.log(`Deleted ${episodesResult.changes} empty episodes`)
 
-    // Delete seasons with no episodes
     const seasonsResult = db.prepare('DELETE FROM seasons WHERE (tvShowId, seasonNumber) NOT IN (SELECT tvShowId, seasonNumber FROM episodes)').run()
     console.log(`Deleted ${seasonsResult.changes} empty seasons`)
 
-    // Delete shows with no seasons
     const showsResult = db.prepare('DELETE FROM tv_shows WHERE id NOT IN (SELECT DISTINCT tvShowId FROM seasons)').run()
     console.log(`Deleted ${showsResult.changes} empty TV shows`)
 
     return episodesResult.changes + seasonsResult.changes + showsResult.changes + duplicatesResult.changes
 }
-
-// Favorites
 
 export const getFavorites = (): FavoriteItem[] => {
     const db = getDb()
@@ -634,11 +616,9 @@ export const isFavorite = (mediaId: number, mediaType: string): boolean => {
     return !!result
 }
 
-// Sync posters for favorites and history after full rescan
 export const syncFavoritesPosters = () => {
     const db = getDb()
 
-    // Update movie favorites
     db.prepare(`
         UPDATE favorites SET 
             posterPath = (SELECT posterPath FROM movies WHERE movies.id = favorites.mediaId),
@@ -646,7 +626,6 @@ export const syncFavoritesPosters = () => {
         WHERE mediaType = 'movie' AND EXISTS (SELECT 1 FROM movies WHERE movies.id = favorites.mediaId)
     `).run()
 
-    // Update TV show favorites
     db.prepare(`
         UPDATE favorites SET 
             posterPath = (SELECT posterPath FROM tv_shows WHERE tv_shows.id = favorites.mediaId),
@@ -660,7 +639,6 @@ export const syncFavoritesPosters = () => {
 export const syncHistoryPosters = () => {
     const db = getDb()
 
-    // Update movie history
     db.prepare(`
         UPDATE history SET 
             posterPath = (SELECT posterPath FROM movies WHERE movies.id = history.mediaId),
@@ -668,7 +646,6 @@ export const syncHistoryPosters = () => {
         WHERE mediaType = 'movie' AND EXISTS (SELECT 1 FROM movies WHERE movies.id = history.mediaId)
     `).run()
 
-    // Update TV show history
     db.prepare(`
         UPDATE history SET 
             posterPath = (SELECT posterPath FROM tv_shows WHERE tv_shows.id = history.mediaId),

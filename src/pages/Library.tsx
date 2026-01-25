@@ -19,6 +19,9 @@ export default function LibraryPage() {
     const [sortBy, setSortBy] = useState<SortOption>(() => {
         return (localStorage.getItem('library_sort_by') as SortOption) || 'name-asc'
     })
+    const [favoritesSortBy, setFavoritesSortBy] = useState<SortOption>(() => {
+        return (localStorage.getItem('library_favorites_sort_by') as SortOption) || 'added-desc'
+    })
     const [activeTab, setActiveTab] = useState<'all' | 'movies' | 'tv' | 'favorites' | 'history'>(() => {
         return (sessionStorage.getItem('library_active_tab') as 'all' | 'movies' | 'tv' | 'favorites' | 'history') || 'all'
     })
@@ -51,7 +54,10 @@ export default function LibraryPage() {
         localStorage.setItem('library_sort_by', sortBy)
     }, [sortBy])
 
-    // Ensure arrow keys work for scrolling after navigation
+    useEffect(() => {
+        localStorage.setItem('library_favorites_sort_by', favoritesSortBy)
+    }, [favoritesSortBy])
+
     useEffect(() => {
         if (document.activeElement instanceof HTMLElement) {
             document.activeElement.blur()
@@ -62,21 +68,27 @@ export default function LibraryPage() {
         setLoading(true)
         try {
             const moviesData = await window.electron.ipcRenderer.invoke('get-movies')
-            setMovies(moviesData)
+            setMovies(moviesData || [])
 
             const tvData = await window.electron.ipcRenderer.invoke('get-tv-shows')
-            setTvShows(tvData)
+            setTvShows(tvData || [])
 
             const unscannedData = await window.electron.ipcRenderer.invoke('get-unscanned-files')
-            setUnscannedFiles(unscannedData)
+            setUnscannedFiles(unscannedData || [])
 
             const historyData = await window.electron.ipcRenderer.invoke('get-history')
-            setHistory(historyData)
+            setHistory(historyData || [])
 
             const favoritesData = await window.electron.ipcRenderer.invoke('get-favorites')
-            setFavorites(favoritesData)
+            setFavorites(favoritesData || [])
         } catch (error) {
-            console.error(error)
+            console.error('Failed to fetch library data:', error)
+            // Set empty arrays to prevent rendering errors
+            setMovies([])
+            setTvShows([])
+            setUnscannedFiles([])
+            setHistory([])
+            setFavorites([])
         } finally {
             setLoading(false)
         }
@@ -102,6 +114,15 @@ export default function LibraryPage() {
         }
     }, [])
 
+    // Refresh history when switching to history tab
+    useEffect(() => {
+        if (activeTab === 'history') {
+            window.electron.ipcRenderer.invoke('get-history').then((historyData: any) => {
+                setHistory(historyData || [])
+            })
+        }
+    }, [activeTab])
+
     useEffect(() => {
         const container = scrollRef.current
         if (!container) return
@@ -117,59 +138,58 @@ export default function LibraryPage() {
     }, [loading])
 
     const filteredMovies = searchQuery
-        ? movies.filter(movie => movie.title.toLowerCase().includes(searchQuery.toLowerCase()))
+        ? movies.filter(movie => movie?.title?.toLowerCase().includes(searchQuery.toLowerCase()))
         : movies
 
     const filteredTvShows = searchQuery
-        ? tvShows.filter(show => show.name.toLowerCase().includes(searchQuery.toLowerCase()))
+        ? tvShows.filter(show => show?.name?.toLowerCase().includes(searchQuery.toLowerCase()))
         : tvShows
 
     const filteredHistory = searchQuery
-        ? history.filter(item => item.title.toLowerCase().includes(searchQuery.toLowerCase()))
+        ? history.filter(item => item?.title?.toLowerCase().includes(searchQuery.toLowerCase()))
         : history
 
     const sortedMovies = [...filteredMovies].sort((a, b) => {
+        if (!a || !b) return 0
         switch (sortBy) {
             case 'name-asc':
-                return a.title.localeCompare(b.title)
+                return (a.title || '').localeCompare(b.title || '')
             case 'name-desc':
-                return b.title.localeCompare(a.title)
+                return (b.title || '').localeCompare(a.title || '')
             case 'date-desc':
                 return (b.releaseDate || '').localeCompare(a.releaseDate || '')
             case 'date-asc':
                 return (a.releaseDate || '').localeCompare(b.releaseDate || '')
             case 'rating-desc':
-                return (b.imdbVotes || 0) - (a.imdbVotes || 0)
-            case 'imdb-rating-desc':
-                return (b.imdbRating || 0) - (a.imdbRating || 0)
+                return (b.popularity || 0) - (a.popularity || 0)
             default:
                 return 0
         }
     })
 
     const sortedTvShows = [...filteredTvShows].sort((a, b) => {
+        if (!a || !b) return 0
         switch (sortBy) {
             case 'name-asc':
-                return a.name.localeCompare(b.name)
+                return (a.name || '').localeCompare(b.name || '')
             case 'name-desc':
-                return b.name.localeCompare(a.name)
+                return (b.name || '').localeCompare(a.name || '')
             case 'date-desc':
                 return (b.firstAirDate || '').localeCompare(a.firstAirDate || '')
             case 'date-asc':
                 return (a.firstAirDate || '').localeCompare(b.firstAirDate || '')
             case 'rating-desc':
-                return (b.imdbVotes || 0) - (a.imdbVotes || 0)
-            case 'imdb-rating-desc':
-                return (b.imdbRating || 0) - (a.imdbRating || 0)
+                return (b.popularity || 0) - (a.popularity || 0)
             default:
                 return 0
         }
     })
 
     const combinedItems: CombinedItem[] = [
-        ...sortedMovies.map(m => ({ ...m, type: 'movie' as const, sortKey: m.title, sortDate: m.releaseDate })),
-        ...sortedTvShows.map(s => ({ ...s, type: 'tv' as const, sortKey: s.name, sortDate: s.firstAirDate }))
+        ...sortedMovies.filter(m => m).map(m => ({ ...m, type: 'movie' as const, sortKey: m.title || '', sortDate: m.releaseDate || '', popularity: m.popularity })),
+        ...sortedTvShows.filter(s => s).map(s => ({ ...s, type: 'tv' as const, sortKey: s.name || '', sortDate: s.firstAirDate || '', popularity: s.popularity }))
     ].sort((a, b) => {
+        if (!a || !b) return 0
         switch (sortBy) {
             case 'name-asc':
                 return a.sortKey.localeCompare(b.sortKey)
@@ -180,9 +200,10 @@ export default function LibraryPage() {
             case 'date-asc':
                 return (a.sortDate || '').localeCompare(b.sortDate || '')
             case 'rating-desc':
-                return (b.imdbVotes || 0) - (a.imdbVotes || 0)
-            case 'imdb-rating-desc':
-                return (b.imdbRating || 0) - (a.imdbRating || 0)
+                // Apply weight to balance movie vs TV show popularity
+                const aPopularity = (a.popularity || 0) * (a.type === 'movie' ? 3 : 1)
+                const bPopularity = (b.popularity || 0) * (b.type === 'movie' ? 3 : 1)
+                return bPopularity - aPopularity
             default:
                 return 0
         }
@@ -206,9 +227,10 @@ export default function LibraryPage() {
 
                         <div className="order-2 md:order-3">
                             <LibraryActions
-                                sortBy={sortBy}
-                                onSortChange={setSortBy}
+                                sortBy={activeTab === 'favorites' ? favoritesSortBy : sortBy}
+                                onSortChange={activeTab === 'favorites' ? setFavoritesSortBy : setSortBy}
                                 onSearchToggle={() => setSearchExpanded(!searchExpanded)}
+                                activeTab={activeTab}
                             />
                         </div>
                     </div>
@@ -230,6 +252,7 @@ export default function LibraryPage() {
                                 <MediaGrid
                                     items={combinedItems}
                                     showTitlesOnPosters={showTitlesOnPosters}
+                                    onRematch={fetchData}
                                     emptyMessage={
                                         searchQuery ? (
                                             <>
@@ -253,6 +276,7 @@ export default function LibraryPage() {
                                 items={sortedMovies}
                                 showTitlesOnPosters={showTitlesOnPosters}
                                 type="movie"
+                                onRematch={fetchData}
                                 emptyMessage={
                                     searchQuery ? (
                                         <>
@@ -274,6 +298,7 @@ export default function LibraryPage() {
                                 items={sortedTvShows}
                                 showTitlesOnPosters={showTitlesOnPosters}
                                 type="tv"
+                                onRematch={fetchData}
                                 emptyMessage={
                                     searchQuery ? (
                                         <>
@@ -292,20 +317,62 @@ export default function LibraryPage() {
 
                         {activeTab === 'favorites' && (
                             <MediaGrid
-                                items={favorites
-                                    .filter(f => {
-                                        if (!searchQuery) return true
-                                        return f.title.toLowerCase().includes(searchQuery.toLowerCase())
+                                items={(() => {
+                                    // Get full movie/TV show data for favorites
+                                    const favoritesWithData = favorites
+                                        .filter(f => {
+                                            if (!searchQuery) return true
+                                            return f.title?.toLowerCase().includes(searchQuery.toLowerCase())
+                                        })
+                                        .map(f => {
+                                            if (f.mediaType === 'movie') {
+                                                const movie = movies.find(m => m.id === f.mediaId)
+                                                return movie ? {
+                                                    ...movie,
+                                                    type: 'movie' as const,
+                                                    sortKey: movie.title || '',
+                                                    sortDate: movie.releaseDate || '',
+                                                    addedTimestamp: f.timestamp
+                                                } : null
+                                            } else {
+                                                const show = tvShows.find(s => s.id === f.mediaId)
+                                                return show ? {
+                                                    ...show,
+                                                    type: 'tv' as const,
+                                                    sortKey: show.name || '',
+                                                    sortDate: show.firstAirDate || '',
+                                                    addedTimestamp: f.timestamp,
+                                                    title: show.name
+                                                } : null
+                                            }
+                                        })
+                                        .filter(item => item !== null)
+
+                                    // Sort favorites using favoritesSortBy
+                                    return favoritesWithData.sort((a, b) => {
+                                        if (!a || !b) return 0
+                                        switch (favoritesSortBy) {
+                                            case 'name-asc':
+                                                return a.sortKey.localeCompare(b.sortKey)
+                                            case 'name-desc':
+                                                return b.sortKey.localeCompare(a.sortKey)
+                                            case 'date-desc':
+                                                return (b.sortDate || '').localeCompare(a.sortDate || '')
+                                            case 'date-asc':
+                                                return (a.sortDate || '').localeCompare(b.sortDate || '')
+                                            case 'rating-desc':
+                                                const aPopularity = (a.popularity || 0) * (a.type === 'movie' ? 3 : 1)
+                                                const bPopularity = (b.popularity || 0) * (b.type === 'movie' ? 3 : 1)
+                                                return bPopularity - aPopularity
+                                            case 'added-desc':
+                                                return (b.addedTimestamp || 0) - (a.addedTimestamp || 0)
+                                            default:
+                                                return 0
+                                        }
                                     })
-                                    .map(f => ({
-                                        id: f.mediaId,
-                                        title: f.title,
-                                        name: f.title,
-                                        posterPath: f.posterPath,
-                                        type: f.mediaType
-                                    })) as any[]
-                                }
+                                })()}
                                 showTitlesOnPosters={showTitlesOnPosters}
+                                onRematch={fetchData}
                                 emptyMessage={
                                     searchQuery ? (
                                         <>

@@ -10,6 +10,7 @@ interface SearchInputProps {
 
 export const SearchInput: React.FC<SearchInputProps> = ({ value, onChange, onClose, visible }) => {
     const inputRef = useRef<HTMLInputElement>(null)
+    const clearButtonRef = useRef<HTMLButtonElement>(null)
 
     useEffect(() => {
         if (visible && inputRef.current) {
@@ -33,9 +34,11 @@ export const SearchInput: React.FC<SearchInputProps> = ({ value, onChange, onClo
                         e.preventDefault()
                     }
                 }}
-                onBlur={() => {
+                onBlur={(e) => {
+                    if (clearButtonRef.current && clearButtonRef.current.contains(e.relatedTarget as Node)) {
+                        return
+                    }
                     if (!value) {
-                        // Small delay to allow clicking the close button or other elements
                         setTimeout(() => {
                             onClose()
                         }, 100)
@@ -46,7 +49,14 @@ export const SearchInput: React.FC<SearchInputProps> = ({ value, onChange, onClo
             />
             {value && (
                 <button
-                    onClick={() => onChange('')}
+                    ref={clearButtonRef}
+                    onMouseDown={(e) => {
+                        e.preventDefault()
+                    }}
+                    onClick={() => {
+                        onChange('')
+                        inputRef.current?.focus()
+                    }}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
                 >
                     <X className="w-5 h-5" />

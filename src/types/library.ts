@@ -5,8 +5,6 @@ export interface Movie {
     releaseDate: string
     voteAverage?: number
     popularity?: number
-    imdbVotes?: number
-    imdbRating?: number
 }
 
 export interface TVShow {
@@ -16,8 +14,6 @@ export interface TVShow {
     firstAirDate: string
     voteAverage?: number
     popularity?: number
-    imdbVotes?: number
-    imdbRating?: number
 }
 
 export interface UnscannedFile {

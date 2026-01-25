@@ -290,7 +290,7 @@ export default function SettingsPage() {
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => window.electron.ipcRenderer.invoke('open-external', 'https://www.themoviedb.org')}
-                            className="hover:opacity-80 transition-opacity"
+                            className="hover:brightness-125 transition-all"
                         >
                             <img 
                                 src={TMDBLogo} 

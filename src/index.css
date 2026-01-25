@@ -60,6 +60,20 @@ main::-webkit-scrollbar-track,
     background: #737373;
 }
 
+.episode-selector-scroll::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(8px);
+}
+
+.episode-selector-scroll::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+}
+
+.episode-selector-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.4);
+}
+
 .titlebar-drag-region {
     -webkit-app-region: drag;
     user-select: none;

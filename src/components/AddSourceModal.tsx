@@ -72,143 +72,148 @@ export default function AddSourceModal({ onClose, onAdd }: AddSourceModalProps) 
 
     return (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-            <div className="bg-neutral-900 border border-neutral-700 rounded-xl w-[600px] max-h-[80vh] flex flex-col">
-                <div className="p-4 border-b border-neutral-700 flex justify-between items-center">
-                    <h3 className="text-lg font-bold">Add Data Source</h3>
-                    <button onClick={onClose}><X className="w-5 h-5" /></button>
+            <div className="bg-white/50 backdrop-blur-md rounded-xl w-[600px] max-h-[80vh] flex flex-col">
+                <div className="p-4 border-b border-gray-900/10 flex justify-between items-center">
+                    <h3 className="text-lg font-bold text-gray-900">Add Data Source</h3>
+                    <button 
+                        onClick={onClose}
+                        className="p-2 hover:bg-black/10 rounded-full transition-colors text-gray-900"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
                 </div>
 
                 <div className="p-6 flex-1 overflow-auto">
                     {step === 1 ? (
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-1">Source Type</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Source Type</label>
                                 <div className="flex gap-4">
                                     <button
                                         onClick={() => setType('webdav')}
-                                        className={`flex-1 py-2 rounded-lg border ${type === 'webdav' ? 'bg-white border-white text-black' : 'border-neutral-700 hover:bg-neutral-800'}`}
+                                        className={`flex-1 py-2 rounded-lg border ${type === 'webdav' ? 'bg-gray-900 border-gray-900 text-white' : 'border-gray-900/20 hover:bg-black/10 text-gray-900'}`}
                                     >
                                         WebDAV
                                     </button>
                                     <button
                                         onClick={() => setType('local')}
-                                        className={`flex-1 py-2 rounded-lg border ${type === 'local' ? 'bg-white border-white text-black' : 'border-neutral-700 hover:bg-neutral-800'}`}
+                                        className={`flex-1 py-2 rounded-lg border ${type === 'local' ? 'bg-gray-900 border-gray-900 text-white' : 'border-gray-900/20 hover:bg-black/10 text-gray-900'}`}
                                     >
                                         Local Folder
                                     </button>
                                     <button
                                         onClick={() => setType('smb')}
-                                        className={`flex-1 py-2 rounded-lg border ${type === 'smb' ? 'bg-white border-white text-black' : 'border-neutral-700 hover:bg-neutral-800'}`}
+                                        className={`flex-1 py-2 rounded-lg border ${type === 'smb' ? 'bg-gray-900 border-gray-900 text-white' : 'border-gray-900/20 hover:bg-black/10 text-gray-900'}`}
                                     >
-                                        SMB/CIFS
+                                        SMB
                                     </button>
                                 </div>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-1">Source Name</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Source Name</label>
                                 <input
                                     type="text"
                                     value={name}
                                     onChange={e => setName(e.target.value)}
                                     placeholder={type === 'webdav' ? "My WebDAV" : type === 'smb' ? "My SMB Share" : "My Local Folder"}
                                     spellCheck={false}
-                                    className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 outline-none focus:border-white transition-colors"
+                                    className="w-full bg-white/30 border border-gray-900/20 rounded-lg px-4 py-2 outline-none focus:border-gray-900 transition-colors text-gray-900 placeholder:text-gray-600"
                                 />
                             </div>
 
                             {type === 'webdav' ? (
                                 <>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-1">WebDAV URL</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">WebDAV URL</label>
                                         <input
                                             type="text"
                                             value={config.url || ''}
                                             onChange={e => setConfig({ ...config, url: e.target.value })}
                                             placeholder="https://example.com/webdav"
                                             spellCheck={false}
-                                            className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 outline-none focus:border-white transition-colors"
+                                            className="w-full bg-white/30 border border-gray-900/20 rounded-lg px-4 py-2 outline-none focus:border-gray-900 transition-colors text-gray-900 placeholder:text-gray-600"
                                         />
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-1">Username (Optional)</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Username (Optional)</label>
                                         <input
                                             type="text"
                                             value={config.username || ''}
                                             onChange={e => setConfig({ ...config, username: e.target.value })}
                                             placeholder="username"
                                             spellCheck={false}
-                                            className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 outline-none focus:border-white transition-colors"
+                                            className="w-full bg-white/30 border border-gray-900/20 rounded-lg px-4 py-2 outline-none focus:border-gray-900 transition-colors text-gray-900 placeholder:text-gray-600"
                                         />
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-1">Password (Optional)</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Password (Optional)</label>
                                         <input
                                             type="password"
                                             value={config.password || ''}
                                             onChange={e => setConfig({ ...config, password: e.target.value })}
                                             placeholder="password"
                                             spellCheck={false}
-                                            className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 outline-none focus:border-white transition-colors"
+                                            className="w-full bg-white/30 border border-gray-900/20 rounded-lg px-4 py-2 outline-none focus:border-gray-900 transition-colors text-gray-900 placeholder:text-gray-600"
                                         />
                                     </div>
                                 </>
                             ) : type === 'smb' ? (
                                 <>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-1">SMB Share Path</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">SMB Share Path</label>
                                         <input
                                             type="text"
                                             value={config.share || ''}
                                             onChange={e => setConfig({ ...config, share: e.target.value })}
                                             placeholder="//192.168.1.100/movies"
                                             spellCheck={false}
-                                            className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 outline-none focus:border-white transition-colors"
+                                            className="w-full bg-white/30 border border-gray-900/20 rounded-lg px-4 py-2 outline-none focus:border-gray-900 transition-colors text-gray-900 placeholder:text-gray-600"
                                         />
-                                        <p className="text-xs text-gray-500 mt-1">Format: //server/share</p>
+                                        <p className="text-xs text-gray-700 mt-1">Format: //server/share</p>
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-1">Username</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
                                         <input
                                             type="text"
                                             value={config.username || ''}
                                             onChange={e => setConfig({ ...config, username: e.target.value })}
                                             placeholder="username"
                                             spellCheck={false}
-                                            className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 outline-none focus:border-white transition-colors"
+                                            className="w-full bg-white/30 border border-gray-900/20 rounded-lg px-4 py-2 outline-none focus:border-gray-900 transition-colors text-gray-900 placeholder:text-gray-600"
                                         />
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-1">Password</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
                                         <input
                                             type="password"
                                             value={config.password || ''}
                                             onChange={e => setConfig({ ...config, password: e.target.value })}
                                             placeholder="password"
                                             spellCheck={false}
-                                            className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 outline-none focus:border-white transition-colors"
+                                            className="w-full bg-white/30 border border-gray-900/20 rounded-lg px-4 py-2 outline-none focus:border-gray-900 transition-colors text-gray-900 placeholder:text-gray-600"
                                         />
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-1">Domain (Optional)</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Domain (Optional)</label>
                                         <input
                                             type="text"
                                             value={config.domain || ''}
                                             onChange={e => setConfig({ ...config, domain: e.target.value })}
                                             placeholder="WORKGROUP"
                                             spellCheck={false}
-                                            className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 outline-none focus:border-white transition-colors"
+                                            className="w-full bg-white/30 border border-gray-900/20 rounded-lg px-4 py-2 outline-none focus:border-gray-900 transition-colors text-gray-900 placeholder:text-gray-600"
                                         />
                                     </div>
                                 </>
                             ) : (
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-400 mb-1">Folder Path</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Folder Path</label>
                                     <div className="flex gap-2">
                                         <input
                                             type="text"
@@ -216,7 +221,7 @@ export default function AddSourceModal({ onClose, onAdd }: AddSourceModalProps) 
                                             onChange={e => setConfig({ ...config, path: e.target.value })}
                                             placeholder="D:\Movies"
                                             spellCheck={false}
-                                            className="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 outline-none focus:border-white transition-colors"
+                                            className="flex-1 bg-white/30 border border-gray-900/20 rounded-lg px-4 py-2 outline-none focus:border-gray-900 transition-colors text-gray-900 placeholder:text-gray-600"
                                         />
                                         <button
                                             onClick={async () => {
@@ -225,20 +230,20 @@ export default function AddSourceModal({ onClose, onAdd }: AddSourceModalProps) 
                                                     setConfig({ ...config, path })
                                                 }
                                             }}
-                                            className="bg-neutral-700 hover:bg-neutral-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                                            className="bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded-lg font-medium transition-colors"
                                         >
                                             Browse
                                         </button>
                                     </div>
-                                    <p className="text-xs text-gray-500 mt-1">Absolute path to the media folder</p>
+                                    <p className="text-xs text-gray-700 mt-1">Absolute path to the media folder</p>
                                 </div>
                             )}
 
-                            {error && <p className="text-red-400 text-sm">{error}</p>}
+                            {error && <p className="text-red-600 text-sm">{error}</p>}
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            <p className="text-sm text-gray-400">Select folders to scan:</p>
+                            <p className="text-sm text-gray-700">Select folders to scan:</p>
                             <FileBrowser
                                 config={config}
                                 type={type}
@@ -249,12 +254,12 @@ export default function AddSourceModal({ onClose, onAdd }: AddSourceModalProps) 
                     )}
                 </div>
 
-                <div className="p-4 border-t border-neutral-700 flex justify-end gap-3">
+                <div className="p-4 border-t border-gray-900/10 flex justify-end gap-3">
                     {step === 1 ? (
                         <button
                             onClick={handleTest}
                             disabled={testing || (type === 'webdav' ? !config.url : (type === 'smb' ? !config.share : !config.path))}
-                            className="bg-white hover:bg-gray-200 text-black px-4 py-2 rounded-lg font-medium flex items-center gap-2 disabled:opacity-50 transition-colors"
+                            className="bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 disabled:opacity-50 transition-colors"
                         >
                             {testing && <Loader2 className="w-4 h-4 animate-spin" />}
                             Next
@@ -262,7 +267,7 @@ export default function AddSourceModal({ onClose, onAdd }: AddSourceModalProps) 
                     ) : (
                         <button
                             onClick={handleFinish}
-                            className="bg-white hover:bg-gray-200 text-black px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
+                            className="bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
                         >
                             <Check className="w-4 h-4" />
                             Finish

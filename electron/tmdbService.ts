@@ -67,7 +67,7 @@ class RateLimiter {
 
 const limiter = new RateLimiter()
 
-export const searchMovie = async (query: string, year?: number) => {
+export const searchMovie = async (query: string, year?: number, page: number = 1) => {
     const client = getTMDBClient()
     if (!client) throw new Error('TMDB API Key not configured')
 
@@ -75,13 +75,19 @@ export const searchMovie = async (query: string, year?: number) => {
         const response = await limiter.add(() => client.get('/search/movie', {
             params: {
                 query,
-                year: year?.toString()
+                year: year?.toString(),
+                page: page.toString()
             }
         }))
-        return response.data.results
+        return {
+            results: response.data.results,
+            page: response.data.page,
+            totalPages: response.data.total_pages,
+            totalResults: response.data.total_results
+        }
     } catch (error) {
         console.error('TMDB Search Error:', error)
-        return []
+        return { results: [], page: 1, totalPages: 1, totalResults: 0 }
     }
 }
 
@@ -103,7 +109,7 @@ export const getMovieDetails = async (id: number) => {
     }
 }
 
-export const searchTVShow = async (query: string, year?: number) => {
+export const searchTVShow = async (query: string, year?: number, page: number = 1) => {
     const client = getTMDBClient()
     if (!client) throw new Error('TMDB API Key not configured')
 
@@ -111,13 +117,19 @@ export const searchTVShow = async (query: string, year?: number) => {
         const response = await limiter.add(() => client.get('/search/tv', {
             params: {
                 query,
-                first_air_date_year: year?.toString()
+                first_air_date_year: year?.toString(),
+                page: page.toString()
             }
         }))
-        return response.data.results
+        return {
+            results: response.data.results,
+            page: response.data.page,
+            totalPages: response.data.total_pages,
+            totalResults: response.data.total_results
+        }
     } catch (error) {
         console.error('TMDB TV Search Error:', error)
-        return []
+        return { results: [], page: 1, totalPages: 1, totalResults: 0 }
     }
 }
 

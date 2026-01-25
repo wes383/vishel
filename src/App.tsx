@@ -1,5 +1,6 @@
 import { HashRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
+import ErrorBoundary from './components/ErrorBoundary'
 import SettingsPage from './pages/Settings'
 import LibraryPage from './pages/Library'
 import MovieDetail from './pages/MovieDetail'
@@ -42,9 +43,11 @@ function AppContent() {
 
 function App() {
   return (
-    <Router>
-      <AppContent />
-    </Router>
+    <ErrorBoundary>
+      <Router>
+        <AppContent />
+      </Router>
+    </ErrorBoundary>
   )
 }
 

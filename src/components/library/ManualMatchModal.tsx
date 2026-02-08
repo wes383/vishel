@@ -112,7 +112,7 @@ export const ManualMatchModal: React.FC<ManualMatchModalProps> = ({ file, onClos
                             }}
                             className={`px-4 py-2 rounded-xl font-medium transition-colors ${
                                 searchType === 'movie'
-                                    ? 'bg-gray-900 text-white'
+                                    ? 'bg-neutral-800 text-white'
                                     : 'bg-black/10 text-gray-900 hover:bg-black/20'
                             }`}
                         >
@@ -126,7 +126,7 @@ export const ManualMatchModal: React.FC<ManualMatchModalProps> = ({ file, onClos
                             }}
                             className={`px-4 py-2 rounded-xl font-medium transition-colors ${
                                 searchType === 'tv'
-                                    ? 'bg-gray-900 text-white'
+                                    ? 'bg-neutral-800 text-white'
                                     : 'bg-black/10 text-gray-900 hover:bg-black/20'
                             }`}
                         >
@@ -150,7 +150,7 @@ export const ManualMatchModal: React.FC<ManualMatchModalProps> = ({ file, onClos
                         <button
                             onClick={handleSearch}
                             disabled={searching || !searchQuery.trim()}
-                            className="bg-gray-900 hover:bg-gray-800 text-white px-6 py-3 rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            className="bg-neutral-800 hover:bg-neutral-700 text-white px-6 py-3 rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                         >
                             {searching ? (
                                 <>
@@ -202,9 +202,9 @@ export const ManualMatchModal: React.FC<ManualMatchModalProps> = ({ file, onClos
                                         )}
                                         <div className="flex-1 min-w-0">
                                             <h3 className="font-bold text-lg truncate text-gray-900">
-                                                {title} {year && <span className="text-gray-600">({year})</span>}
+                                                {title} {year && <span className="text-gray-900">({year})</span>}
                                             </h3>
-                                            <p className="text-sm text-gray-600 line-clamp-2 mt-1">
+                                            <p className="text-sm text-gray-900 line-clamp-2 mt-1">
                                                 {result.overview || 'No description available'}
                                             </p>
                                         </div>
@@ -263,7 +263,7 @@ export const ManualMatchModal: React.FC<ManualMatchModalProps> = ({ file, onClos
                     <button
                         onClick={handleConfirm}
                         disabled={!selectedResult}
-                        className="px-6 py-2 rounded-xl font-medium bg-gray-900 text-white hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-6 py-2 rounded-xl font-medium bg-neutral-800 text-white hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Confirm Match
                     </button>

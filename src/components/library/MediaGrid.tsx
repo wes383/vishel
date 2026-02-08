@@ -11,9 +11,11 @@ interface MediaGridProps {
     emptyMessage?: React.ReactNode
     type?: 'combined' | 'movie' | 'tv'
     onRematch?: () => void
+    isFavoritesView?: boolean
+    onFavoritesChange?: () => void
 }
 
-export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters, emptyMessage, type = 'combined', onRematch }) => {
+export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters, emptyMessage, type = 'combined', onRematch, isFavoritesView = false, onFavoritesChange }) => {
     const navigate = useNavigate()
     const [contextMenu, setContextMenu] = useState<{ x: number, y: number, item: any } | null>(null)
     const [rematchItem, setRematchItem] = useState<{ id: number, type: 'movie' | 'tv', title: string, videoFiles: any[] } | null>(null)
@@ -193,9 +195,6 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters
         const title = getItemTitle(item)
         const key = `${itemType}-${item.id}`
         
-        const scrollContainer = document.querySelector('.library-scroll-container') as HTMLElement
-        const scrollPosition = scrollContainer ? scrollContainer.scrollTop : window.scrollY
-        
         try {
             const isFavorited = favoriteStatus[key]
             
@@ -205,6 +204,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters
                     mediaType: itemType
                 })
                 setFavoriteStatus(prev => ({ ...prev, [key]: false }))
+                showSuccess(`Removed "${title}" from favorites`, 1500)
             } else {
                 await window.electron.ipcRenderer.invoke('add-favorite', {
                     mediaId: item.id,
@@ -213,28 +213,32 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters
                     posterPath: item.posterPath || ''
                 })
                 setFavoriteStatus(prev => ({ ...prev, [key]: true }))
+                showSuccess(`Added "${title}" to favorites`, 1500)
             }
             
             setContextMenu(null)
-            onRematch?.()
-            requestAnimationFrame(() => {
-                setTimeout(() => {
-                    if (scrollContainer) {
-                        scrollContainer.scrollTop = scrollPosition
-                    } else {
-                        window.scrollTo(0, scrollPosition)
-                    }
+            
+            onFavoritesChange?.()
+            
+            if (isFavoritesView) {
+                const scrollContainer = document.querySelector('.library-scroll-container') as HTMLElement
+                const scrollPosition = scrollContainer ? scrollContainer.scrollTop : window.scrollY
+                
+                onRematch?.()
+                
+                requestAnimationFrame(() => {
                     setTimeout(() => {
                         if (scrollContainer) {
                             scrollContainer.scrollTop = scrollPosition
                         } else {
                             window.scrollTo(0, scrollPosition)
                         }
-                    }, 200)
-                }, 50)
-            })
+                    }, 50)
+                })
+            }
         } catch (error) {
             console.error('Failed to toggle favorite:', error)
+            showError('Failed to update favorites')
         }
     }
 
@@ -406,14 +410,14 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters
         <>
             {/* Error Message */}
             {error && (
-                <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
+                <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50 bg-red-500/50 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-3 ring-[0.8px] ring-white/30">
                     <span>{error}</span>
                 </div>
             )}
             
             {/* Success Message */}
             {successMessage && (
-                <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
+                <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50 bg-green-500/50 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-3 ring-[0.8px] ring-white/30">
                     <span>{successMessage}</span>
                 </div>
             )}

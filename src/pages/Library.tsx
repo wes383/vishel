@@ -94,6 +94,15 @@ export default function LibraryPage() {
         }
     }
 
+    const fetchFavorites = async () => {
+        try {
+            const favoritesData = await window.electron.ipcRenderer.invoke('get-favorites')
+            setFavorites(favoritesData || [])
+        } catch (error) {
+            console.error('Failed to fetch favorites:', error)
+        }
+    }
+
     useEffect(() => {
         fetchData()
 
@@ -253,6 +262,7 @@ export default function LibraryPage() {
                                     items={combinedItems}
                                     showTitlesOnPosters={showTitlesOnPosters}
                                     onRematch={fetchData}
+                                    onFavoritesChange={fetchFavorites}
                                     emptyMessage={
                                         searchQuery ? (
                                             <>
@@ -277,6 +287,7 @@ export default function LibraryPage() {
                                 showTitlesOnPosters={showTitlesOnPosters}
                                 type="movie"
                                 onRematch={fetchData}
+                                onFavoritesChange={fetchFavorites}
                                 emptyMessage={
                                     searchQuery ? (
                                         <>
@@ -299,6 +310,7 @@ export default function LibraryPage() {
                                 showTitlesOnPosters={showTitlesOnPosters}
                                 type="tv"
                                 onRematch={fetchData}
+                                onFavoritesChange={fetchFavorites}
                                 emptyMessage={
                                     searchQuery ? (
                                         <>
@@ -373,6 +385,8 @@ export default function LibraryPage() {
                                 })()}
                                 showTitlesOnPosters={showTitlesOnPosters}
                                 onRematch={fetchData}
+                                onFavoritesChange={fetchFavorites}
+                                isFavoritesView={true}
                                 emptyMessage={
                                     searchQuery ? (
                                         <>

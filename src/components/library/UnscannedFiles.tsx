@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { ChevronDown, Edit } from 'lucide-react'
+import { ChevronDown, Edit, Play, Loader2 } from 'lucide-react'
 import { UnscannedFile } from '../../types/library'
 import { ManualMatchModal } from './ManualMatchModal'
 
@@ -11,15 +11,23 @@ interface UnscannedFilesProps {
 export const UnscannedFiles: React.FC<UnscannedFilesProps> = ({ files, onRefresh }) => {
     const [expanded, setExpanded] = useState(false)
     const [selectedFile, setSelectedFile] = useState<UnscannedFile | null>(null)
+    const [playingId, setPlayingId] = useState<string | null>(null)
 
     if (files.length === 0) return null
 
-    const handlePlay = (file: UnscannedFile) => {
+    const handlePlay = async (file: UnscannedFile) => {
         if (file.webdavUrl) {
-            window.electron.ipcRenderer.invoke('play-video', {
-                url: file.webdavUrl,
-                title: file.name
-            })
+            setPlayingId(file.id)
+            try {
+                await window.electron.ipcRenderer.invoke('play-video', {
+                    url: file.webdavUrl,
+                    title: file.name
+                })
+            } catch (error) {
+                console.error('Failed to play video:', error)
+            } finally {
+                setPlayingId(null)
+            }
         }
     }
 
@@ -60,7 +68,7 @@ export const UnscannedFiles: React.FC<UnscannedFilesProps> = ({ files, onRefresh
                             key={file.id}
                             className="p-4 border-b border-neutral-700 last:border-0 flex items-center justify-between hover:bg-neutral-700/50 transition-colors group/item"
                         >
-                            <div className="overflow-hidden flex-1 cursor-pointer" onClick={() => handlePlay(file)}>
+                            <div className="overflow-hidden flex-1">
                                 <p className="font-medium text-white truncate">{file.name}</p>
                                 <p className="text-sm text-gray-500 truncate">
                                     {file.sourceName ? <span>{file.sourceName}</span> : null}
@@ -70,14 +78,25 @@ export const UnscannedFiles: React.FC<UnscannedFilesProps> = ({ files, onRefresh
                             </div>
                             <div className="flex items-center gap-2">
                                 <button
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        handlePlay(file)
+                                    }}
+                                    disabled={playingId === file.id}
+                                    className="p-2 hover:bg-neutral-600 rounded-full transition-colors opacity-0 group-hover/item:opacity-100 disabled:opacity-50"
+                                >
+                                    {playingId === file.id ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <Play className="w-4 h-4" />
+                                    )}
+                                </button>
+                                <button
                                     onClick={(e) => handleEditClick(e, file)}
                                     className="p-2 hover:bg-neutral-600 rounded-full transition-colors opacity-0 group-hover/item:opacity-100"
                                 >
                                     <Edit className="w-4 h-4" />
                                 </button>
-                                <div className="text-xs text-neutral-500 px-2 py-1 bg-neutral-900 rounded whitespace-nowrap">
-                                    Unidentified
-                                </div>
                             </div>
                         </div>
                     ))}

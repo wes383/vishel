@@ -230,7 +230,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({ items, onDelete, empty
         <>
             {/* Error Message */}
             {error && (
-                <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
+                <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50 bg-red-500/50 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-3 ring-[0.8px] ring-white/30">
                     <span>{error}</span>
                 </div>
             )}

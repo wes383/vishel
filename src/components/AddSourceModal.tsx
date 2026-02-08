@@ -91,19 +91,19 @@ export default function AddSourceModal({ onClose, onAdd }: AddSourceModalProps) 
                                 <div className="flex gap-4">
                                     <button
                                         onClick={() => setType('webdav')}
-                                        className={`flex-1 py-2 rounded-lg border ${type === 'webdav' ? 'bg-gray-900 border-gray-900 text-white' : 'border-gray-900/20 hover:bg-black/10 text-gray-900'}`}
+                                        className={`flex-1 py-2 rounded-lg border ${type === 'webdav' ? 'bg-neutral-800 border-neutral-800 text-white' : 'border-gray-900/20 hover:bg-black/10 text-gray-900'}`}
                                     >
                                         WebDAV
                                     </button>
                                     <button
                                         onClick={() => setType('local')}
-                                        className={`flex-1 py-2 rounded-lg border ${type === 'local' ? 'bg-gray-900 border-gray-900 text-white' : 'border-gray-900/20 hover:bg-black/10 text-gray-900'}`}
+                                        className={`flex-1 py-2 rounded-lg border ${type === 'local' ? 'bg-neutral-800 border-neutral-800 text-white' : 'border-gray-900/20 hover:bg-black/10 text-gray-900'}`}
                                     >
                                         Local Folder
                                     </button>
                                     <button
                                         onClick={() => setType('smb')}
-                                        className={`flex-1 py-2 rounded-lg border ${type === 'smb' ? 'bg-gray-900 border-gray-900 text-white' : 'border-gray-900/20 hover:bg-black/10 text-gray-900'}`}
+                                        className={`flex-1 py-2 rounded-lg border ${type === 'smb' ? 'bg-neutral-800 border-neutral-800 text-white' : 'border-gray-900/20 hover:bg-black/10 text-gray-900'}`}
                                     >
                                         SMB
                                     </button>
@@ -230,7 +230,7 @@ export default function AddSourceModal({ onClose, onAdd }: AddSourceModalProps) 
                                                     setConfig({ ...config, path })
                                                 }
                                             }}
-                                            className="bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                                            className="bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
                                         >
                                             Browse
                                         </button>
@@ -259,7 +259,7 @@ export default function AddSourceModal({ onClose, onAdd }: AddSourceModalProps) 
                         <button
                             onClick={handleTest}
                             disabled={testing || (type === 'webdav' ? !config.url : (type === 'smb' ? !config.share : !config.path))}
-                            className="bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 disabled:opacity-50 transition-colors"
+                            className="bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 disabled:opacity-50 transition-colors"
                         >
                             {testing && <Loader2 className="w-4 h-4 animate-spin" />}
                             Next
@@ -267,7 +267,7 @@ export default function AddSourceModal({ onClose, onAdd }: AddSourceModalProps) 
                     ) : (
                         <button
                             onClick={handleFinish}
-                            className="bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
+                            className="bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
                         >
                             <Check className="w-4 h-4" />
                             Finish

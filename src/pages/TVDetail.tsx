@@ -376,7 +376,7 @@ export default function TVDetail() {
                             View on douban
                         </button>
                         <button
-                            onClick={() => openExternal(`https://screen-info-lookup.vercel.app/tv/${show.id}`)}
+                            onClick={() => openExternal(`https://screen-lookup.vercel.app/tv/${show.id}`)}
                             className="text-gray-400 hover:text-white transition-colors text-sm border-b border-transparent hover:border-white"
                         >
                             View Detailed Info

@@ -332,11 +332,14 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters
         setPlaying(true)
         showSuccess('Playing video...')
         try {
-            await window.electron.ipcRenderer.invoke('play-video', {
+            const result = await window.electron.ipcRenderer.invoke('play-video', {
                 url: file.webdavUrl,
                 title,
                 history
             })
+            if (result?.autoMarked) {
+                onWatchStatusChange?.()
+            }
         } catch (err: any) {
             showError(err?.message || 'Failed to launch player')
         } finally {

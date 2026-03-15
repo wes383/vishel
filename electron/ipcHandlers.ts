@@ -239,14 +239,29 @@ export const setupIpcHandlers = () => {
 
     // Player
     ipcMain.handle('play-video', async (_, { url, title, history }) => {
+        let autoMarked = false
         if (history) {
             addToHistory({
                 ...history,
                 id: crypto.randomUUID(),
                 timestamp: Date.now()
             })
+
+            // Auto mark as watched based on settings
+            const autoMarkWatchedEnabled = store.get('autoMarkWatchedEnabled')
+            if (autoMarkWatchedEnabled) {
+                const autoMarkWatchedScope = store.get('autoMarkWatchedScope')
+                const shouldMark = autoMarkWatchedScope === 'all' || 
+                    (autoMarkWatchedScope === 'movies' && history.mediaType === 'movie')
+                
+                if (shouldMark) {
+                    setWatchStatus(history.mediaId, history.mediaType, true)
+                    autoMarked = true
+                }
+            }
         }
         await playVideo(url, title)
+        return { autoMarked }
     })
 
     ipcMain.handle('get-history', async () => {

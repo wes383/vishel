@@ -12,6 +12,8 @@ interface SettingsData {
     hideEpisodeSpoilers: boolean
     showTitlesOnPosters: boolean
     minimizeToTray: boolean
+    autoMarkWatchedEnabled: boolean
+    autoMarkWatchedScope: 'movies' | 'all'
     sources: DataSource[]
 }
 
@@ -27,6 +29,8 @@ export default function SettingsPage() {
         hideEpisodeSpoilers: false,
         showTitlesOnPosters: false,
         minimizeToTray: false,
+        autoMarkWatchedEnabled: false,
+        autoMarkWatchedScope: 'movies',
         sources: []
     })
     const [stats, setStats] = useState<LibraryStats>({ movies: 0, tvShows: 0 })
@@ -234,7 +238,7 @@ export default function SettingsPage() {
                             spellCheck={false}
                             className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 outline-none focus:border-white transition-colors"
                         />
-                        <p className="text-xs text-gray-500 mt-1">Full path to the executable (e.g., PotPlayer, mpv)</p>
+                        <p className="text-xs text-gray-500 mt-1">Full path to the executable</p>
                     </div>
 
                     <div>
@@ -286,6 +290,47 @@ export default function SettingsPage() {
                             </button>
                         </div>
                         <p className="text-xs text-gray-500 mt-1">Keep application running in background when closed</p>
+                    </div>
+
+                    <div>
+                        <div className="bg-neutral-800 p-4 rounded-lg space-y-5">
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-medium">Auto Mark as Watched</h3>
+                                <button
+                                    onClick={() => {
+                                        const newSettings = { 
+                                            ...settings, 
+                                            autoMarkWatchedEnabled: !settings.autoMarkWatchedEnabled
+                                        }
+                                        setSettings(newSettings)
+                                        autoSave(newSettings)
+                                    }}
+                                    className={`w-12 h-6 rounded-full transition-colors relative ${settings.autoMarkWatchedEnabled ? 'bg-white' : 'bg-neutral-600'}`}
+                                >
+                                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-black transition-transform ${settings.autoMarkWatchedEnabled ? 'left-7' : 'left-1'}`} />
+                                </button>
+                            </div>
+                            <div className={`flex items-center justify-between ${!settings.autoMarkWatchedEnabled ? 'opacity-50' : ''}`}>
+                                <h3 className={`font-medium ${!settings.autoMarkWatchedEnabled ? 'text-gray-500' : ''}`}>Apply to Movies Only</h3>
+                                <button
+                                    onClick={() => {
+                                        if (!settings.autoMarkWatchedEnabled) return
+                                        const newScope: 'movies' | 'all' = settings.autoMarkWatchedScope === 'movies' ? 'all' : 'movies'
+                                        const newSettings = { 
+                                            ...settings, 
+                                            autoMarkWatchedScope: newScope
+                                        }
+                                        setSettings(newSettings)
+                                        autoSave(newSettings)
+                                    }}
+                                    disabled={!settings.autoMarkWatchedEnabled}
+                                    className={`w-12 h-6 rounded-full transition-colors relative ${!settings.autoMarkWatchedEnabled ? 'bg-neutral-600 cursor-not-allowed' : settings.autoMarkWatchedScope === 'movies' ? 'bg-white' : 'bg-neutral-600'}`}
+                                >
+                                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-black transition-transform ${settings.autoMarkWatchedScope === 'movies' ? 'left-7' : 'left-1'}`} />
+                                </button>
+                            </div>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Automatically mark content as watched when the play button is clicked; when “Movies Only” is off, applies to both movies and TV shows</p>
                     </div>
                 </section>
 

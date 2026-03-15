@@ -21,6 +21,8 @@ interface Settings {
     hideEpisodeSpoilers: boolean
     showTitlesOnPosters: boolean
     minimizeToTray: boolean
+    autoMarkWatchedEnabled: boolean
+    autoMarkWatchedScope: 'movies' | 'all'
     sources: DataSource[]
 }
 
@@ -30,6 +32,8 @@ const schema = {
     hideEpisodeSpoilers: { type: 'boolean', default: false },
     showTitlesOnPosters: { type: 'boolean', default: false },
     minimizeToTray: { type: 'boolean', default: false },
+    autoMarkWatchedEnabled: { type: 'boolean', default: false },
+    autoMarkWatchedScope: { type: 'string', default: 'movies', enum: ['movies', 'all'] },
     sources: {
         type: 'array',
         default: [],

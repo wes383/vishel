@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { DataSource } from '../../electron/store'
 import DataSourceList from '../components/DataSourceList'
 import AddSourceModal from '../components/AddSourceModal'
+import EditSourceModal from '../components/EditSourceModal'
 import TMDBLogo from '../assets/TMDB_logo.svg'
 
 interface SettingsData {
@@ -36,6 +37,7 @@ export default function SettingsPage() {
     const [stats, setStats] = useState<LibraryStats>({ movies: 0, tvShows: 0 })
     const [scanning, setScanning] = useState(false)
     const [showAddModal, setShowAddModal] = useState(false)
+    const [editingSource, setEditingSource] = useState<DataSource | null>(null)
     const [appVersion, setAppVersion] = useState<string>('')
     const navigate = useNavigate()
 
@@ -73,6 +75,8 @@ export default function SettingsPage() {
             if (e.key === 'Escape') {
                 if (showAddModal) {
                     setShowAddModal(false)
+                } else if (editingSource) {
+                    setEditingSource(null)
                 } else if (!isInputField) {
                     navigate('/')
                 }
@@ -82,7 +86,7 @@ export default function SettingsPage() {
 
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [navigate, showAddModal])
+    }, [navigate, showAddModal, editingSource])
 
     const autoSave = async (newSettings: SettingsData) => {
         await window.electron.ipcRenderer.invoke('save-settings', newSettings)
@@ -123,6 +127,19 @@ export default function SettingsPage() {
         const newSettings = {
             ...settings,
             sources: settings.sources.filter(s => s.id !== id)
+        }
+        setSettings(newSettings)
+        window.electron.ipcRenderer.invoke('save-settings', newSettings)
+    }
+
+    const handleEditSource = (source: DataSource) => {
+        setEditingSource(source)
+    }
+
+    const handleSaveEditedSource = (updatedSource: DataSource) => {
+        const newSettings = {
+            ...settings,
+            sources: settings.sources.map(s => s.id === updatedSource.id ? updatedSource : s)
         }
         setSettings(newSettings)
         window.electron.ipcRenderer.invoke('save-settings', newSettings)
@@ -184,6 +201,7 @@ export default function SettingsPage() {
                     <DataSourceList
                         sources={settings.sources}
                         onRemove={handleRemoveSource}
+                        onEdit={handleEditSource}
                     />
                 </section>
 
@@ -366,6 +384,14 @@ export default function SettingsPage() {
                 <AddSourceModal
                     onClose={() => setShowAddModal(false)}
                     onAdd={handleAddSource}
+                />
+            )}
+
+            {editingSource && (
+                <EditSourceModal
+                    source={editingSource}
+                    onClose={() => setEditingSource(null)}
+                    onSave={handleSaveEditedSource}
                 />
             )}
         </div>

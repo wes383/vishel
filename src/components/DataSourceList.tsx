@@ -1,12 +1,13 @@
-import { Trash2, FolderOpen } from 'lucide-react'
+import { Trash2, FolderOpen, Pencil } from 'lucide-react'
 import { DataSource } from '../../electron/store'
 
 interface DataSourceListProps {
     sources: DataSource[]
     onRemove: (id: string) => void
+    onEdit: (source: DataSource) => void
 }
 
-export default function DataSourceList({ sources, onRemove }: DataSourceListProps) {
+export default function DataSourceList({ sources, onRemove, onEdit }: DataSourceListProps) {
     return (
         <div className="space-y-3">
             {sources.map(source => (
@@ -18,7 +19,7 @@ export default function DataSourceList({ sources, onRemove }: DataSourceListProp
                         <div>
                             <h4 className="font-bold">{source.name}</h4>
                             <p className="text-sm text-gray-400">
-                                {source.type === 'local' ? source.config.path : source.config.url}
+                                {source.type === 'local' ? source.config.path : source.type === 'smb' ? source.config.share : source.config.url}
                             </p>
                             <div className="flex gap-2 mt-1">
                                 {source.paths.length > 0 ? (
@@ -34,12 +35,20 @@ export default function DataSourceList({ sources, onRemove }: DataSourceListProp
                         </div>
                     </div>
 
-                    <button
-                        onClick={() => onRemove(source.id)}
-                        className="p-2 hover:bg-red-900/30 text-gray-500 hover:text-red-400 rounded-lg transition-colors"
-                    >
-                        <Trash2 className="w-5 h-5" />
-                    </button>
+                    <div className="flex gap-1">
+                        <button
+                            onClick={() => onEdit(source)}
+                            className="p-2 hover:bg-blue-900/30 text-gray-500 hover:text-blue-400 rounded-lg transition-colors"
+                        >
+                            <Pencil className="w-5 h-5" />
+                        </button>
+                        <button
+                            onClick={() => onRemove(source.id)}
+                            className="p-2 hover:bg-red-900/30 text-gray-500 hover:text-red-400 rounded-lg transition-colors"
+                        >
+                            <Trash2 className="w-5 h-5" />
+                        </button>
+                    </div>
                 </div>
             ))}
 

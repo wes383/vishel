@@ -143,7 +143,7 @@ export const ManualMatchModal: React.FC<ManualMatchModalProps> = ({ file, onClos
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 onKeyPress={handleKeyPress}
                                 placeholder={`Search for ${searchType === 'movie' ? 'movie' : 'TV show'}...`}
-                                className="w-full bg-black/10 border border-gray-900/20 rounded-xl pl-10 pr-4 py-3 outline-none focus:border-gray-900 transition-colors text-gray-900 placeholder:text-gray-500"
+                                className="w-full bg-black/10 border border-gray-900/20 rounded-xl pl-10 pr-4 py-3 outline-none focus:border-gray-900 transition-colors text-gray-900"
                                 autoFocus
                             />
                         </div>

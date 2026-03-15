@@ -1,47 +1,54 @@
-import { useState } from 'react'
-import { X, Check, Loader2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { X, Check, Loader2, ChevronLeft } from 'lucide-react'
 import { DataSource } from '../../electron/store'
 import FileBrowser from './FileBrowser'
 
-interface AddSourceModalProps {
+interface EditSourceModalProps {
+    source: DataSource
     onClose: () => void
-    onAdd: (source: DataSource) => void
+    onSave: (source: DataSource) => void
 }
 
-export default function AddSourceModal({ onClose, onAdd }: AddSourceModalProps) {
-    const [step, setStep] = useState<1 | 2>(1)
-    const [type, setType] = useState<'webdav' | 'local' | 'smb'>('webdav')
+export default function EditSourceModal({ source, onClose, onSave }: EditSourceModalProps) {
+    const [step, setStep] = useState<1 | 2>(2)
+    const [type] = useState<'webdav' | 'local' | 'smb'>(source.type)
     const [config, setConfig] = useState({
-        url: '',
-        path: '',
-        share: '',
-        username: '',
-        password: '',
-        domain: ''
+        url: source.config.url || '',
+        path: source.config.path || '',
+        share: source.config.share || '',
+        username: source.config.username || '',
+        password: source.config.password || '',
+        domain: source.config.domain || ''
     })
-    const [name, setName] = useState('')
-    const [selectedPaths, setSelectedPaths] = useState<string[]>([])
-    const [testing, setTesting] = useState(false)
+    const [name, setName] = useState(source.name)
+    const [selectedPaths, setSelectedPaths] = useState<string[]>(source.paths)
+    const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
 
-    const handleTest = async () => {
-        setTesting(true)
-        setError('')
-        try {
-            const success = await window.electron.ipcRenderer.invoke('test-connection', { ...config, type })
-            if (success) {
-                setStep(2)
-            } else {
-                setError('Connection failed. Check path/credentials.')
-            }
-        } catch (e) {
-            setError('Connection failed.')
-        } finally {
-            setTesting(false)
-        }
-    }
+    useEffect(() => {
+        setSelectedPaths(source.paths)
+    }, [source.paths])
 
-    const handleFinish = () => {
+    useEffect(() => {
+        const testInitialConnection = async () => {
+            setLoading(true)
+            try {
+                const success = await window.electron.ipcRenderer.invoke('test-connection', { ...source.config, type: source.type })
+                if (!success) {
+                    setStep(1)
+                    setError('Connection failed. Check path/credentials.')
+                }
+            } catch (e) {
+                setStep(1)
+                setError('Connection failed. Check path/credentials.')
+            } finally {
+                setLoading(false)
+            }
+        }
+        testInitialConnection()
+    }, [source])
+
+    const handleSave = () => {
         let finalPaths = selectedPaths
         if (selectedPaths.length === 0) {
             if (type === 'smb' || type === 'webdav') {
@@ -51,14 +58,13 @@ export default function AddSourceModal({ onClose, onAdd }: AddSourceModalProps) 
             }
         }
 
-        const newSource: DataSource = {
-            id: crypto.randomUUID(),
-            type,
+        const updatedSource: DataSource = {
+            ...source,
             name: name || (type === 'webdav' ? 'WebDAV Source' : type === 'smb' ? 'SMB Share' : 'Local Source'),
             config,
             paths: finalPaths
         }
-        onAdd(newSource)
+        onSave(updatedSource)
         onClose()
     }
 
@@ -74,7 +80,7 @@ export default function AddSourceModal({ onClose, onAdd }: AddSourceModalProps) 
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
             <div className="bg-white/50 backdrop-blur-md rounded-xl w-[600px] max-h-[80vh] flex flex-col">
                 <div className="p-4 border-b border-gray-900/10 flex justify-between items-center">
-                    <h3 className="text-lg font-bold text-gray-900">Add Data Source</h3>
+                    <h3 className="text-lg font-bold text-gray-900">Edit Data Source</h3>
                     <button 
                         onClick={onClose}
                         className="p-2 hover:bg-black/10 rounded-full transition-colors text-gray-900"
@@ -84,30 +90,35 @@ export default function AddSourceModal({ onClose, onAdd }: AddSourceModalProps) 
                 </div>
 
                 <div className="p-6 flex-1 overflow-auto">
-                    {step === 1 ? (
+                    {loading ? (
+                        <div className="flex items-center justify-center py-12">
+                            <Loader2 className="w-8 h-8 animate-spin text-gray-600" />
+                        </div>
+                    ) : step === 1 ? (
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Source Type</label>
                                 <div className="flex gap-4">
                                     <button
-                                        onClick={() => setType('webdav')}
-                                        className={`flex-1 py-2 rounded-lg border ${type === 'webdav' ? 'bg-neutral-800 border-neutral-800 text-white' : 'border-gray-900/20 hover:bg-black/10 text-gray-900'}`}
+                                        disabled
+                                        className={`flex-1 py-2 rounded-lg border ${type === 'webdav' ? 'bg-neutral-800 border-neutral-800 text-white' : 'border-gray-900/20 text-gray-900'} opacity-60 cursor-not-allowed`}
                                     >
                                         WebDAV
                                     </button>
                                     <button
-                                        onClick={() => setType('local')}
-                                        className={`flex-1 py-2 rounded-lg border ${type === 'local' ? 'bg-neutral-800 border-neutral-800 text-white' : 'border-gray-900/20 hover:bg-black/10 text-gray-900'}`}
+                                        disabled
+                                        className={`flex-1 py-2 rounded-lg border ${type === 'local' ? 'bg-neutral-800 border-neutral-800 text-white' : 'border-gray-900/20 text-gray-900'} opacity-60 cursor-not-allowed`}
                                     >
                                         Local Folder
                                     </button>
                                     <button
-                                        onClick={() => setType('smb')}
-                                        className={`flex-1 py-2 rounded-lg border ${type === 'smb' ? 'bg-neutral-800 border-neutral-800 text-white' : 'border-gray-900/20 hover:bg-black/10 text-gray-900'}`}
+                                        disabled
+                                        className={`flex-1 py-2 rounded-lg border ${type === 'smb' ? 'bg-neutral-800 border-neutral-800 text-white' : 'border-gray-900/20 text-gray-900'} opacity-60 cursor-not-allowed`}
                                     >
                                         SMB
                                     </button>
                                 </div>
+                                <p className="text-xs text-gray-500 mt-1">Source type cannot be changed</p>
                             </div>
 
                             <div>
@@ -257,21 +268,45 @@ export default function AddSourceModal({ onClose, onAdd }: AddSourceModalProps) 
                 <div className="p-4 border-t border-gray-900/10 flex justify-end gap-3">
                     {step === 1 ? (
                         <button
-                            onClick={handleTest}
-                            disabled={testing || (type === 'webdav' ? !config.url : (type === 'smb' ? !config.share : !config.path))}
+                            onClick={async () => {
+                                setLoading(true)
+                                setError('')
+                                try {
+                                    const success = await window.electron.ipcRenderer.invoke('test-connection', { ...config, type })
+                                    if (success) {
+                                        setStep(2)
+                                    } else {
+                                        setError('Connection failed. Check path/credentials.')
+                                    }
+                                } catch (e) {
+                                    setError('Connection failed.')
+                                } finally {
+                                    setLoading(false)
+                                }
+                            }}
+                            disabled={loading || (type === 'webdav' ? !config.url : (type === 'smb' ? !config.share : !config.path))}
                             className="bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 disabled:opacity-50 transition-colors"
                         >
-                            {testing && <Loader2 className="w-4 h-4 animate-spin" />}
+                            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                             Next
                         </button>
                     ) : (
-                        <button
-                            onClick={handleFinish}
-                            className="bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
-                        >
-                            <Check className="w-4 h-4" />
-                            Finish
-                        </button>
+                        <>
+                            <button
+                                onClick={() => setStep(1)}
+                                className="bg-neutral-600 hover:bg-neutral-500 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                                Back
+                            </button>
+                            <button
+                                onClick={handleSave}
+                                className="bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
+                            >
+                                <Check className="w-4 h-4" />
+                                Save Changes
+                            </button>
+                        </>
                     )}
                 </div>
             </div>

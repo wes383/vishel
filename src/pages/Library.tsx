@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { LibraryTabs } from '../components/library/LibraryTabs'
-import { LibraryActions, SortOption } from '../components/library/LibraryActions'
+import { LibraryActions, SortOption, FilterOption } from '../components/library/LibraryActions'
 import { SearchInput } from '../components/library/SearchInput'
 import { MediaGrid } from '../components/library/MediaGrid'
 import { HistoryList } from '../components/library/HistoryList'
@@ -14,16 +14,20 @@ export default function LibraryPage() {
     const [unscannedFiles, setUnscannedFiles] = useState<UnscannedFile[]>([])
     const [history, setHistory] = useState<HistoryItem[]>([])
     const [favorites, setFavorites] = useState<FavoriteItem[]>([])
+    const [filteredMovies, setFilteredMovies] = useState<Movie[]>([])
+    const [filteredTvShows, setFilteredTvShows] = useState<TVShow[]>([])
+    const [watchStatusMap, setWatchStatusMap] = useState<{ [key: string]: { watched: boolean, timestamp: number } }>({})
+    const [favoritesMap, setFavoritesMap] = useState<{ [key: string]: number }>({})
     const [searchExpanded, setSearchExpanded] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
     const [sortBy, setSortBy] = useState<SortOption>(() => {
         return (localStorage.getItem('library_sort_by') as SortOption) || 'name-asc'
     })
-    const [favoritesSortBy, setFavoritesSortBy] = useState<SortOption>(() => {
-        return (localStorage.getItem('library_favorites_sort_by') as SortOption) || 'added-desc'
+    const [filterBy, setFilterBy] = useState<FilterOption>(() => {
+        return (localStorage.getItem('library_filter_by') as FilterOption) || 'all'
     })
-    const [activeTab, setActiveTab] = useState<'all' | 'movies' | 'tv' | 'favorites' | 'history'>(() => {
-        return (sessionStorage.getItem('library_active_tab') as 'all' | 'movies' | 'tv' | 'favorites' | 'history') || 'all'
+    const [activeTab, setActiveTab] = useState<'all' | 'movies' | 'tv' | 'history'>(() => {
+        return (sessionStorage.getItem('library_active_tab') as 'all' | 'movies' | 'tv' | 'history') || 'all'
     })
     const [loading, setLoading] = useState(false)
     const [showTitlesOnPosters, setShowTitlesOnPosters] = useState(false)
@@ -55,8 +59,8 @@ export default function LibraryPage() {
     }, [sortBy])
 
     useEffect(() => {
-        localStorage.setItem('library_favorites_sort_by', favoritesSortBy)
-    }, [favoritesSortBy])
+        localStorage.setItem('library_filter_by', filterBy)
+    }, [filterBy])
 
     useEffect(() => {
         if (document.activeElement instanceof HTMLElement) {
@@ -81,6 +85,18 @@ export default function LibraryPage() {
 
             const favoritesData = await window.electron.ipcRenderer.invoke('get-favorites')
             setFavorites(favoritesData || [])
+            const favMap: { [key: string]: number } = {}
+            favoritesData.forEach((f: any) => {
+                favMap[`${f.mediaType}-${f.mediaId}`] = f.timestamp
+            })
+            setFavoritesMap(favMap)
+
+            const watchStatusData = await window.electron.ipcRenderer.invoke('get-all-watch-status')
+            const statusMap: { [key: string]: { watched: boolean, timestamp: number } } = {}
+            watchStatusData.forEach((s: any) => {
+                statusMap[`${s.mediaType}-${s.mediaId}`] = { watched: s.watched, timestamp: s.timestamp }
+            })
+            setWatchStatusMap(statusMap)
         } catch (error) {
             console.error('Failed to fetch library data:', error)
             // Set empty arrays to prevent rendering errors
@@ -89,6 +105,7 @@ export default function LibraryPage() {
             setUnscannedFiles([])
             setHistory([])
             setFavorites([])
+            setWatchStatusMap({})
         } finally {
             setLoading(false)
         }
@@ -98,8 +115,26 @@ export default function LibraryPage() {
         try {
             const favoritesData = await window.electron.ipcRenderer.invoke('get-favorites')
             setFavorites(favoritesData || [])
+            const favMap: { [key: string]: number } = {}
+            favoritesData.forEach((f: any) => {
+                favMap[`${f.mediaType}-${f.mediaId}`] = f.timestamp
+            })
+            setFavoritesMap(favMap)
         } catch (error) {
             console.error('Failed to fetch favorites:', error)
+        }
+    }
+
+    const fetchWatchStatus = async () => {
+        try {
+            const watchStatusData = await window.electron.ipcRenderer.invoke('get-all-watch-status')
+            const statusMap: { [key: string]: { watched: boolean, timestamp: number } } = {}
+            watchStatusData.forEach((s: any) => {
+                statusMap[`${s.mediaType}-${s.mediaId}`] = { watched: s.watched, timestamp: s.timestamp }
+            })
+            setWatchStatusMap(statusMap)
+        } catch (error) {
+            console.error('Failed to fetch watch status:', error)
         }
     }
 
@@ -111,7 +146,7 @@ export default function LibraryPage() {
         })
 
         // Listen for tab navigation from tray menu
-        const handleNavigateToTab = (_event: any, tab: 'all' | 'movies' | 'tv' | 'favorites' | 'history') => {
+        const handleNavigateToTab = (_event: any, tab: 'all' | 'movies' | 'tv' | 'history') => {
             setActiveTab(tab)
             sessionStorage.setItem('library_active_tab', tab)
         }
@@ -132,6 +167,36 @@ export default function LibraryPage() {
         }
     }, [activeTab])
 
+    // Apply filters
+    useEffect(() => {
+        const applyFilters = () => {
+            let filteredM = searchQuery
+                ? movies.filter(movie => movie?.title?.toLowerCase().includes(searchQuery.toLowerCase()))
+                : movies
+
+            let filteredT = searchQuery
+                ? tvShows.filter(show => show?.name?.toLowerCase().includes(searchQuery.toLowerCase()))
+                : tvShows
+
+            if (filterBy === 'favorites') {
+                const favoriteIds = new Set(favorites.map(f => `${f.mediaType}-${f.mediaId}`))
+                filteredM = filteredM.filter(m => favoriteIds.has(`movie-${m.id}`))
+                filteredT = filteredT.filter(t => favoriteIds.has(`tv-${t.id}`))
+            } else if (filterBy === 'watched') {
+                filteredM = filteredM.filter(m => watchStatusMap[`movie-${m.id}`]?.watched)
+                filteredT = filteredT.filter(t => watchStatusMap[`tv-${t.id}`]?.watched)
+            } else if (filterBy === 'unwatched') {
+                filteredM = filteredM.filter(m => !watchStatusMap[`movie-${m.id}`]?.watched)
+                filteredT = filteredT.filter(t => !watchStatusMap[`tv-${t.id}`]?.watched)
+            }
+
+            setFilteredMovies(filteredM)
+            setFilteredTvShows(filteredT)
+        }
+
+        applyFilters()
+    }, [searchQuery, filterBy, movies, tvShows, favorites, watchStatusMap])
+
     useEffect(() => {
         const container = scrollRef.current
         if (!container) return
@@ -145,14 +210,6 @@ export default function LibraryPage() {
         container.addEventListener('scroll', handleScroll)
         return () => container.removeEventListener('scroll', handleScroll)
     }, [loading])
-
-    const filteredMovies = searchQuery
-        ? movies.filter(movie => movie?.title?.toLowerCase().includes(searchQuery.toLowerCase()))
-        : movies
-
-    const filteredTvShows = searchQuery
-        ? tvShows.filter(show => show?.name?.toLowerCase().includes(searchQuery.toLowerCase()))
-        : tvShows
 
     const filteredHistory = searchQuery
         ? history.filter(item => item?.title?.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -172,6 +229,12 @@ export default function LibraryPage() {
             case 'rating-desc':
                 return (b.popularity || 0) - (a.popularity || 0)
             case 'recently-added':
+                if (filterBy === 'watched') {
+                    return (watchStatusMap[`movie-${b.id}`]?.timestamp || 0) - (watchStatusMap[`movie-${a.id}`]?.timestamp || 0)
+                }
+                if (filterBy === 'favorites') {
+                    return (favoritesMap[`movie-${b.id}`] || 0) - (favoritesMap[`movie-${a.id}`] || 0)
+                }
                 return (b.createdAt || 0) - (a.createdAt || 0)
             default:
                 return 0
@@ -192,6 +255,12 @@ export default function LibraryPage() {
             case 'rating-desc':
                 return (b.popularity || 0) - (a.popularity || 0)
             case 'recently-added':
+                if (filterBy === 'watched') {
+                    return (watchStatusMap[`tv-${b.id}`]?.timestamp || 0) - (watchStatusMap[`tv-${a.id}`]?.timestamp || 0)
+                }
+                if (filterBy === 'favorites') {
+                    return (favoritesMap[`tv-${b.id}`] || 0) - (favoritesMap[`tv-${a.id}`] || 0)
+                }
                 return (b.createdAt || 0) - (a.createdAt || 0)
             default:
                 return 0
@@ -218,6 +287,12 @@ export default function LibraryPage() {
                 const bPopularity = (b.popularity || 0) * (b.type === 'movie' ? 3 : 1)
                 return bPopularity - aPopularity
             case 'recently-added':
+                if (filterBy === 'watched') {
+                    return (watchStatusMap[`${b.type}-${b.id}`]?.timestamp || 0) - (watchStatusMap[`${a.type}-${a.id}`]?.timestamp || 0)
+                }
+                if (filterBy === 'favorites') {
+                    return (favoritesMap[`${b.type}-${b.id}`] || 0) - (favoritesMap[`${a.type}-${a.id}`] || 0)
+                }
                 return (b.createdAt || 0) - (a.createdAt || 0)
             default:
                 return 0
@@ -242,10 +317,12 @@ export default function LibraryPage() {
 
                         <div className="order-2 md:order-3">
                             <LibraryActions
-                                sortBy={activeTab === 'favorites' ? favoritesSortBy : sortBy}
-                                onSortChange={activeTab === 'favorites' ? setFavoritesSortBy : setSortBy}
+                                sortBy={sortBy}
+                                onSortChange={setSortBy}
                                 onSearchToggle={() => setSearchExpanded(!searchExpanded)}
                                 activeTab={activeTab}
+                                filterBy={filterBy}
+                                onFilterChange={setFilterBy}
                             />
                         </div>
                     </div>
@@ -269,6 +346,7 @@ export default function LibraryPage() {
                                     showTitlesOnPosters={showTitlesOnPosters}
                                     onRematch={fetchData}
                                     onFavoritesChange={fetchFavorites}
+                                    onWatchStatusChange={fetchWatchStatus}
                                     emptyMessage={
                                         searchQuery ? (
                                             <>
@@ -294,6 +372,7 @@ export default function LibraryPage() {
                                 type="movie"
                                 onRematch={fetchData}
                                 onFavoritesChange={fetchFavorites}
+                                onWatchStatusChange={fetchWatchStatus}
                                 emptyMessage={
                                     searchQuery ? (
                                         <>
@@ -317,6 +396,7 @@ export default function LibraryPage() {
                                 type="tv"
                                 onRematch={fetchData}
                                 onFavoritesChange={fetchFavorites}
+                                onWatchStatusChange={fetchWatchStatus}
                                 emptyMessage={
                                     searchQuery ? (
                                         <>
@@ -327,82 +407,6 @@ export default function LibraryPage() {
                                         <>
                                             <p className="text-xl mb-2">No TV shows found</p>
                                             <p>Ensure your files are named with SxxExx format (e.g. S01E01).</p>
-                                        </>
-                                    )
-                                }
-                            />
-                        )}
-
-                        {activeTab === 'favorites' && (
-                            <MediaGrid
-                                items={(() => {
-                                    // Get full movie/TV show data for favorites
-                                    const favoritesWithData = favorites
-                                        .filter(f => {
-                                            if (!searchQuery) return true
-                                            return f.title?.toLowerCase().includes(searchQuery.toLowerCase())
-                                        })
-                                        .map(f => {
-                                            if (f.mediaType === 'movie') {
-                                                const movie = movies.find(m => m.id === f.mediaId)
-                                                return movie ? {
-                                                    ...movie,
-                                                    type: 'movie' as const,
-                                                    sortKey: movie.title || '',
-                                                    sortDate: movie.releaseDate || '',
-                                                    addedTimestamp: f.timestamp
-                                                } : null
-                                            } else {
-                                                const show = tvShows.find(s => s.id === f.mediaId)
-                                                return show ? {
-                                                    ...show,
-                                                    type: 'tv' as const,
-                                                    sortKey: show.name || '',
-                                                    sortDate: show.firstAirDate || '',
-                                                    addedTimestamp: f.timestamp,
-                                                    title: show.name
-                                                } : null
-                                            }
-                                        })
-                                        .filter(item => item !== null)
-
-                                    // Sort favorites using favoritesSortBy
-                                    return favoritesWithData.sort((a, b) => {
-                                        if (!a || !b) return 0
-                                        switch (favoritesSortBy) {
-                                            case 'name-asc':
-                                                return a.sortKey.localeCompare(b.sortKey)
-                                            case 'name-desc':
-                                                return b.sortKey.localeCompare(a.sortKey)
-                                            case 'date-desc':
-                                                return (b.sortDate || '').localeCompare(a.sortDate || '')
-                                            case 'date-asc':
-                                                return (a.sortDate || '').localeCompare(b.sortDate || '')
-                                            case 'rating-desc':
-                                                const aPopularity = (a.popularity || 0) * (a.type === 'movie' ? 3 : 1)
-                                                const bPopularity = (b.popularity || 0) * (b.type === 'movie' ? 3 : 1)
-                                                return bPopularity - aPopularity
-                                            case 'added-desc':
-                                                return (b.addedTimestamp || 0) - (a.addedTimestamp || 0)
-                                            default:
-                                                return 0
-                                        }
-                                    })
-                                })()}
-                                showTitlesOnPosters={showTitlesOnPosters}
-                                onRematch={fetchData}
-                                onFavoritesChange={fetchFavorites}
-                                isFavoritesView={true}
-                                emptyMessage={
-                                    searchQuery ? (
-                                        <>
-                                            <p className="text-xl mb-2">No favorites found</p>
-                                            <p>Try adjusting your search terms.</p>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <p className="text-xl mb-2">No favorites yet</p>
-                                            <p>Click the heart icon on movies or TV shows to add them here.</p>
                                         </>
                                     )
                                 }

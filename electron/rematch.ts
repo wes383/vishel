@@ -99,8 +99,8 @@ const rematchMovie = async (oldTmdbId: number, newTmdbId: number) => {
         db.transaction(() => {
             saveMovie(newMovie)
             
-            db.prepare('UPDATE favorites SET mediaId = ?, title = ?, posterPath = ? WHERE mediaId = ? AND mediaType = ?')
-                .run(newTmdbId, newMovie.title, newMovie.posterPath, oldTmdbId, 'movie')
+            db.prepare('UPDATE favorites SET mediaId = ?, title = ? WHERE mediaId = ? AND mediaType = ?')
+                .run(newTmdbId, newMovie.title, oldTmdbId, 'movie')
             db.prepare('UPDATE history SET mediaId = ?, title = ?, posterPath = ? WHERE mediaId = ? AND mediaType = ?')
                 .run(newTmdbId, newMovie.title, newMovie.posterPath, oldTmdbId, 'movie')
             
@@ -234,8 +234,8 @@ const rematchTVShow = async (oldTmdbId: number, newTmdbId: number) => {
         db.transaction(() => {
             saveTVShow(newShow)
             
-            db.prepare('UPDATE favorites SET mediaId = ?, title = ?, posterPath = ? WHERE mediaId = ? AND mediaType = ?')
-                .run(newTmdbId, newShow.name, newShow.posterPath, oldTmdbId, 'tv')
+            db.prepare('UPDATE favorites SET mediaId = ?, title = ? WHERE mediaId = ? AND mediaType = ?')
+                .run(newTmdbId, newShow.name, oldTmdbId, 'tv')
             db.prepare('UPDATE history SET mediaId = ?, title = ?, posterPath = ? WHERE mediaId = ? AND mediaType = ?')
                 .run(newTmdbId, newShow.name, newShow.posterPath, oldTmdbId, 'tv')
             

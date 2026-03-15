@@ -114,15 +114,6 @@ function createTray() {
       }
     },
     {
-      label: 'Favorites', click: () => {
-        if (win) {
-          win.show()
-          win.focus()
-          win.webContents.send('navigate-to-tab', 'favorites')
-        }
-      }
-    },
-    {
       label: 'History', click: () => {
         if (win) {
           win.show()

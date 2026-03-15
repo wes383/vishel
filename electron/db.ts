@@ -100,6 +100,14 @@ export interface FavoriteItem {
     timestamp: number
 }
 
+export interface WatchStatus {
+    id: string
+    mediaId: number
+    mediaType: 'movie' | 'tv'
+    watched: boolean
+    timestamp: number
+}
+
 let dbInstance: Database.Database | null = null
 
 export const getDb = (): Database.Database => {
@@ -209,7 +217,15 @@ export const getDb = (): Database.Database => {
             mediaId INTEGER,
             mediaType TEXT,
             title TEXT,
-            posterPath TEXT,
+            timestamp INTEGER,
+            UNIQUE(mediaId, mediaType)
+        );
+
+        CREATE TABLE IF NOT EXISTS watch_status (
+            id TEXT PRIMARY KEY,
+            mediaId INTEGER,
+            mediaType TEXT,
+            watched INTEGER DEFAULT 1,
             timestamp INTEGER,
             UNIQUE(mediaId, mediaType)
         );
@@ -612,8 +628,8 @@ export const getFavorites = (): FavoriteItem[] => {
 export const addFavorite = (item: FavoriteItem) => {
     const db = getDb()
     db.prepare(`
-        INSERT OR REPLACE INTO favorites (id, mediaId, mediaType, title, posterPath, timestamp)
-        VALUES (@id, @mediaId, @mediaType, @title, @posterPath, @timestamp)
+        INSERT OR REPLACE INTO favorites (id, mediaId, mediaType, title, timestamp)
+        VALUES (@id, @mediaId, @mediaType, @title, @timestamp)
     `).run(item)
 }
 
@@ -626,26 +642,6 @@ export const isFavorite = (mediaId: number, mediaType: string): boolean => {
     const db = getDb()
     const result = db.prepare('SELECT id FROM favorites WHERE mediaId = ? AND mediaType = ?').get(mediaId, mediaType)
     return !!result
-}
-
-export const syncFavoritesPosters = () => {
-    const db = getDb()
-
-    db.prepare(`
-        UPDATE favorites SET 
-            posterPath = (SELECT posterPath FROM movies WHERE movies.id = favorites.mediaId),
-            title = (SELECT title FROM movies WHERE movies.id = favorites.mediaId)
-        WHERE mediaType = 'movie' AND EXISTS (SELECT 1 FROM movies WHERE movies.id = favorites.mediaId)
-    `).run()
-
-    db.prepare(`
-        UPDATE favorites SET 
-            posterPath = (SELECT posterPath FROM tv_shows WHERE tv_shows.id = favorites.mediaId),
-            title = (SELECT name FROM tv_shows WHERE tv_shows.id = favorites.mediaId)
-        WHERE mediaType = 'tv' AND EXISTS (SELECT 1 FROM tv_shows WHERE tv_shows.id = favorites.mediaId)
-    `).run()
-
-    console.log('Synced favorites posters with latest media data')
 }
 
 export const syncHistoryPosters = () => {
@@ -666,4 +662,51 @@ export const syncHistoryPosters = () => {
     `).run()
 
     console.log('Synced history posters with latest media data')
+}
+
+export const getWatchStatus = (mediaId: number, mediaType: string): WatchStatus | undefined => {
+    const db = getDb()
+    const result = db.prepare('SELECT * FROM watch_status WHERE mediaId = ? AND mediaType = ?').get(mediaId, mediaType) as any
+    if (!result) return undefined
+    return {
+        ...result,
+        watched: result.watched === 1
+    }
+}
+
+export const getAllWatchStatus = (): WatchStatus[] => {
+    const db = getDb()
+    const results = db.prepare('SELECT * FROM watch_status').all() as any[]
+    return results.map(r => ({
+        ...r,
+        watched: r.watched === 1
+    }))
+}
+
+export const setWatchStatus = (mediaId: number, mediaType: string, watched: boolean) => {
+    const db = getDb()
+    const id = `${mediaType}-${mediaId}`
+    const timestamp = Date.now()
+    db.prepare(`
+        INSERT OR REPLACE INTO watch_status (id, mediaId, mediaType, watched, timestamp)
+        VALUES (@id, @mediaId, @mediaType, @watched, @timestamp)
+    `).run({
+        id,
+        mediaId,
+        mediaType,
+        watched: watched ? 1 : 0,
+        timestamp
+    })
+}
+
+export const toggleWatchStatus = (mediaId: number, mediaType: string): boolean => {
+    const current = getWatchStatus(mediaId, mediaType)
+    const newWatched = current ? !current.watched : true
+    setWatchStatus(mediaId, mediaType, newWatched)
+    return newWatched
+}
+
+export const removeWatchStatus = (mediaId: number, mediaType: string) => {
+    const db = getDb()
+    db.prepare('DELETE FROM watch_status WHERE mediaId = ? AND mediaType = ?').run(mediaId, mediaType)
 }

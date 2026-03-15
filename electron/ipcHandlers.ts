@@ -2,7 +2,7 @@ import { ipcMain, dialog, shell, app } from 'electron'
 import store from './store'
 import { scanMovies, getScanStatus } from './scanner'
 import { playVideo } from './player'
-import { getAllMovies, getMovie, getAllTVShows, getTVShow, getHistory, addToHistory, deleteHistoryItem, getUnscannedFiles, getFavorites, addFavorite, removeFavorite, isFavorite, getMovieCount, getTVShowCount, saveMovie, saveTVShow } from './db'
+import { getAllMovies, getMovie, getAllTVShows, getTVShow, getHistory, addToHistory, deleteHistoryItem, getUnscannedFiles, getFavorites, addFavorite, removeFavorite, isFavorite, getMovieCount, getTVShowCount, saveMovie, saveTVShow, getWatchStatus, getAllWatchStatus, setWatchStatus, toggleWatchStatus, removeWatchStatus } from './db'
 import { testConnection, listDirectory } from './webdavService'
 import { testLocalConnection, listLocalDirectory } from './localFileService'
 import { testConnection as testSMBConnection, listDirectory as listSMBDirectory } from './smbService'
@@ -337,5 +337,28 @@ export const setupIpcHandlers = () => {
 
     ipcMain.handle('get-app-version', () => {
         return app.getVersion()
+    })
+
+    // Watch Status
+    ipcMain.handle('get-watch-status', async (_, { mediaId, mediaType }) => {
+        return getWatchStatus(mediaId, mediaType)
+    })
+
+    ipcMain.handle('get-all-watch-status', async () => {
+        return getAllWatchStatus()
+    })
+
+    ipcMain.handle('set-watch-status', async (_, { mediaId, mediaType, watched }) => {
+        setWatchStatus(mediaId, mediaType, watched)
+        return true
+    })
+
+    ipcMain.handle('toggle-watch-status', async (_, { mediaId, mediaType }) => {
+        return toggleWatchStatus(mediaId, mediaType)
+    })
+
+    ipcMain.handle('remove-watch-status', async (_, { mediaId, mediaType }) => {
+        removeWatchStatus(mediaId, mediaType)
+        return true
     })
 }

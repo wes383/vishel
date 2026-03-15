@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react'
 
 interface LibraryTabsProps {
-    activeTab: 'all' | 'movies' | 'tv' | 'favorites' | 'history'
-    onTabChange: (tab: 'all' | 'movies' | 'tv' | 'favorites' | 'history') => void
+    activeTab: 'all' | 'movies' | 'tv' | 'history'
+    onTabChange: (tab: 'all' | 'movies' | 'tv' | 'history') => void
 }
 
 export const LibraryTabs: React.FC<LibraryTabsProps> = ({ activeTab, onTabChange }) => {
@@ -10,7 +10,6 @@ export const LibraryTabs: React.FC<LibraryTabsProps> = ({ activeTab, onTabChange
         { id: 'all', label: 'All' },
         { id: 'movies', label: 'Movies' },
         { id: 'tv', label: 'TV Shows' },
-        { id: 'favorites', label: 'Favorites' },
         { id: 'history', label: 'History' },
     ] as const
 

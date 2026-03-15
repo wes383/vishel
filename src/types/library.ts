@@ -44,7 +44,14 @@ export interface FavoriteItem {
     mediaId: number
     mediaType: 'movie' | 'tv'
     title: string
-    posterPath: string
+    timestamp: number
+}
+
+export interface WatchStatus {
+    id: string
+    mediaId: number
+    mediaType: 'movie' | 'tv'
+    watched: boolean
     timestamp: number
 }
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Play, Calendar, Clock, User, X, Loader2, ChevronLeft, Heart } from 'lucide-react'
+import { Play, Calendar, Clock, User, X, Loader2, ChevronLeft, Heart, Check } from 'lucide-react'
 
 
 import { DataSource } from '../../electron/store'
@@ -54,6 +54,7 @@ export default function MovieDetail() {
     const [playing, setPlaying] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [isFavorited, setIsFavorited] = useState(false)
+    const [isWatched, setIsWatched] = useState(false)
     const [imdbRating, setImdbRating] = useState<{ rating: number, votes: number } | null>(null)
     const [loadingImdb, setLoadingImdb] = useState(false)
 
@@ -119,6 +120,8 @@ export default function MovieDetail() {
         if (id) {
             window.electron.ipcRenderer.invoke('is-favorite', { mediaId: parseInt(id), mediaType: 'movie' })
                 .then(setIsFavorited)
+            window.electron.ipcRenderer.invoke('get-watch-status', { mediaId: parseInt(id), mediaType: 'movie' })
+                .then((status: { watched: boolean } | undefined) => setIsWatched(status?.watched || false))
         }
     }, [id, navigate])
 
@@ -326,7 +329,17 @@ export default function MovieDetail() {
                             }}
                             className="p-2 rounded-full hover:bg-white/10 transition-colors"
                         >
-                            <Heart className={`w-5 h-5 ${isFavorited ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
+                            <Heart className={`w-5 h-5 ${isFavorited ? 'fill-red-700 text-red-700' : 'text-gray-400'}`} />
+                        </button>
+                        {/* Watch Status Button */}
+                        <button
+                            onClick={async () => {
+                                const newWatched = await window.electron.ipcRenderer.invoke('toggle-watch-status', { mediaId: movie.id, mediaType: 'movie' })
+                                setIsWatched(newWatched)
+                            }}
+                            className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                        >
+                            <Check className={`w-5 h-5 ${isWatched ? 'text-green-700' : 'text-gray-400'}`} strokeWidth={3} />
                         </button>
                     </div>
 

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { LazyImage } from '../LazyImage'
 import { CombinedItem, Movie, TVShow } from '../../types/library'
 import { RematchModal } from './RematchModal'
-import { Film, Tv, Play, Heart, RefreshCw, Repeat, X } from 'lucide-react'
+import { Film, Tv, Play, Heart, RefreshCw, Repeat, X, Check } from 'lucide-react'
 
 interface MediaGridProps {
     items: CombinedItem[] | Movie[] | TVShow[]
@@ -13,13 +13,15 @@ interface MediaGridProps {
     onRematch?: () => void
     isFavoritesView?: boolean
     onFavoritesChange?: () => void
+    onWatchStatusChange?: () => void
 }
 
-export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters, emptyMessage, type = 'combined', onRematch, isFavoritesView = false, onFavoritesChange }) => {
+export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters, emptyMessage, type = 'combined', onRematch, isFavoritesView = false, onFavoritesChange, onWatchStatusChange }) => {
     const navigate = useNavigate()
     const [contextMenu, setContextMenu] = useState<{ x: number, y: number, item: any } | null>(null)
     const [rematchItem, setRematchItem] = useState<{ id: number, type: 'movie' | 'tv', title: string, videoFiles: any[] } | null>(null)
     const [favoriteStatus, setFavoriteStatus] = useState<{ [key: string]: boolean }>({})
+    const [watchStatus, setWatchStatus] = useState<{ [key: string]: boolean }>({})
     const [episodeSelector, setEpisodeSelector] = useState<{ show: any, seasons: any[] } | null>(null)
     const [fileSelector, setFileSelector] = useState<{ files: any[], title: string, history: any } | null>(null)
     const [playing, setPlaying] = useState(false)
@@ -110,6 +112,12 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters
             mediaType: itemType
         }).then((isFav: boolean) => {
             setFavoriteStatus(prev => ({ ...prev, [key]: isFav }))
+        })
+        window.electron.ipcRenderer.invoke('get-watch-status', {
+            mediaId: item.id,
+            mediaType: itemType
+        }).then((status: { watched: boolean } | undefined) => {
+            setWatchStatus(prev => ({ ...prev, [key]: status?.watched || false }))
         })
     }
 
@@ -209,8 +217,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters
                 await window.electron.ipcRenderer.invoke('add-favorite', {
                     mediaId: item.id,
                     mediaType: itemType,
-                    title: title,
-                    posterPath: item.posterPath || ''
+                    title: title
                 })
                 setFavoriteStatus(prev => ({ ...prev, [key]: true }))
                 showSuccess(`Added "${title}" to favorites`, 1500)
@@ -239,6 +246,30 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters
         } catch (error) {
             console.error('Failed to toggle favorite:', error)
             showError('Failed to update favorites')
+        }
+    }
+
+    const handleToggleWatchStatus = async () => {
+        if (!contextMenu) return
+        const item = contextMenu.item
+        const itemType = getItemType(item)
+        const title = getItemTitle(item)
+        const key = `${itemType}-${item.id}`
+        
+        try {
+            const newWatched = await window.electron.ipcRenderer.invoke('toggle-watch-status', {
+                mediaId: item.id,
+                mediaType: itemType
+            })
+            setWatchStatus(prev => ({ ...prev, [key]: newWatched }))
+            showSuccess(newWatched 
+                ? `Marked "${title}" as watched` 
+                : `Marked "${title}" as unwatched`, 1500)
+            setContextMenu(null)
+            onWatchStatusChange?.()
+        } catch (error) {
+            console.error('Failed to toggle watch status:', error)
+            showError('Failed to update watch status')
         }
     }
 
@@ -397,6 +428,16 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters
         }
     }, [contextMenu])
 
+    React.useEffect(() => {
+        window.electron.ipcRenderer.invoke('get-all-watch-status').then((statuses: { mediaId: number, mediaType: string, watched: boolean }[]) => {
+            const statusMap: { [key: string]: boolean } = {}
+            statuses.forEach(s => {
+                statusMap[`${s.mediaType}-${s.mediaId}`] = s.watched
+            })
+            setWatchStatus(statusMap)
+        })
+    }, [])
+
     // Handle empty items
     if (items.length === 0) {
         return (
@@ -517,12 +558,20 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters
                         className="w-full px-4 py-2 text-left hover:bg-black/10 transition-colors text-sm text-gray-900 font-medium flex items-center gap-2"
                     >
                         <Heart 
-                            className="w-4 h-4" 
-                            fill={favoriteStatus[`${getItemType(contextMenu.item)}-${contextMenu.item.id}`] ? 'currentColor' : 'none'}
+                            className={`w-4 h-4 ${favoriteStatus[`${getItemType(contextMenu.item)}-${contextMenu.item.id}`] ? 'fill-red-700 text-red-700' : ''}`}
                         />
                         {favoriteStatus[`${getItemType(contextMenu.item)}-${contextMenu.item.id}`] 
                             ? 'Remove from Favorites' 
                             : 'Add to Favorites'}
+                    </button>
+                    <button
+                        onClick={handleToggleWatchStatus}
+                        className="w-full px-4 py-2 text-left hover:bg-black/10 transition-colors text-sm text-gray-900 font-medium flex items-center gap-2"
+                    >
+                        <Check className={`w-4 h-4 ${watchStatus[`${getItemType(contextMenu.item)}-${contextMenu.item.id}`] ? 'text-green-700' : ''}`} strokeWidth={3} />
+                        {watchStatus[`${getItemType(contextMenu.item)}-${contextMenu.item.id}`] 
+                            ? 'Mark as Unwatched' 
+                            : 'Mark as Watched'}
                     </button>
                     <button
                         onClick={handleRefreshMetadata}

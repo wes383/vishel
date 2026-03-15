@@ -6,7 +6,7 @@
 
 - **Smart Organization**: Automatically sorts Movies & TV Shows with rich metadata from TMDB.
 - **Universal Sources**: Supports Local folders, SMB shares (NAS), and WebDAV.
-- **External Player**: Plays media in your favorite player (mpv, PotPlayer, VLC, etc.) with auto-auth handling.
+- **External Player**: Plays media in your favorite player (mpv, IINA, VLC, etc.) with auto-auth handling.
 
 ## Getting Started
 

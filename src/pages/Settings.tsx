@@ -15,6 +15,7 @@ interface SettingsData {
     minimizeToTray: boolean
     autoMarkWatchedEnabled: boolean
     autoMarkWatchedScope: 'movies' | 'all'
+    useFormattedTitle: boolean
     sources: DataSource[]
 }
 
@@ -32,6 +33,7 @@ export default function SettingsPage() {
         minimizeToTray: false,
         autoMarkWatchedEnabled: false,
         autoMarkWatchedScope: 'movies',
+        useFormattedTitle: true,
         sources: []
     })
     const [stats, setStats] = useState<LibraryStats>({ movies: 0, tvShows: 0 })
@@ -252,7 +254,6 @@ export default function SettingsPage() {
                                 setSettings(newSettings)
                             }}
                             onBlur={() => autoSave(settings)}
-                            placeholder="C:\Program Files\..."
                             spellCheck={false}
                             className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 outline-none focus:border-white transition-colors"
                         />
@@ -348,7 +349,24 @@ export default function SettingsPage() {
                                 </button>
                             </div>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">Automatically mark content as watched when the play button is clicked; when “Movies Only” is off, applies to both movies and TV shows</p>
+                        <p className="text-xs text-gray-500 mt-1">Automatically mark content as watched when the play button is clicked; when "Movies Only" is off, applies to both movies and TV shows</p>
+                    </div>
+
+                    <div>
+                        <div className="flex items-center justify-between bg-neutral-800 p-4 rounded-lg">
+                            <h3 className="font-medium">Use Formatted Title</h3>
+                            <button
+                                onClick={() => {
+                                    const newSettings = { ...settings, useFormattedTitle: !settings.useFormattedTitle }
+                                    setSettings(newSettings)
+                                    autoSave(newSettings)
+                                }}
+                                className={`w-12 h-6 rounded-full transition-colors relative ${settings.useFormattedTitle ? 'bg-white' : 'bg-neutral-600'}`}
+                            >
+                                <div className={`absolute top-1 w-4 h-4 rounded-full bg-black transition-transform ${settings.useFormattedTitle ? 'left-7' : 'left-1'}`} />
+                            </button>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Use formatted media title as player title (Supported players: VLC, mpv, IINA, mpv.net, PotPlayer). Formatted title may not appear if the media file contains an embedded metadata title (especially in VLC).</p>
                     </div>
                 </section>
 

@@ -23,6 +23,7 @@ interface Settings {
     minimizeToTray: boolean
     autoMarkWatchedEnabled: boolean
     autoMarkWatchedScope: 'movies' | 'all'
+    useFormattedTitle: boolean
     sources: DataSource[]
 }
 
@@ -34,6 +35,7 @@ const schema = {
     minimizeToTray: { type: 'boolean', default: false },
     autoMarkWatchedEnabled: { type: 'boolean', default: false },
     autoMarkWatchedScope: { type: 'string', default: 'movies', enum: ['movies', 'all'] },
+    useFormattedTitle: { type: 'boolean', default: true },
     sources: {
         type: 'array',
         default: [],

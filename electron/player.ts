@@ -88,18 +88,32 @@ export const playVideo = async (fileUrl: string, title?: string) => {
 
     const args = [finalUrl]
 
-    if (title) {
-        const sanitizedTitle = title.replace(/[\x00-\x1F\x7F]/g, '')
-        const lowerPath = playerPath.toLowerCase()
+    const useFormattedTitle = store.get('useFormattedTitle') as boolean
 
-        if (lowerPath.includes('mpv')) {
-            args.push(`--force-media-title=${sanitizedTitle}`)
-        } else if (lowerPath.includes('vlc')) {
-            args.push(`--meta-title=${sanitizedTitle}`)
-        } else if (lowerPath.includes('iina')) {
-            args.push(`--mpv-force-media-title=${sanitizedTitle}`)
-        } else if (lowerPath.includes('potplayer')) {
-            args[0] = `${finalUrl}\\${sanitizedTitle}`
+    if (title) {
+        let displayTitle: string
+        if (useFormattedTitle) {
+            displayTitle = title
+                .replace(/[\x00-\x1F\x7F]/g, '')
+                .replace(/[\\/:*?"<>|]/g, '')
+                .trim()
+        } else {
+            displayTitle = path.basename(fileUrl)
+                .replace(/[\x00-\x1F\x7F]/g, '')
+                .replace(/[\\/:*?"<>|]/g, '')
+                .trim()
+        }
+
+        const playerFilename = path.basename(playerPath).toLowerCase()
+
+        if (playerFilename.includes('vlc')) {
+            args.unshift(`--meta-title=${displayTitle}`)
+        } else if (playerFilename.includes('mpv')) {
+            args.push(`--force-media-title=${displayTitle}`)
+        } else if (playerFilename.includes('iina')) {
+            args.push(`--mpv-force-media-title=${displayTitle}`)
+        } else if (playerFilename.includes('potplayer')) {
+            args[0] = `${finalUrl}\\${displayTitle}`
         }
     }
 

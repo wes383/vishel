@@ -161,7 +161,7 @@ export default function MovieDetail() {
         setError(null)
         try {
             setShowVersionSelector(false)
-            await window.electron.ipcRenderer.invoke('play-video', {
+            const result = await window.electron.ipcRenderer.invoke('play-video', {
                 url: file.webdavUrl,
                 title: movie.title,
                 history: {
@@ -172,6 +172,9 @@ export default function MovieDetail() {
                     filePath: file.filePath
                 }
             })
+            if (result?.autoMarked) {
+                setIsWatched(true)
+            }
         } catch (err: any) {
             setError(err?.message || 'Failed to launch player')
             setTimeout(() => setError(null), 5000)

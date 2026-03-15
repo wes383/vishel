@@ -180,7 +180,7 @@ export default function TVDetail() {
         setError(null)
         try {
             setSelectedEpisode(null)
-            await window.electron.ipcRenderer.invoke('play-video', {
+            const result = await window.electron.ipcRenderer.invoke('play-video', {
                 url: file.webdavUrl,
                 title: `${show.name} - S${episode.seasonNumber}E${episode.episodeNumber} - ${episode.name}`,
                 history: {
@@ -194,6 +194,9 @@ export default function TVDetail() {
                     episodeName: episode.name
                 }
             })
+            if (result?.autoMarked) {
+                setIsWatched(true)
+            }
         } catch (err: any) {
             setError(err?.message || 'Failed to launch player')
             setTimeout(() => setError(null), 5000)

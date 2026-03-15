@@ -202,20 +202,38 @@ export const HistoryList: React.FC<HistoryListProps> = ({ items, onDelete, empty
         }
     }
 
-    // Check which items have next episodes
+    // Check which items are still in library and which have next episodes
     const [itemsWithNext, setItemsWithNext] = React.useState<Set<string>>(new Set())
+    const [itemsInLibrary, setItemsInLibrary] = React.useState<Set<string>>(new Set())
     
     React.useEffect(() => {
-        const checkNextEpisodes = async () => {
-            const results = new Set<string>()
+        const checkItems = async () => {
+            const nextResults = new Set<string>()
+            const libraryResults = new Set<string>()
             for (const item of items) {
-                if (await hasNextEpisode(item)) {
-                    results.add(item.id)
+                try {
+                    if (item.mediaType === 'movie') {
+                        const movie = await window.electron.ipcRenderer.invoke('get-movie', item.mediaId)
+                        if (movie) {
+                            libraryResults.add(item.id)
+                        }
+                    } else {
+                        const show = await window.electron.ipcRenderer.invoke('get-tv-show', item.mediaId)
+                        if (show) {
+                            libraryResults.add(item.id)
+                            if (await hasNextEpisode(item)) {
+                                nextResults.add(item.id)
+                            }
+                        }
+                    }
+                } catch {
+                    // item not in library
                 }
             }
-            setItemsWithNext(results)
+            setItemsInLibrary(libraryResults)
+            setItemsWithNext(nextResults)
         }
-        checkNextEpisodes()
+        checkItems()
     }, [items])
 
     if (items.length === 0) {
@@ -365,20 +383,22 @@ export const HistoryList: React.FC<HistoryListProps> = ({ items, onDelete, empty
                                     <span>Play Next: S{item.seasonNumber}E{item.episodeNumber! + 1}</span>
                                 </button>
                             )}
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation()
-                                    handlePlay(item)
-                                }}
-                                disabled={playingId === item.id}
-                                className="flex-shrink-0 p-2 rounded-full bg-white/20 text-white hover:bg-white hover:text-black transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50"
-                            >
-                                {playingId === item.id ? (
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                ) : (
-                                    <Play className="w-5 h-5" />
-                                )}
-                            </button>
+                            {itemsInLibrary.has(item.id) && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        handlePlay(item)
+                                    }}
+                                    disabled={playingId === item.id}
+                                    className="flex-shrink-0 p-2 rounded-full bg-white/20 text-white hover:bg-white hover:text-black transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                                >
+                                    {playingId === item.id ? (
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                    ) : (
+                                        <Play className="w-5 h-5" />
+                                    )}
+                                </button>
+                            )}
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation()

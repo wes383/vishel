@@ -200,16 +200,25 @@ export default function LibraryPage() {
     useEffect(() => {
         const container = scrollRef.current
         if (!container) return
-        const savedScroll = sessionStorage.getItem('library_scroll')
-        if (savedScroll && !loading) {
-            container.scrollTop = parseInt(savedScroll, 10)
-        }
         const handleScroll = () => {
             sessionStorage.setItem('library_scroll', container.scrollTop.toString())
         }
         container.addEventListener('scroll', handleScroll)
         return () => container.removeEventListener('scroll', handleScroll)
-    }, [loading])
+    }, [])
+
+    useEffect(() => {
+        if (loading) return
+        const container = scrollRef.current
+        if (!container) return
+        const savedScroll = sessionStorage.getItem('library_scroll')
+        if (!savedScroll) return
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                container.scrollTop = parseInt(savedScroll, 10)
+            })
+        })
+    }, [loading, filteredMovies, filteredTvShows])
 
     const filteredHistory = searchQuery
         ? history.filter(item => item?.title?.toLowerCase().includes(searchQuery.toLowerCase()))

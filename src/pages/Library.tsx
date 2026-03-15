@@ -171,6 +171,8 @@ export default function LibraryPage() {
                 return (a.releaseDate || '').localeCompare(b.releaseDate || '')
             case 'rating-desc':
                 return (b.popularity || 0) - (a.popularity || 0)
+            case 'recently-added':
+                return (b.createdAt || 0) - (a.createdAt || 0)
             default:
                 return 0
         }
@@ -189,14 +191,16 @@ export default function LibraryPage() {
                 return (a.firstAirDate || '').localeCompare(b.firstAirDate || '')
             case 'rating-desc':
                 return (b.popularity || 0) - (a.popularity || 0)
+            case 'recently-added':
+                return (b.createdAt || 0) - (a.createdAt || 0)
             default:
                 return 0
         }
     })
 
     const combinedItems: CombinedItem[] = [
-        ...sortedMovies.filter(m => m).map(m => ({ ...m, type: 'movie' as const, sortKey: m.title || '', sortDate: m.releaseDate || '', popularity: m.popularity })),
-        ...sortedTvShows.filter(s => s).map(s => ({ ...s, type: 'tv' as const, sortKey: s.name || '', sortDate: s.firstAirDate || '', popularity: s.popularity }))
+        ...sortedMovies.filter(m => m).map(m => ({ ...m, type: 'movie' as const, sortKey: m.title || '', sortDate: m.releaseDate || '', popularity: m.popularity, createdAt: m.createdAt })),
+        ...sortedTvShows.filter(s => s).map(s => ({ ...s, type: 'tv' as const, sortKey: s.name || '', sortDate: s.firstAirDate || '', popularity: s.popularity, createdAt: s.createdAt }))
     ].sort((a, b) => {
         if (!a || !b) return 0
         switch (sortBy) {
@@ -213,6 +217,8 @@ export default function LibraryPage() {
                 const aPopularity = (a.popularity || 0) * (a.type === 'movie' ? 3 : 1)
                 const bPopularity = (b.popularity || 0) * (b.type === 'movie' ? 3 : 1)
                 return bPopularity - aPopularity
+            case 'recently-added':
+                return (b.createdAt || 0) - (a.createdAt || 0)
             default:
                 return 0
         }

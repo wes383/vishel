@@ -32,6 +32,7 @@ export default function SettingsPage() {
     const [stats, setStats] = useState<LibraryStats>({ movies: 0, tvShows: 0 })
     const [scanning, setScanning] = useState(false)
     const [showAddModal, setShowAddModal] = useState(false)
+    const [appVersion, setAppVersion] = useState<string>('')
     const navigate = useNavigate()
 
     const fetchStats = () => {
@@ -50,6 +51,11 @@ export default function SettingsPage() {
         // Check scan status
         window.electron.ipcRenderer.invoke('get-scan-status').then((isScanning: boolean) => {
             setScanning(isScanning)
+        })
+
+        // Get app version
+        window.electron.ipcRenderer.invoke('get-app-version').then((version: string) => {
+            setAppVersion(version)
         })
     }, [])
 
@@ -302,16 +308,11 @@ export default function SettingsPage() {
                             This product uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.
                         </p>
                     </div>
-                    <p className="text-xs text-gray-500">
-                        Information courtesy of{' '}
-                        <button
-                            onClick={() => window.electron.ipcRenderer.invoke('open-external', 'https://www.imdb.com')}
-                            className="hover:text-white transition-colors underline"
-                        >
-                            IMDb
-                        </button>
-                        . Used with permission.
-                    </p>
+                    {appVersion && (
+                        <p className="text-xs text-gray-500">
+                            Version {appVersion}
+                        </p>
+                    )}
                 </section>
 
             </div>

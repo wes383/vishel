@@ -35,6 +35,7 @@ export interface Movie {
         imdb_id?: string
         tvdb_id?: number
     }
+    createdAt?: number
 }
 
 export interface Episode {
@@ -74,6 +75,7 @@ export interface TVShow {
         imdb_id?: string
         tvdb_id?: number
     }
+    createdAt?: number
 }
 
 export interface HistoryItem {
@@ -124,7 +126,8 @@ export const getDb = (): Database.Database => {
             status TEXT,
             cast TEXT, -- JSON
             director TEXT, -- JSON
-            externalIds TEXT -- JSON
+            externalIds TEXT, -- JSON
+            createdAt INTEGER
         );
 
         CREATE TABLE IF NOT EXISTS tv_shows (
@@ -142,7 +145,8 @@ export const getDb = (): Database.Database => {
             status TEXT,
             cast TEXT, -- JSON
             createdBy TEXT, -- JSON
-            externalIds TEXT -- JSON
+            externalIds TEXT, -- JSON
+            createdAt INTEGER
         );
 
         CREATE TABLE IF NOT EXISTS seasons (
@@ -271,15 +275,18 @@ export const getTVShowCount = (): number => {
 
 export const saveMovie = (movie: Movie) => {
     const db = getDb()
+    const existing = db.prepare('SELECT createdAt FROM movies WHERE id = ?').get(movie.id) as { createdAt?: number } | undefined
+    const createdAt = existing?.createdAt || Date.now()
+
     const insert = db.prepare(`
         INSERT OR REPLACE INTO movies (
             id, title, posterPath, backdropPath, logoPath, overview, releaseDate, sourceId,
             genres, runtime, voteAverage, popularity, tagline, status,
-            cast, director, externalIds
+            cast, director, externalIds, createdAt
         ) VALUES (
             @id, @title, @posterPath, @backdropPath, @logoPath, @overview, @releaseDate, @sourceId,
             @genres, @runtime, @voteAverage, @popularity, @tagline, @status,
-            @cast, @director, @externalIds
+            @cast, @director, @externalIds, @createdAt
         )
     `)
 
@@ -306,7 +313,8 @@ export const saveMovie = (movie: Movie) => {
             status: movie.status || null,
             cast: JSON.stringify(movie.cast || []),
             director: JSON.stringify(movie.director || []),
-            externalIds: JSON.stringify(movie.externalIds || {})
+            externalIds: JSON.stringify(movie.externalIds || {}),
+            createdAt
         })
 
         db.prepare('DELETE FROM video_files WHERE movieId = ?').run(movie.id)
@@ -390,13 +398,16 @@ export const getTVShow = (id: number): TVShow | undefined => {
 export const saveTVShow = (show: TVShow) => {
     const db = getDb()
 
+    const existing = db.prepare('SELECT createdAt FROM tv_shows WHERE id = ?').get(show.id) as { createdAt?: number } | undefined
+    const createdAt = existing?.createdAt || Date.now()
+
     const insertShow = db.prepare(`
         INSERT OR REPLACE INTO tv_shows (
             id, name, posterPath, backdropPath, logoPath, overview, firstAirDate, sourceId,
-            genres, voteAverage, popularity, status, cast, createdBy, externalIds
+            genres, voteAverage, popularity, status, cast, createdBy, externalIds, createdAt
         ) VALUES (
             @id, @name, @posterPath, @backdropPath, @logoPath, @overview, @firstAirDate, @sourceId,
-            @genres, @voteAverage, @popularity, @status, @cast, @createdBy, @externalIds
+            @genres, @voteAverage, @popularity, @status, @cast, @createdBy, @externalIds, @createdAt
         )
     `)
 
@@ -437,7 +448,8 @@ export const saveTVShow = (show: TVShow) => {
             status: show.status || null,
             cast: JSON.stringify(show.cast || []),
             createdBy: JSON.stringify(show.createdBy || []),
-            externalIds: JSON.stringify(show.externalIds || {})
+            externalIds: JSON.stringify(show.externalIds || {}),
+            createdAt
         })
 
         for (const season of show.seasons) {

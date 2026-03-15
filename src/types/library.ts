@@ -5,6 +5,7 @@ export interface Movie {
     releaseDate: string
     voteAverage?: number
     popularity?: number
+    createdAt?: number
 }
 
 export interface TVShow {
@@ -14,6 +15,7 @@ export interface TVShow {
     firstAirDate: string
     voteAverage?: number
     popularity?: number
+    createdAt?: number
 }
 
 export interface UnscannedFile {
@@ -47,6 +49,6 @@ export interface FavoriteItem {
 }
 
 export type CombinedItem =
-    | (Movie & { type: 'movie', sortKey: string, sortDate: string })
-    | (TVShow & { type: 'tv', sortKey: string, sortDate: string })
+    | (Movie & { type: 'movie', sortKey: string, sortDate: string, createdAt?: number })
+    | (TVShow & { type: 'tv', sortKey: string, sortDate: string, createdAt?: number })
 

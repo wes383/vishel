@@ -355,12 +355,6 @@ export default function TVDetail() {
                                 >
                                     View on IMDb
                                 </button>
-                                <button
-                                    onClick={() => openExternal(`https://www.imdb.com/title/${show.externalIds!.imdb_id}/parentalguide`)}
-                                    className="text-gray-400 hover:text-white transition-colors text-sm border-b border-transparent hover:border-white"
-                                >
-                                    Parental Guide
-                                </button>
                             </>
                         )}
                         <button
@@ -376,7 +370,7 @@ export default function TVDetail() {
                             View on douban
                         </button>
                         <button
-                            onClick={() => openExternal(`https://screen-lookup.vercel.app/tv/${show.id}`)}
+                            onClick={() => openExternal(`https://screen-lookup.wesluma.com/tv/${show.id}`)}
                             className="text-gray-400 hover:text-white transition-colors text-sm border-b border-transparent hover:border-white"
                         >
                             View Detailed Info

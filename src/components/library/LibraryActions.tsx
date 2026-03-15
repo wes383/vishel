@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { Settings, Search, ArrowUpDown, Check } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
-export type SortOption = 'name-asc' | 'name-desc' | 'date-desc' | 'date-asc' | 'rating-desc' | 'added-desc'
+export type SortOption = 'name-asc' | 'name-desc' | 'date-desc' | 'date-asc' | 'rating-desc' | 'added-desc' | 'recently-added'
 
 interface LibraryActionsProps {
     sortBy: SortOption
@@ -28,8 +28,9 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({ sortBy, onSortCh
         }
     }, [filterMenuOpen])
 
-    const allSortOptions: { value: SortOption; label: string; favoritesOnly?: boolean }[] = [
+    const allSortOptions: { value: SortOption; label: string; favoritesOnly?: boolean; excludeFavorites?: boolean }[] = [
         { value: 'added-desc', label: 'Recently Added', favoritesOnly: true },
+        { value: 'recently-added', label: 'Recently Added', excludeFavorites: true },
         { value: 'name-asc', label: 'Name (A-Z)' },
         { value: 'name-desc', label: 'Name (Z-A)' },
         { value: 'date-desc', label: 'Date (Newest)' },
@@ -41,6 +42,9 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({ sortBy, onSortCh
     const sortOptions = allSortOptions.filter(option => {
         if (option.favoritesOnly) {
             return activeTab === 'favorites'
+        }
+        if (option.excludeFavorites) {
+            return activeTab !== 'favorites'
         }
         return true
     })

@@ -1,4 +1,4 @@
-import { ipcMain, dialog, shell } from 'electron'
+import { ipcMain, dialog, shell, app } from 'electron'
 import store from './store'
 import { scanMovies, getScanStatus } from './scanner'
 import { playVideo } from './player'
@@ -333,5 +333,9 @@ export const setupIpcHandlers = () => {
 
     ipcMain.handle('is-favorite', async (_, { mediaId, mediaType }) => {
         return isFavorite(mediaId, mediaType)
+    })
+
+    ipcMain.handle('get-app-version', () => {
+        return app.getVersion()
     })
 }

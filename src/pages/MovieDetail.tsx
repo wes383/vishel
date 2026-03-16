@@ -57,6 +57,7 @@ export default function MovieDetail() {
     const [isWatched, setIsWatched] = useState(false)
     const [imdbRating, setImdbRating] = useState<{ rating: number, votes: number } | null>(null)
     const [loadingImdb, setLoadingImdb] = useState(false)
+    const [showTextTitle, setShowTextTitle] = useState(false)
 
     // Keyboard shortcuts
     useEffect(() => {
@@ -255,14 +256,20 @@ export default function MovieDetail() {
             <div className="relative z-20 container mx-auto px-8 pt-[55vh] pb-20">
 
                 <div className="pt-4">
-                    {movie.logoPath ? (
+                    {movie.logoPath && !showTextTitle ? (
                         <img
                             src={`https://image.tmdb.org/t/p/original${movie.logoPath}`}
                             alt={movie.title}
-                            className="max-w-[400px] max-h-[150px] object-contain mb-6 origin-left"
+                            className="max-w-[400px] max-h-[150px] object-contain mb-6 origin-left cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => setShowTextTitle(true)}
                         />
                     ) : (
-                        <h1 className="text-5xl font-bold mb-2 leading-tight">{movie.title}</h1>
+                        <h1 
+                            className={`text-5xl font-bold mb-2 leading-tight ${movie.logoPath ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                            onClick={() => movie.logoPath && setShowTextTitle(false)}
+                        >
+                            {movie.title}
+                        </h1>
                     )}
                     {movie.tagline && (
                         <p className="text-xl text-gray-400 italic mb-6">{movie.tagline}</p>
@@ -330,9 +337,12 @@ export default function MovieDetail() {
                                     setIsFavorited(true)
                                 }
                             }}
-                            className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                            className="group relative p-2 rounded-full hover:bg-white/10 transition-colors"
                         >
                             <Heart className={`w-5 h-5 ${isFavorited ? 'fill-red-700 text-red-700' : 'text-gray-400'}`} />
+                            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-neutral-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                {isFavorited ? 'Remove from Favorites' : 'Add to Favorites'}
+                            </span>
                         </button>
                         {/* Watch Status Button */}
                         <button
@@ -340,9 +350,12 @@ export default function MovieDetail() {
                                 const newWatched = await window.electron.ipcRenderer.invoke('toggle-watch-status', { mediaId: movie.id, mediaType: 'movie' })
                                 setIsWatched(newWatched)
                             }}
-                            className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                            className="group relative p-2 rounded-full hover:bg-white/10 transition-colors"
                         >
                             <Check className={`w-5 h-5 ${isWatched ? 'text-green-700' : 'text-gray-400'}`} strokeWidth={3} />
+                            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-neutral-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                {isWatched ? 'Mark as Unwatched' : 'Mark as Watched'}
+                            </span>
                         </button>
                     </div>
 

@@ -262,7 +262,7 @@ export default function SettingsPage() {
 
                     <div>
                         <div className="flex items-center justify-between bg-neutral-800 p-4 rounded-lg">
-                            <h3 className="font-medium">Hide Episode Details (Spoilers)</h3>
+                            <h3 className="font-medium">Hide Episode Details</h3>
                             <button
                                 onClick={() => {
                                     const newSettings = { ...settings, hideEpisodeSpoilers: !settings.hideEpisodeSpoilers }
@@ -366,7 +366,7 @@ export default function SettingsPage() {
                                 <div className={`absolute top-1 w-4 h-4 rounded-full bg-black transition-transform ${settings.useFormattedTitle ? 'left-7' : 'left-1'}`} />
                             </button>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">Use formatted media title as player title (Supported players: VLC, mpv, IINA, mpv.net, PotPlayer). Formatted title may not appear if the media file contains an embedded metadata title (especially in VLC).</p>
+                        <p className="text-xs text-gray-500 mt-1">Use formatted media title as player title (supported players: VLC, mpv, IINA, mpv.net, PotPlayer). Formatted title may not appear if the media file contains an embedded metadata title (especially in VLC)</p>
                     </div>
                 </section>
 

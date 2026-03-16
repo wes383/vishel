@@ -365,7 +365,6 @@ export default function LibraryPage() {
                                         ) : (
                                             <>
                                                 <p className="text-xl mb-2">No content found</p>
-                                                <p>Configure your data sources and click Scan to start.</p>
                                             </>
                                         )
                                     }
@@ -391,7 +390,6 @@ export default function LibraryPage() {
                                     ) : (
                                         <>
                                             <p className="text-xl mb-2">No movies found</p>
-                                            <p>Configure your data sources and click Scan to start.</p>
                                         </>
                                     )
                                 }
@@ -415,7 +413,6 @@ export default function LibraryPage() {
                                     ) : (
                                         <>
                                             <p className="text-xl mb-2">No TV shows found</p>
-                                            <p>Ensure your files are named with SxxExx format (e.g. S01E01).</p>
                                         </>
                                     )
                                 }

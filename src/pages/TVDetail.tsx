@@ -275,7 +275,7 @@ export default function TVDetail() {
             </button>
 
             {/* Content */}
-            <div className={`relative z-20 container mx-auto px-8 ${isMac ? 'pt-12' : 'pt-[55vh]'} pb-8`}>
+            <div className="relative z-20 container mx-auto px-8 pt-[55vh] pb-8">
 
                 <div className="mb-12 pt-4">
                     {show.logoPath && !showTextTitle ? (

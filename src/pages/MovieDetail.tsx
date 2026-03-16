@@ -255,7 +255,7 @@ export default function MovieDetail() {
             </button>
 
             {/* Content */}
-            <div className={`relative z-20 container mx-auto px-8 ${isMac ? 'pt-12' : 'pt-[55vh]'} pb-20`}>
+            <div className="relative z-20 container mx-auto px-8 pt-[55vh] pb-20">
 
                 <div className="pt-4">
                     {movie.logoPath && !showTextTitle ? (

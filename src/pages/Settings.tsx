@@ -41,6 +41,7 @@ export default function SettingsPage() {
     const [showAddModal, setShowAddModal] = useState(false)
     const [editingSource, setEditingSource] = useState<DataSource | null>(null)
     const [appVersion, setAppVersion] = useState<string>('')
+    const [showIinaWarning, setShowIinaWarning] = useState(false)
     const navigate = useNavigate()
 
     const fetchStats = () => {
@@ -252,12 +253,26 @@ export default function SettingsPage() {
                             onChange={e => {
                                 const newSettings = { ...settings, playerPath: e.target.value }
                                 setSettings(newSettings)
+                                
+                                const path = e.target.value.trim()
+                                if (path.toLowerCase().includes('iina.app') && !path.toLowerCase().includes('iina-cli')) {
+                                    setShowIinaWarning(true)
+                                } else {
+                                    setShowIinaWarning(false)
+                                }
                             }}
                             onBlur={() => autoSave(settings)}
                             spellCheck={false}
                             className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 outline-none focus:border-white transition-colors"
                         />
                         <p className="text-xs text-gray-500 mt-1">Full path to the executable</p>
+                        
+                        {/* IINA Warning */}
+                        {showIinaWarning && (
+                            <p className="text-xs text-yellow-500 mt-2">
+                                For better compatibility, use iina-cli instead of IINA.app
+                            </p>
+                        )}
                     </div>
 
                     <div>
@@ -366,7 +381,7 @@ export default function SettingsPage() {
                                 <div className={`absolute top-1 w-4 h-4 rounded-full bg-black transition-transform ${settings.useFormattedTitle ? 'left-7' : 'left-1'}`} />
                             </button>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">Use formatted media title as player title (supported players: VLC, mpv, IINA, mpv.net, PotPlayer). Formatted title may not appear if the media file contains an embedded metadata title (especially in VLC)</p>
+                        <p className="text-xs text-gray-500 mt-1">Use formatted media title as player title (supported players: VLC, mpv, IINA, mpv.net, PotPlayer). Formatted title may not appear if the media file contains an embedded metadata title (especially in VLC), or when opening the local file (especially in IINA)</p>
                     </div>
                 </section>
 

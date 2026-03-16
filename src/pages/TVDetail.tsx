@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Play, Calendar, User, X, Loader2, ChevronLeft, Heart, Check } from 'lucide-react'
 
@@ -52,6 +52,7 @@ interface TVShow {
 }
 
 export default function TVDetail() {
+    const isMac = useMemo(() => window.electron?.platform === 'darwin', [])
     const { id } = useParams()
     const navigate = useNavigate()
     const [show, setShow] = useState<TVShow | null>(null)
@@ -247,6 +248,7 @@ export default function TVDetail() {
             )}
             {/* Backdrop Image */}
             <div className="absolute inset-0 h-[80vh] w-full overflow-hidden">
+                {!isMac && <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-neutral-900/50 to-transparent z-[99]" />}
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-neutral-900/60 to-neutral-900 z-10" />
                 {show.backdropPath && (
                     <>
@@ -273,7 +275,7 @@ export default function TVDetail() {
             </button>
 
             {/* Content */}
-            <div className="relative z-20 container mx-auto px-8 pt-[55vh] pb-8">
+            <div className={`relative z-20 container mx-auto px-8 ${isMac ? 'pt-12' : 'pt-[55vh]'} pb-8`}>
 
                 <div className="mb-12 pt-4">
                     {show.logoPath && !showTextTitle ? (

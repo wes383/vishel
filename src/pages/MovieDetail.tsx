@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Play, Calendar, Clock, User, X, Loader2, ChevronLeft, Heart, Check } from 'lucide-react'
 
@@ -45,6 +45,7 @@ interface Movie {
 }
 
 export default function MovieDetail() {
+    const isMac = useMemo(() => window.electron?.platform === 'darwin', [])
     const { id } = useParams()
     const navigate = useNavigate()
     const [movie, setMovie] = useState<Movie | null>(null)
@@ -227,6 +228,7 @@ export default function MovieDetail() {
             )}
             {/* Backdrop Image */}
             <div className="absolute inset-0 h-[80vh] w-full overflow-hidden">
+                {!isMac && <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-neutral-900/50 to-transparent z-[99]" />}
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-neutral-900/60 to-neutral-900 z-10" />
                 {movie.backdropPath && (
                     <>
@@ -253,7 +255,7 @@ export default function MovieDetail() {
             </button>
 
             {/* Content */}
-            <div className="relative z-20 container mx-auto px-8 pt-[55vh] pb-20">
+            <div className={`relative z-20 container mx-auto px-8 ${isMac ? 'pt-12' : 'pt-[55vh]'} pb-20`}>
 
                 <div className="pt-4">
                     {movie.logoPath && !showTextTitle ? (

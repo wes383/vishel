@@ -315,7 +315,8 @@ export default function LibraryPage() {
 
     return (
         <div className="h-full flex flex-col">
-            <div ref={scrollRef} className="library-scroll-container flex-1 overflow-auto pt-12 px-8 pb-8">
+            <div ref={scrollRef} className="library-scroll-container flex-1 overflow-auto pt-12 px-8 lg:px-[72px] pb-8">
+                <div className="fixed top-0 left-0 right-0 h-8 bg-gradient-to-b from-neutral-900/50 to-transparent z-[99] pointer-events-none" />
                 <div className="mb-8">
                     <div className="relative flex flex-wrap md:flex-nowrap items-center justify-between gap-y-4">
                         <h2 className="text-3xl font-bold ml-[5px] font-['Montserrat'] text-white/50 order-1">Vishel</h2>

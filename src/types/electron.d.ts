@@ -8,6 +8,7 @@ export interface IpcRenderer {
 declare global {
     interface Window {
         electron: {
+            platform: string
             ipcRenderer: IpcRenderer
         }
     }

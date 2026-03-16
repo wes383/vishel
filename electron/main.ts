@@ -73,7 +73,9 @@ function createTray() {
 
   const iconPath = path.join(process.env.VITE_PUBLIC, 'icon.png')
   const icon = nativeImage.createFromPath(iconPath)
-  tray = new Tray(icon.resize({ width: 64, height: 64 }))
+  const isMac = process.platform === 'darwin'
+  const traySize = isMac ? 22 : 64
+  tray = new Tray(icon.resize({ width: traySize, height: traySize }))
   tray.setToolTip('Vishel')
 
   const contextMenu = Menu.buildFromTemplate([

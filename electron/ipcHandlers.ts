@@ -266,7 +266,7 @@ export const setupIpcHandlers = () => {
 
     ipcMain.handle('detect-players', async () => {
         const { detectPlayers } = await import('./playerDetector')
-        return await detectPlayers()
+        return detectPlayers()
     })
 
     ipcMain.handle('get-history', async () => {

@@ -159,9 +159,9 @@ function tryRegistryLookup(): DetectedPlayer[] {
                 timeout: 3000,
                 stdio: ['pipe', 'pipe', 'pipe']
             })
-            const match = output.match(/REG_SZ\s+(.+)/i)
+            const match = output.match(/REG_\w+\s+(.+?)(?:\r?\n|$)/i)
             if (match) {
-                const regValue = match[1].trim()
+                const regValue = match[1].trim().replace(/^"|"$/g, '')
                 const fullPath = q.exe ? path.join(regValue, q.exe) : regValue
                 if (fs.existsSync(fullPath)) {
                     if (!players.some(p => p.path.toLowerCase() === fullPath.toLowerCase())) {
@@ -176,7 +176,7 @@ function tryRegistryLookup(): DetectedPlayer[] {
     return players
 }
 
-export async function detectPlayers(): Promise<DetectedPlayer[]> {
+export function detectPlayers(): DetectedPlayer[] {
     const platform = process.platform
     const detected: DetectedPlayer[] = []
     const seenPaths = new Set<string>()

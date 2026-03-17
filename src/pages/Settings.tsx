@@ -81,11 +81,9 @@ export default function SettingsPage() {
             const sources = Array.isArray(data.sources) ? data.sources : []
             setSettings({ ...data, sources })
 
-            // Check scan status
             const isScanning = await window.electron.ipcRenderer.invoke('get-scan-status')
             setScanning(isScanning)
 
-            // Get app version
             const version = await window.electron.ipcRenderer.invoke('get-app-version')
             setAppVersion(version)
 
@@ -97,6 +95,13 @@ export default function SettingsPage() {
                 // Restore custom player path from saved settings
                 if (data.customPlayerPath) {
                     setCustomPlayerPath(data.customPlayerPath)
+                    if (data.playerPath && !players?.some((p: { path: string }) => p.path === data.playerPath)) {
+                        const newSettings = { ...data, playerPath: data.customPlayerPath }
+                        setSettings(newSettings)
+                        await window.electron.ipcRenderer.invoke('save-settings', newSettings)
+                    }
+                } else if (data.playerPath && !players?.some((p: { path: string }) => p.path === data.playerPath)) {
+                    setCustomPlayerPath(data.playerPath)
                 }
             } catch (error) {
                 console.error('Failed to detect players:', error)

@@ -18,6 +18,7 @@ export interface DataSource {
 interface Settings {
     tmdbApiKey: string
     playerPath: string
+    customPlayerPath: string
     hideEpisodeSpoilers: boolean
     showTitlesOnPosters: boolean
     minimizeToTray: boolean
@@ -33,6 +34,7 @@ interface Settings {
 const schema = {
     tmdbApiKey: { type: 'string', default: '' },
     playerPath: { type: 'string', default: '' },
+    customPlayerPath: { type: 'string', default: '' },
     hideEpisodeSpoilers: { type: 'boolean', default: false },
     showTitlesOnPosters: { type: 'boolean', default: false },
     minimizeToTray: { type: 'boolean', default: false },

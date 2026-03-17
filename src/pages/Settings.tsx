@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, X, RefreshCw, AlertCircle } from 'lucide-react'
+import { Plus, X, RefreshCw, AlertCircle, Check } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { DataSource } from '../../electron/store'
 import DataSourceList from '../components/DataSourceList'
@@ -10,6 +10,7 @@ import TMDBLogo from '../assets/TMDB_logo.svg'
 interface SettingsData {
     tmdbApiKey: string
     playerPath: string
+    customPlayerPath: string
     hideEpisodeSpoilers: boolean
     showTitlesOnPosters: boolean
     minimizeToTray: boolean
@@ -31,6 +32,7 @@ export default function SettingsPage() {
     const [settings, setSettings] = useState<SettingsData>({
         tmdbApiKey: '',
         playerPath: '',
+        customPlayerPath: '',
         hideEpisodeSpoilers: false,
         showTitlesOnPosters: false,
         minimizeToTray: false,
@@ -48,6 +50,9 @@ export default function SettingsPage() {
     const [editingSource, setEditingSource] = useState<DataSource | null>(null)
     const [appVersion, setAppVersion] = useState<string>('')
     const [showIinaWarning, setShowIinaWarning] = useState(false)
+    const [detectedPlayers, setDetectedPlayers] = useState<{ name: string; path: string }[]>([])
+    const [detectingPlayers, setDetectingPlayers] = useState(false)
+    const [customPlayerPath, setCustomPlayerPath] = useState('')
     const navigate = useNavigate()
 
     const fetchStats = () => {
@@ -56,22 +61,50 @@ export default function SettingsPage() {
         })
     }
 
+    const handleSelectPlayer = (playerPath: string) => {
+        const newSettings = { ...settings, playerPath: playerPath }
+        setSettings(newSettings)
+        autoSave(newSettings)
+
+        if (playerPath.toLowerCase().includes('iina.app') && !playerPath.toLowerCase().includes('iina-cli')) {
+            setShowIinaWarning(true)
+        } else {
+            setShowIinaWarning(false)
+        }
+    }
+
     useEffect(() => {
-        fetchStats()
-        window.electron.ipcRenderer.invoke('get-settings').then((data: SettingsData) => {
+        const init = async () => {
+            fetchStats()
+
+            const data = await window.electron.ipcRenderer.invoke('get-settings')
             const sources = Array.isArray(data.sources) ? data.sources : []
             setSettings({ ...data, sources })
-        })
 
-        // Check scan status
-        window.electron.ipcRenderer.invoke('get-scan-status').then((isScanning: boolean) => {
+            // Check scan status
+            const isScanning = await window.electron.ipcRenderer.invoke('get-scan-status')
             setScanning(isScanning)
-        })
 
-        // Get app version
-        window.electron.ipcRenderer.invoke('get-app-version').then((version: string) => {
+            // Get app version
+            const version = await window.electron.ipcRenderer.invoke('get-app-version')
             setAppVersion(version)
-        })
+
+            // Detect players and restore custom player path from settings
+            setDetectingPlayers(true)
+            try {
+                const players = await window.electron.ipcRenderer.invoke('detect-players')
+                setDetectedPlayers(players || [])
+                // Restore custom player path from saved settings
+                if (data.customPlayerPath) {
+                    setCustomPlayerPath(data.customPlayerPath)
+                }
+            } catch (error) {
+                console.error('Failed to detect players:', error)
+            }
+            setDetectingPlayers(false)
+        }
+
+        init()
     }, [])
 
     // Keyboard shortcuts
@@ -252,27 +285,97 @@ export default function SettingsPage() {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-1">External Player Path</label>
-                        <input
-                            type="text"
-                            value={settings.playerPath}
-                            onChange={e => {
-                                const newSettings = { ...settings, playerPath: e.target.value }
-                                setSettings(newSettings)
-                                
-                                const path = e.target.value.trim()
-                                if (path.toLowerCase().includes('iina.app') && !path.toLowerCase().includes('iina-cli')) {
-                                    setShowIinaWarning(true)
-                                } else {
-                                    setShowIinaWarning(false)
-                                }
-                            }}
-                            onBlur={() => autoSave(settings)}
-                            spellCheck={false}
-                            className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 outline-none focus:border-white transition-colors"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">Full path to the executable</p>
-                        
+                        <div className="flex items-center justify-between mb-2">
+                            <label className="block text-sm font-medium text-gray-400">External Player</label>
+                            {detectingPlayers && (
+                                <span className="text-xs text-gray-500 animate-pulse">Detecting...</span>
+                            )}
+                        </div>
+
+                        <div className="bg-neutral-800 rounded-xl overflow-hidden mb-3">
+                            {/* Detected Players List */}
+                            {detectedPlayers.map((player, index) => {
+                                const isSelected = settings.playerPath === player.path
+                                return (
+                                    <button
+                                        key={index}
+                                        onClick={() => handleSelectPlayer(player.path)}
+                                        className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all ${isSelected ? 'bg-white/10' : 'hover:bg-white/5'
+                                            } ${index > 0 ? 'border-t border-neutral-700/60' : ''}`}
+                                    >
+                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isSelected ? 'border-white bg-white' : 'border-neutral-500'
+                                            }`}>
+                                            {isSelected && <Check className="w-3 h-3 text-black" />}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className={`text-sm font-medium ${isSelected ? 'text-white' : 'text-gray-300'}`}>
+                                                {player.name}
+                                            </p>
+                                            <p className="text-xs text-gray-500 truncate">
+                                                {player.path}
+                                            </p>
+                                        </div>
+                                    </button>
+                                )
+                            })}
+
+                            {/* Custom Path Input */}
+                            <div
+                                onClick={() => {
+                                    // Select custom path when clicking the area
+                                    const newSettings = { ...settings, playerPath: customPlayerPath, customPlayerPath: customPlayerPath }
+                                    setSettings(newSettings)
+                                    autoSave(newSettings)
+                                }}
+                                className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all cursor-pointer ${(!settings.playerPath || !detectedPlayers.some(p => p.path === settings.playerPath))
+                                    ? 'bg-white/10'
+                                    : 'hover:bg-white/5'
+                                    } ${detectedPlayers.length > 0 ? 'border-t border-neutral-700/60' : ''}`}
+                            >
+                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${(!settings.playerPath || !detectedPlayers.some(p => p.path === settings.playerPath))
+                                    ? 'border-white bg-white'
+                                    : 'border-neutral-500'
+                                    }`}>
+                                    {(!settings.playerPath || !detectedPlayers.some(p => p.path === settings.playerPath)) && (
+                                        <Check className="w-3 h-3 text-black" />
+                                    )}
+                                </div>
+                                <div className="min-w-0 flex-1 w-full">
+                                    <input
+                                        id="custom-player-input"
+                                        type="text"
+                                        value={customPlayerPath}
+                                        onFocus={() => {
+                                            // Select custom path when focusing the input
+                                            const newSettings = { ...settings, playerPath: customPlayerPath, customPlayerPath: customPlayerPath }
+                                            setSettings(newSettings)
+                                            autoSave(newSettings)
+                                        }}
+                                        onChange={e => {
+                                            const newPath = e.target.value
+                                            setCustomPlayerPath(newPath)
+                                            const newSettings = { ...settings, playerPath: newPath, customPlayerPath: newPath }
+                                            setSettings(newSettings)
+                                            const pathVal = newPath.trim()
+                                            if (pathVal.toLowerCase().includes('iina.app') && !pathVal.toLowerCase().includes('iina-cli')) {
+                                                setShowIinaWarning(true)
+                                            } else {
+                                                setShowIinaWarning(false)
+                                            }
+                                        }}
+                                        onBlur={() => {
+                                            const newSettings = { ...settings, playerPath: customPlayerPath, customPlayerPath: customPlayerPath }
+                                            autoSave(newSettings)
+                                        }}
+                                        spellCheck={false}
+                                        placeholder="Your player not showing above? Enter the full path to the executable..."
+                                        className="w-full bg-white/5 border border-neutral-600 focus:border-white rounded-xl px-3 py-2 outline-none transition-all text-sm text-white player-path-input"
+                                        style={{ colorScheme: 'dark' }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
                         {/* IINA Warning */}
                         {showIinaWarning && (
                             <p className="text-xs text-yellow-500 mt-2">
@@ -327,11 +430,10 @@ export default function SettingsPage() {
                                             setSettings(newSettings)
                                             autoSave(newSettings)
                                         }}
-                                        className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-                                            settings.posterSize === size 
-                                                ? 'bg-white/10 text-white shadow-sm' 
-                                                : 'text-gray-400 hover:text-white'
-                                        }`}
+                                        className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${settings.posterSize === size
+                                            ? 'bg-white/10 text-white shadow-sm'
+                                            : 'text-gray-400 hover:text-white'
+                                            }`}
                                     >
                                         {size.charAt(0).toUpperCase() + size.slice(1)}
                                     </button>
@@ -364,8 +466,8 @@ export default function SettingsPage() {
                                 <h3 className="font-medium">Auto Mark as Watched</h3>
                                 <button
                                     onClick={() => {
-                                        const newSettings = { 
-                                            ...settings, 
+                                        const newSettings = {
+                                            ...settings,
                                             autoMarkWatchedEnabled: !settings.autoMarkWatchedEnabled
                                         }
                                         setSettings(newSettings)
@@ -382,8 +484,8 @@ export default function SettingsPage() {
                                     onClick={() => {
                                         if (!settings.autoMarkWatchedEnabled) return
                                         const newScope: 'movies' | 'all' = settings.autoMarkWatchedScope === 'movies' ? 'all' : 'movies'
-                                        const newSettings = { 
-                                            ...settings, 
+                                        const newSettings = {
+                                            ...settings,
                                             autoMarkWatchedScope: newScope
                                         }
                                         setSettings(newSettings)
@@ -468,9 +570,9 @@ export default function SettingsPage() {
                             onClick={() => window.electron.ipcRenderer.invoke('open-external', 'https://www.themoviedb.org')}
                             className="hover:brightness-125 transition-all"
                         >
-                            <img 
-                                src={TMDBLogo} 
-                                alt="TMDB Logo" 
+                            <img
+                                src={TMDBLogo}
+                                alt="TMDB Logo"
                                 className="h-4 w-auto"
                             />
                         </button>

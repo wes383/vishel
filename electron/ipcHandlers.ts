@@ -264,6 +264,11 @@ export const setupIpcHandlers = () => {
         return { autoMarked }
     })
 
+    ipcMain.handle('detect-players', async () => {
+        const { detectPlayers } = await import('./playerDetector')
+        return await detectPlayers()
+    })
+
     ipcMain.handle('get-history', async () => {
         return getHistory()
     })

@@ -26,6 +26,7 @@ interface Settings {
     useFormattedTitle: boolean
     showImdbRating: boolean
     preferTextTitle: boolean
+    posterSize: 'small' | 'medium' | 'large'
     sources: DataSource[]
 }
 
@@ -40,6 +41,7 @@ const schema = {
     useFormattedTitle: { type: 'boolean', default: true },
     showImdbRating: { type: 'boolean', default: true },
     preferTextTitle: { type: 'boolean', default: false },
+    posterSize: { type: 'string', default: 'medium', enum: ['small', 'medium', 'large'] },
     sources: {
         type: 'array',
         default: [],

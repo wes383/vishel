@@ -18,6 +18,7 @@ interface SettingsData {
     useFormattedTitle: boolean
     showImdbRating: boolean
     preferTextTitle: boolean
+    posterSize: 'small' | 'medium' | 'large'
     sources: DataSource[]
 }
 
@@ -38,6 +39,7 @@ export default function SettingsPage() {
         useFormattedTitle: true,
         showImdbRating: true,
         preferTextTitle: false,
+        posterSize: 'medium',
         sources: []
     })
     const [stats, setStats] = useState<LibraryStats>({ movies: 0, tvShows: 0 })
@@ -311,6 +313,32 @@ export default function SettingsPage() {
                             </button>
                         </div>
                         <p className="text-xs text-gray-500 mt-1">Display titles below posters instead of on hover</p>
+                    </div>
+
+                    <div>
+                        <div className="flex items-center justify-between bg-neutral-800 p-4 rounded-lg">
+                            <h3 className="font-medium">Poster Size</h3>
+                            <div className="flex bg-neutral-700/50 rounded-full p-1">
+                                {(['small', 'medium', 'large'] as const).map((size) => (
+                                    <button
+                                        key={size}
+                                        onClick={() => {
+                                            const newSettings = { ...settings, posterSize: size }
+                                            setSettings(newSettings)
+                                            autoSave(newSettings)
+                                        }}
+                                        className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+                                            settings.posterSize === size 
+                                                ? 'bg-white/10 text-white shadow-sm' 
+                                                : 'text-gray-400 hover:text-white'
+                                        }`}
+                                    >
+                                        {size.charAt(0).toUpperCase() + size.slice(1)}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Adjust poster size on the home page</p>
                     </div>
 
                     <div>

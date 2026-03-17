@@ -8,6 +8,7 @@ import { Film, Tv, Play, Heart, RefreshCw, Repeat, X, Check } from 'lucide-react
 interface MediaGridProps {
     items: CombinedItem[] | Movie[] | TVShow[]
     showTitlesOnPosters: boolean
+    posterSize?: 'small' | 'medium' | 'large'
     emptyMessage?: React.ReactNode
     type?: 'combined' | 'movie' | 'tv'
     onRematch?: () => void
@@ -16,7 +17,7 @@ interface MediaGridProps {
     onWatchStatusChange?: () => void
 }
 
-export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters, emptyMessage, type = 'combined', onRematch, isFavoritesView = false, onFavoritesChange, onWatchStatusChange }) => {
+export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters, posterSize = 'medium', emptyMessage, type = 'combined', onRematch, isFavoritesView = false, onFavoritesChange, onWatchStatusChange }) => {
     const navigate = useNavigate()
     const [contextMenu, setContextMenu] = useState<{ x: number, y: number, item: any } | null>(null)
     const [rematchItem, setRematchItem] = useState<{ id: number, type: 'movie' | 'tv', title: string, videoFiles: any[] } | null>(null)
@@ -466,7 +467,13 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters
                 </div>
             )}
             
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+            <div className={`grid gap-6 ${
+                posterSize === 'small' 
+                    ? 'grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8'
+                    : posterSize === 'large'
+                    ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
+                    : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'
+            }`}>
                 {items.map((item: any) => {
                     const title = getItemTitle(item)
                     const itemType = getItemType(item)

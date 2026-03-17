@@ -31,6 +31,7 @@ export default function LibraryPage() {
     })
     const [loading, setLoading] = useState(false)
     const [showTitlesOnPosters, setShowTitlesOnPosters] = useState(false)
+    const [posterSize, setPosterSize] = useState<'small' | 'medium' | 'large'>('medium')
     const scrollRef = useRef<HTMLDivElement>(null)
 
     // Keyboard shortcuts
@@ -143,6 +144,7 @@ export default function LibraryPage() {
 
         window.electron.ipcRenderer.invoke('get-settings').then((data: any) => {
             setShowTitlesOnPosters(data.showTitlesOnPosters || false)
+            setPosterSize(data.posterSize || 'medium')
         })
 
         // Listen for tab navigation from tray menu
@@ -354,6 +356,7 @@ export default function LibraryPage() {
                                 <MediaGrid
                                     items={combinedItems}
                                     showTitlesOnPosters={showTitlesOnPosters}
+                                    posterSize={posterSize}
                                     onRematch={fetchData}
                                     onFavoritesChange={fetchFavorites}
                                     onWatchStatusChange={fetchWatchStatus}
@@ -378,6 +381,7 @@ export default function LibraryPage() {
                             <MediaGrid
                                 items={sortedMovies}
                                 showTitlesOnPosters={showTitlesOnPosters}
+                                posterSize={posterSize}
                                 type="movie"
                                 onRematch={fetchData}
                                 onFavoritesChange={fetchFavorites}
@@ -401,6 +405,7 @@ export default function LibraryPage() {
                             <MediaGrid
                                 items={sortedTvShows}
                                 showTitlesOnPosters={showTitlesOnPosters}
+                                posterSize={posterSize}
                                 type="tv"
                                 onRematch={fetchData}
                                 onFavoritesChange={fetchFavorites}

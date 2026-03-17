@@ -21,6 +21,8 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({ sortBy, onSortCh
     const filterMenuRef = useRef<HTMLDivElement>(null)
     const sortMenuRef = useRef<HTMLDivElement>(null)
     const navigate = useNavigate()
+    const filterTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+    const sortTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -60,10 +62,13 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({ sortBy, onSortCh
     return (
         <div className="flex items-center gap-2">
             {activeTab !== 'history' && (
-                <div className="relative" ref={filterMenuRef}>
+                <div className="relative" ref={filterMenuRef} onMouseLeave={() => {
+                    filterTimeoutRef.current = setTimeout(() => setFilterMenuOpen(false), 200)
+                }}>
                     <button
-                        onClick={() => {
-                            setFilterMenuOpen(!filterMenuOpen)
+                        onMouseEnter={() => {
+                            if (filterTimeoutRef.current) clearTimeout(filterTimeoutRef.current)
+                            setFilterMenuOpen(true)
                             setSortMenuOpen(false)
                         }}
                         className="p-2 rounded-full text-gray-400 hover:bg-neutral-800 hover:text-white transition-colors"
@@ -71,7 +76,12 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({ sortBy, onSortCh
                         <SlidersHorizontal className="w-6 h-6" />
                     </button>
                     {filterMenuOpen && (
-                        <div className="absolute right-0 mt-2 w-56 bg-white/50 backdrop-blur-md rounded-xl shadow-2xl py-2 z-50">
+                        <div 
+                            className="absolute right-0 -mt-1 w-56 bg-white/50 backdrop-blur-md rounded-xl shadow-2xl py-2 z-50"
+                            onMouseEnter={() => {
+                                if (filterTimeoutRef.current) clearTimeout(filterTimeoutRef.current)
+                            }}
+                        >
                             <div className="px-4 py-2 text-xs font-semibold text-gray-900 uppercase">Filter</div>
                             {filterOptions.map(option => (
                                 <button
@@ -91,10 +101,13 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({ sortBy, onSortCh
                 </div>
             )}
             {activeTab !== 'history' && (
-                <div className="relative" ref={sortMenuRef}>
+                <div className="relative" ref={sortMenuRef} onMouseLeave={() => {
+                    sortTimeoutRef.current = setTimeout(() => setSortMenuOpen(false), 200)
+                }}>
                     <button
-                        onClick={() => {
-                            setSortMenuOpen(!sortMenuOpen)
+                        onMouseEnter={() => {
+                            if (sortTimeoutRef.current) clearTimeout(sortTimeoutRef.current)
+                            setSortMenuOpen(true)
                             setFilterMenuOpen(false)
                         }}
                         className="p-2 rounded-full text-gray-400 hover:bg-neutral-800 hover:text-white transition-colors"
@@ -102,7 +115,12 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({ sortBy, onSortCh
                         <ArrowUpDown className="w-6 h-6" />
                     </button>
                     {sortMenuOpen && (
-                        <div className="absolute right-0 mt-2 w-56 bg-white/50 backdrop-blur-md rounded-xl shadow-2xl py-2 z-50">
+                        <div 
+                            className="absolute right-0 -mt-1 w-56 bg-white/50 backdrop-blur-md rounded-xl shadow-2xl py-2 z-50"
+                            onMouseEnter={() => {
+                                if (sortTimeoutRef.current) clearTimeout(sortTimeoutRef.current)
+                            }}
+                        >
                             <div className="px-4 py-2 text-xs font-semibold text-gray-900 uppercase">Sort By</div>
                             {sortOptions.map(option => (
                                 <button

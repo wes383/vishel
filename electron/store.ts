@@ -24,6 +24,8 @@ interface Settings {
     autoMarkWatchedEnabled: boolean
     autoMarkWatchedScope: 'movies' | 'all'
     useFormattedTitle: boolean
+    showImdbRating: boolean
+    preferTextTitle: boolean
     sources: DataSource[]
 }
 
@@ -36,6 +38,8 @@ const schema = {
     autoMarkWatchedEnabled: { type: 'boolean', default: false },
     autoMarkWatchedScope: { type: 'string', default: 'movies', enum: ['movies', 'all'] },
     useFormattedTitle: { type: 'boolean', default: true },
+    showImdbRating: { type: 'boolean', default: true },
+    preferTextTitle: { type: 'boolean', default: false },
     sources: {
         type: 'array',
         default: [],

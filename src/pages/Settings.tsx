@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, X, RefreshCw } from 'lucide-react'
+import { Plus, X, RefreshCw, AlertCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { DataSource } from '../../electron/store'
 import DataSourceList from '../components/DataSourceList'
@@ -16,6 +16,8 @@ interface SettingsData {
     autoMarkWatchedEnabled: boolean
     autoMarkWatchedScope: 'movies' | 'all'
     useFormattedTitle: boolean
+    showImdbRating: boolean
+    preferTextTitle: boolean
     sources: DataSource[]
 }
 
@@ -34,6 +36,8 @@ export default function SettingsPage() {
         autoMarkWatchedEnabled: false,
         autoMarkWatchedScope: 'movies',
         useFormattedTitle: true,
+        showImdbRating: true,
+        preferTextTitle: false,
         sources: []
     })
     const [stats, setStats] = useState<LibraryStats>({ movies: 0, tvShows: 0 })
@@ -381,7 +385,49 @@ export default function SettingsPage() {
                                 <div className={`absolute top-1 w-4 h-4 rounded-full bg-black transition-transform ${settings.useFormattedTitle ? 'left-7' : 'left-1'}`} />
                             </button>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">Use formatted media title as player title (supported players: VLC, mpv, IINA, mpv.net, PotPlayer). Formatted title may not appear if the media file contains an embedded metadata title (especially in VLC), or when opening the local file (especially in IINA)</p>
+                        <p className="text-xs text-gray-500 mt-1 flex items-center gap-2">
+                            Use formatted media title as player title (supported players: VLC, mpv, IINA, mpv.net, PotPlayer)
+                            <span className="group relative">
+                                <AlertCircle className="w-3.5 h-3.5 text-gray-500" />
+                                <span className="absolute top-full right-0 mt-2 px-3 py-2 bg-neutral-800 border border-neutral-600 text-white text-xs rounded-lg whitespace-normal w-72 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                    Formatted title may not appear if the media file contains an embedded metadata title (especially in VLC), or when opening the local file (especially in IINA)
+                                </span>
+                            </span>
+                        </p>
+                    </div>
+
+                    <div>
+                        <div className="flex items-center justify-between bg-neutral-800 p-4 rounded-lg">
+                            <h3 className="font-medium">Show IMDb Rating</h3>
+                            <button
+                                onClick={() => {
+                                    const newSettings = { ...settings, showImdbRating: !settings.showImdbRating }
+                                    setSettings(newSettings)
+                                    autoSave(newSettings)
+                                }}
+                                className={`w-12 h-6 rounded-full transition-colors relative ${settings.showImdbRating ? 'bg-white' : 'bg-neutral-600'}`}
+                            >
+                                <div className={`absolute top-1 w-4 h-4 rounded-full bg-black transition-transform ${settings.showImdbRating ? 'left-7' : 'left-1'}`} />
+                            </button>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Display IMDb ratings</p>
+                    </div>
+
+                    <div>
+                        <div className="flex items-center justify-between bg-neutral-800 p-4 rounded-lg">
+                            <h3 className="font-medium">Prefer Text Title</h3>
+                            <button
+                                onClick={() => {
+                                    const newSettings = { ...settings, preferTextTitle: !settings.preferTextTitle }
+                                    setSettings(newSettings)
+                                    autoSave(newSettings)
+                                }}
+                                className={`w-12 h-6 rounded-full transition-colors relative ${settings.preferTextTitle ? 'bg-white' : 'bg-neutral-600'}`}
+                            >
+                                <div className={`absolute top-1 w-4 h-4 rounded-full bg-black transition-transform ${settings.preferTextTitle ? 'left-7' : 'left-1'}`} />
+                            </button>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Show text title instead of logo on detail pages</p>
                     </div>
                 </section>
 

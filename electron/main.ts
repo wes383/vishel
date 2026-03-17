@@ -155,6 +155,7 @@ function createWindow() {
   win = new BrowserWindow({
     title: 'Vishel',
     icon: path.join(process.env.VITE_PUBLIC, 'icon.png'),
+    minWidth: 480,
     titleBarStyle: 'hidden',
     titleBarOverlay: {
       color: '#00000000',

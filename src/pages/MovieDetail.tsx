@@ -59,6 +59,8 @@ export default function MovieDetail() {
     const [imdbRating, setImdbRating] = useState<{ rating: number, votes: number } | null>(null)
     const [loadingImdb, setLoadingImdb] = useState(false)
     const [showTextTitle, setShowTextTitle] = useState(false)
+    const [showImdbRating, setShowImdbRating] = useState(true)
+    const [preferTextTitle, setPreferTextTitle] = useState(true)
 
     // Keyboard shortcuts
     useEffect(() => {
@@ -102,7 +104,7 @@ export default function MovieDetail() {
                 setMovie(data)
                 
                 // Fetch IMDb rating if available
-                if (data.externalIds?.imdb_id) {
+                if (data.externalIds?.imdb_id && showImdbRating) {
                     fetchImdbRating(data.externalIds.imdb_id)
                 }
             } catch (error) {
@@ -116,6 +118,10 @@ export default function MovieDetail() {
 
         window.electron.ipcRenderer.invoke('get-settings').then((data: any) => {
             setSources(data.sources || [])
+            setShowImdbRating(data.showImdbRating !== false)
+            const preferText = data.preferTextTitle === true
+            setPreferTextTitle(preferText)
+            setShowTextTitle(preferText)
         })
 
         // Check favorite status
@@ -125,7 +131,7 @@ export default function MovieDetail() {
             window.electron.ipcRenderer.invoke('get-watch-status', { mediaId: parseInt(id), mediaType: 'movie' })
                 .then((status: { watched: boolean } | undefined) => setIsWatched(status?.watched || false))
         }
-    }, [id, navigate])
+    }, [id, navigate, showImdbRating])
 
     const fetchImdbRating = async (imdbId: string) => {
         setLoadingImdb(true)
@@ -258,7 +264,7 @@ export default function MovieDetail() {
             <div className="relative z-20 container mx-auto px-8 pt-[55vh] pb-20">
 
                 <div className="pt-4">
-                    {movie.logoPath && !showTextTitle ? (
+                    {movie.logoPath && !showTextTitle && !preferTextTitle ? (
                         <img
                             src={`https://image.tmdb.org/t/p/original${movie.logoPath}`}
                             alt={movie.title}
@@ -267,8 +273,8 @@ export default function MovieDetail() {
                         />
                     ) : (
                         <h1 
-                            className={`text-5xl font-bold mb-2 leading-tight ${movie.logoPath ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
-                            onClick={() => movie.logoPath && setShowTextTitle(false)}
+                            className={`text-5xl font-bold mb-2 leading-tight ${movie.logoPath && !preferTextTitle ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                            onClick={() => movie.logoPath && !preferTextTitle && setShowTextTitle(false)}
                         >
                             {movie.title}
                         </h1>
@@ -291,7 +297,7 @@ export default function MovieDetail() {
                             </div>
                         )}
                         {/* Ratings */}
-                        {(movie.voteAverage || imdbRating) && (
+                        {(movie.voteAverage || (imdbRating && showImdbRating)) && (
                             <div className="flex gap-3">
                                 {movie.voteAverage && (
                                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg">
@@ -299,7 +305,7 @@ export default function MovieDetail() {
                                         <span className="font-semibold">{movie.voteAverage.toFixed(1)}</span>
                                     </div>
                                 )}
-                                {imdbRating && (
+                                {imdbRating && showImdbRating && (
                                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg">
                                         <span className="text-[#f5c518] font-bold text-sm">IMDb</span>
                                         <span className="font-semibold">{imdbRating.rating.toFixed(1)}</span>
@@ -308,7 +314,7 @@ export default function MovieDetail() {
                                         )}
                                     </div>
                                 )}
-                                {loadingImdb && !imdbRating && movie.externalIds?.imdb_id && (
+                                {loadingImdb && !imdbRating && movie.externalIds?.imdb_id && showImdbRating && (
                                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg">
                                         <span className="text-[#f5c518] font-bold text-sm">IMDb</span>
                                         <span className="text-gray-400 text-sm">Loading...</span>
@@ -323,42 +329,43 @@ export default function MovieDetail() {
                                 ))}
                             </div>
                         )}
-                        {/* Favorite Button */}
-                        <button
-                            onClick={async () => {
-                                if (isFavorited) {
-                                    await window.electron.ipcRenderer.invoke('remove-favorite', { mediaId: movie.id, mediaType: 'movie' })
-                                    setIsFavorited(false)
-                                } else {
-                                    await window.electron.ipcRenderer.invoke('add-favorite', {
-                                        mediaId: movie.id,
-                                        mediaType: 'movie',
-                                        title: movie.title,
-                                        posterPath: movie.posterPath
-                                    })
-                                    setIsFavorited(true)
-                                }
-                            }}
-                            className="group relative p-2 rounded-full hover:bg-white/10 transition-colors"
-                        >
-                            <Heart className={`w-5 h-5 ${isFavorited ? 'fill-red-700 text-red-700' : 'text-gray-400'}`} />
-                            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-neutral-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                {isFavorited ? 'Remove from Favorites' : 'Add to Favorites'}
-                            </span>
-                        </button>
-                        {/* Watch Status Button */}
-                        <button
-                            onClick={async () => {
-                                const newWatched = await window.electron.ipcRenderer.invoke('toggle-watch-status', { mediaId: movie.id, mediaType: 'movie' })
-                                setIsWatched(newWatched)
-                            }}
-                            className="group relative p-2 rounded-full hover:bg-white/10 transition-colors"
-                        >
-                            <Check className={`w-5 h-5 ${isWatched ? 'text-green-700' : 'text-gray-400'}`} strokeWidth={3} />
-                            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-neutral-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                {isWatched ? 'Mark as Unwatched' : 'Mark as Watched'}
-                            </span>
-                        </button>
+                        {/* Action Buttons - Favorite & Watch Status */}
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={async () => {
+                                    if (isFavorited) {
+                                        await window.electron.ipcRenderer.invoke('remove-favorite', { mediaId: movie.id, mediaType: 'movie' })
+                                        setIsFavorited(false)
+                                    } else {
+                                        await window.electron.ipcRenderer.invoke('add-favorite', {
+                                            mediaId: movie.id,
+                                            mediaType: 'movie',
+                                            title: movie.title,
+                                            posterPath: movie.posterPath
+                                        })
+                                        setIsFavorited(true)
+                                    }
+                                }}
+                                className="group relative p-2 rounded-full hover:bg-white/10 transition-colors"
+                            >
+                                <Heart className={`w-5 h-5 ${isFavorited ? 'fill-red-700 text-red-700' : 'text-gray-400'}`} />
+                                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-neutral-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                    {isFavorited ? 'Remove from Favorites' : 'Add to Favorites'}
+                                </span>
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    const newWatched = await window.electron.ipcRenderer.invoke('toggle-watch-status', { mediaId: movie.id, mediaType: 'movie' })
+                                    setIsWatched(newWatched)
+                                }}
+                                className="group relative p-2 rounded-full hover:bg-white/10 transition-colors"
+                            >
+                                <Check className={`w-5 h-5 ${isWatched ? 'text-green-700' : 'text-gray-400'}`} strokeWidth={3} />
+                                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-neutral-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                    {isWatched ? 'Mark as Unwatched' : 'Mark as Watched'}
+                                </span>
+                            </button>
+                        </div>
                     </div>
 
                     <p className="text-lg text-gray-300 leading-relaxed max-w-3xl mb-6">
@@ -460,7 +467,7 @@ export default function MovieDetail() {
                         <button
                             onClick={handlePlayClick}
                             disabled={playing}
-                            className="group relative bg-white hover:bg-white w-24 h-12 rounded-full transition-all duration-300 shadow-lg hover:shadow-2xl hover:scale-105 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                            className="group relative flex-shrink-0 bg-white hover:bg-white w-24 h-12 rounded-full transition-all duration-300 shadow-lg hover:shadow-2xl hover:scale-105 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                         >
                             {playing ? (
                                 <Loader2 className="w-5 h-5 text-black animate-spin" />
@@ -469,7 +476,7 @@ export default function MovieDetail() {
                             )}
                         </button>
                         {movie.videoFiles && movie.videoFiles.length > 0 && (
-                            <span className="text-gray-400 text-sm">
+                            <span className="text-gray-400 text-sm line-clamp-3">
                                 {sources.find(s => s.id === movie.videoFiles[0].sourceId)?.name || 'Unknown Source'} – {movie.videoFiles[0].filePath}
                             </span>
                         )}

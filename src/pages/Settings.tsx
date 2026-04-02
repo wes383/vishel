@@ -671,13 +671,13 @@ export default function SettingsPage() {
                                 </div>
                                 <div className="space-y-2">
                                     {settings.movieExternalLinks.map((link, index) => (
-                                        <div key={`movie-link-${index}`} className="grid grid-cols-[1fr_2fr_auto] gap-2">
+                                        <div key={`movie-link-${index}`} className="grid grid-cols-[1fr_2fr_auto] gap-2 min-w-0">
                                             <input
                                                 type="text"
                                                 value={link.label}
                                                 onChange={e => updateExternalLink('movieExternalLinks', index, 'label', e.target.value)}
                                                 onBlur={() => saveExternalLinks('movieExternalLinks')}
-                                                className="bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-white transition-colors"
+                                                className="bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-white transition-colors min-w-0"
                                             />
                                             <input
                                                 type="text"
@@ -685,7 +685,7 @@ export default function SettingsPage() {
                                                 onChange={e => updateExternalLink('movieExternalLinks', index, 'template', e.target.value)}
                                                 onBlur={() => saveExternalLinks('movieExternalLinks')}
                                                 spellCheck={false}
-                                                className="bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-white transition-colors"
+                                                className="bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-white transition-colors min-w-0"
                                             />
                                             <div className="flex items-center gap-1">
                                                 <button
@@ -726,13 +726,13 @@ export default function SettingsPage() {
                             </div>
                             <div className="space-y-2">
                                 {settings.tvExternalLinks.map((link, index) => (
-                                    <div key={`tv-link-${index}`} className="grid grid-cols-[1fr_2fr_auto] gap-2">
+                                    <div key={`tv-link-${index}`} className="grid grid-cols-[1fr_2fr_auto] gap-2 min-w-0">
                                         <input
                                             type="text"
                                             value={link.label}
                                             onChange={e => updateExternalLink('tvExternalLinks', index, 'label', e.target.value)}
                                             onBlur={() => saveExternalLinks('tvExternalLinks')}
-                                            className="bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-white transition-colors"
+                                            className="bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-white transition-colors min-w-0"
                                         />
                                         <input
                                             type="text"
@@ -740,7 +740,7 @@ export default function SettingsPage() {
                                             onChange={e => updateExternalLink('tvExternalLinks', index, 'template', e.target.value)}
                                             onBlur={() => saveExternalLinks('tvExternalLinks')}
                                             spellCheck={false}
-                                            className="bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-white transition-colors"
+                                            className="bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-white transition-colors min-w-0"
                                         />
                                         <div className="flex items-center gap-1">
                                             <button

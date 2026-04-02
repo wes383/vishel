@@ -1,11 +1,17 @@
 import { useState, useEffect } from 'react'
-import { Plus, X, RefreshCw, AlertCircle, Check } from 'lucide-react'
+import { Plus, X, RefreshCw, AlertCircle, Check, ChevronUp, ChevronDown } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { DataSource } from '../../electron/store'
+import type { DataSource } from '../../electron/store'
 import DataSourceList from '../components/DataSourceList'
 import AddSourceModal from '../components/AddSourceModal'
 import EditSourceModal from '../components/EditSourceModal'
 import TMDBLogo from '../assets/TMDB_logo.svg'
+import {
+    defaultMovieExternalLinks,
+    defaultTvExternalLinks,
+    normalizeExternalLinks,
+    type ExternalLinkConfig
+} from '../utils/externalLinks'
 
 interface SettingsData {
     tmdbApiKey: string
@@ -20,6 +26,9 @@ interface SettingsData {
     showImdbRating: boolean
     preferTextTitle: boolean
     posterSize: 'small' | 'medium' | 'large'
+    probeVideoMetadataEnabled: boolean
+    movieExternalLinks: ExternalLinkConfig[]
+    tvExternalLinks: ExternalLinkConfig[]
     sources: DataSource[]
 }
 
@@ -42,6 +51,9 @@ export default function SettingsPage() {
         showImdbRating: true,
         preferTextTitle: false,
         posterSize: 'medium',
+        probeVideoMetadataEnabled: true,
+        movieExternalLinks: defaultMovieExternalLinks.map(link => ({ ...link })),
+        tvExternalLinks: defaultTvExternalLinks.map(link => ({ ...link })),
         sources: []
     })
     const [stats, setStats] = useState<LibraryStats>({ movies: 0, tvShows: 0 })
@@ -79,7 +91,9 @@ export default function SettingsPage() {
 
             const data = await window.electron.ipcRenderer.invoke('get-settings')
             const sources = Array.isArray(data.sources) ? data.sources : []
-            setSettings({ ...data, sources })
+            const movieExternalLinks = normalizeExternalLinks(data.movieExternalLinks, defaultMovieExternalLinks)
+            const tvExternalLinks = normalizeExternalLinks(data.tvExternalLinks, defaultTvExternalLinks)
+            setSettings({ ...data, sources, movieExternalLinks, tvExternalLinks })
 
             const isScanning = await window.electron.ipcRenderer.invoke('get-scan-status')
             setScanning(isScanning)
@@ -190,6 +204,66 @@ export default function SettingsPage() {
         }
         setSettings(newSettings)
         window.electron.ipcRenderer.invoke('save-settings', newSettings)
+    }
+
+    const updateExternalLink = (
+        mediaType: 'movieExternalLinks' | 'tvExternalLinks',
+        index: number,
+        key: 'label' | 'template',
+        value: string
+    ) => {
+        const links = settings[mediaType].map((link, i) => i === index ? { ...link, [key]: value } : link)
+        setSettings({ ...settings, [mediaType]: links })
+    }
+
+    const saveExternalLinks = async (mediaType: 'movieExternalLinks' | 'tvExternalLinks') => {
+        const newSettings = { ...settings, [mediaType]: settings[mediaType].map(link => ({ ...link })) }
+        setSettings(newSettings)
+        await autoSave(newSettings)
+    }
+
+    const addExternalLink = async (mediaType: 'movieExternalLinks' | 'tvExternalLinks') => {
+        const newSettings = {
+            ...settings,
+            [mediaType]: [...settings[mediaType], { label: '', template: '' }]
+        }
+        setSettings(newSettings)
+        await autoSave(newSettings)
+    }
+
+    const removeExternalLink = async (mediaType: 'movieExternalLinks' | 'tvExternalLinks', index: number) => {
+        const newSettings = {
+            ...settings,
+            [mediaType]: settings[mediaType].filter((_, i) => i !== index)
+        }
+        setSettings(newSettings)
+        await autoSave(newSettings)
+    }
+
+    const moveExternalLink = async (
+        mediaType: 'movieExternalLinks' | 'tvExternalLinks',
+        index: number,
+        direction: 'up' | 'down'
+    ) => {
+        const links = [...settings[mediaType]]
+        const targetIndex = direction === 'up' ? index - 1 : index + 1
+        if (targetIndex < 0 || targetIndex >= links.length) return
+        const temp = links[index]
+        links[index] = links[targetIndex]
+        links[targetIndex] = temp
+        const newSettings = { ...settings, [mediaType]: links }
+        setSettings(newSettings)
+        await autoSave(newSettings)
+    }
+
+    const resetExternalLinksToDefault = async () => {
+        const newSettings = {
+            ...settings,
+            movieExternalLinks: defaultMovieExternalLinks.map(link => ({ ...link })),
+            tvExternalLinks: defaultTvExternalLinks.map(link => ({ ...link }))
+        }
+        setSettings(newSettings)
+        await autoSave(newSettings)
     }
 
     return (
@@ -466,6 +540,23 @@ export default function SettingsPage() {
                     </div>
 
                     <div>
+                        <div className="flex items-center justify-between bg-neutral-800 p-4 rounded-lg">
+                            <h3 className="font-medium">Probe Video Metadata</h3>
+                            <button
+                                onClick={() => {
+                                    const newSettings = { ...settings, probeVideoMetadataEnabled: !settings.probeVideoMetadataEnabled }
+                                    setSettings(newSettings)
+                                    autoSave(newSettings)
+                                }}
+                                className={`w-12 h-6 rounded-full transition-colors relative ${settings.probeVideoMetadataEnabled ? 'bg-white' : 'bg-neutral-600'}`}
+                            >
+                                <div className={`absolute top-1 w-4 h-4 rounded-full bg-black transition-transform ${settings.probeVideoMetadataEnabled ? 'left-7' : 'left-1'}`} />
+                            </button>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Fetch video resolution, codec, frame rate, etc. Requires FFmpeg installed</p>
+                    </div>
+
+                    <div>
                         <div className="bg-neutral-800 p-4 rounded-lg space-y-5">
                             <div className="flex items-center justify-between">
                                 <h3 className="font-medium">Auto Mark as Watched</h3>
@@ -563,6 +654,132 @@ export default function SettingsPage() {
                             </button>
                         </div>
                         <p className="text-xs text-gray-500 mt-1">Show text title instead of logo on detail pages</p>
+                    </div>
+
+                    <div>
+                        <div className="bg-neutral-800 p-4 rounded-lg space-y-5">
+                            <div>
+                                <div className="flex items-center justify-between mb-3">
+                                    <h3 className="font-medium">Movie External Links</h3>
+                                    <button
+                                        onClick={() => addExternalLink('movieExternalLinks')}
+                                        className="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors"
+                                    >
+                                        <Plus className="w-3.5 h-3.5" />
+                                        Add
+                                    </button>
+                                </div>
+                                <div className="space-y-2">
+                                    {settings.movieExternalLinks.map((link, index) => (
+                                        <div key={`movie-link-${index}`} className="grid grid-cols-[1fr_2fr_auto] gap-2">
+                                            <input
+                                                type="text"
+                                                value={link.label}
+                                                onChange={e => updateExternalLink('movieExternalLinks', index, 'label', e.target.value)}
+                                                onBlur={() => saveExternalLinks('movieExternalLinks')}
+                                                className="bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-white transition-colors"
+                                            />
+                                            <input
+                                                type="text"
+                                                value={link.template}
+                                                onChange={e => updateExternalLink('movieExternalLinks', index, 'template', e.target.value)}
+                                                onBlur={() => saveExternalLinks('movieExternalLinks')}
+                                                spellCheck={false}
+                                                className="bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-white transition-colors"
+                                            />
+                                            <div className="flex items-center gap-1">
+                                                <button
+                                                    onClick={() => moveExternalLink('movieExternalLinks', index, 'up')}
+                                                    disabled={index === 0}
+                                                    className="px-2.5 py-2 rounded-lg border border-neutral-700 hover:border-white/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                                >
+                                                    <ChevronUp className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => moveExternalLink('movieExternalLinks', index, 'down')}
+                                                    disabled={index === settings.movieExternalLinks.length - 1}
+                                                    className="px-2.5 py-2 rounded-lg border border-neutral-700 hover:border-white/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                                >
+                                                    <ChevronDown className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => removeExternalLink('movieExternalLinks', index)}
+                                                    className="px-2.5 py-2 rounded-lg border border-neutral-700 hover:border-red-500/60 hover:text-red-400 transition-colors"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className="font-medium">TV External Links</h3>
+                                <button
+                                    onClick={() => addExternalLink('tvExternalLinks')}
+                                    className="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors"
+                                >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    Add
+                                </button>
+                            </div>
+                            <div className="space-y-2">
+                                {settings.tvExternalLinks.map((link, index) => (
+                                    <div key={`tv-link-${index}`} className="grid grid-cols-[1fr_2fr_auto] gap-2">
+                                        <input
+                                            type="text"
+                                            value={link.label}
+                                            onChange={e => updateExternalLink('tvExternalLinks', index, 'label', e.target.value)}
+                                            onBlur={() => saveExternalLinks('tvExternalLinks')}
+                                            className="bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-white transition-colors"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={link.template}
+                                            onChange={e => updateExternalLink('tvExternalLinks', index, 'template', e.target.value)}
+                                            onBlur={() => saveExternalLinks('tvExternalLinks')}
+                                            spellCheck={false}
+                                            className="bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-white transition-colors"
+                                        />
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                onClick={() => moveExternalLink('tvExternalLinks', index, 'up')}
+                                                disabled={index === 0}
+                                                className="px-2.5 py-2 rounded-lg border border-neutral-700 hover:border-white/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                            >
+                                                <ChevronUp className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => moveExternalLink('tvExternalLinks', index, 'down')}
+                                                disabled={index === settings.tvExternalLinks.length - 1}
+                                                className="px-2.5 py-2 rounded-lg border border-neutral-700 hover:border-white/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                            >
+                                                <ChevronDown className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => removeExternalLink('tvExternalLinks', index)}
+                                                className="px-2.5 py-2 rounded-lg border border-neutral-700 hover:border-red-500/60 hover:text-red-400 transition-colors"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-1.5 text-xs text-gray-500">
+                        <p>
+                            Supported placeholders: {'{tmdbId}'} {'{imdbId}'} {'{title}'}
+                        </p>
+                        <span>·</span>
+                        <button
+                            onClick={resetExternalLinksToDefault}
+                            className="text-xs text-gray-500 hover:underline transition-colors"
+                        >
+                            Restore Defaults
+                        </button>
+                    </div>
                     </div>
                 </section>
 

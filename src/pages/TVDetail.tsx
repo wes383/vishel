@@ -3,8 +3,15 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Play, Calendar, User, X, Loader2, ChevronLeft, Heart, Check } from 'lucide-react'
 
 
-import { DataSource } from '../../electron/store'
+import type { DataSource } from '../../electron/store'
 import { formatVoteCount } from '../utils/formatNumber'
+import {
+    buildExternalLinks,
+    defaultTvExternalLinks,
+    normalizeExternalLinks,
+    type ExternalLinkConfig
+} from '../utils/externalLinks'
+import { formatTvPlayTitle } from '../utils/playTitle'
 
 interface VideoFile {
     id: string
@@ -71,6 +78,7 @@ export default function TVDetail() {
     const [showTextTitle, setShowTextTitle] = useState(false)
     const [showImdbRating, setShowImdbRating] = useState(true)
     const [preferTextTitle, setPreferTextTitle] = useState(false)
+    const [externalLinkConfigs, setExternalLinkConfigs] = useState<ExternalLinkConfig[]>(defaultTvExternalLinks)
 
     // Keyboard shortcuts
     useEffect(() => {
@@ -130,6 +138,7 @@ export default function TVDetail() {
             setShowImdbRating(data.showImdbRating !== false)
             setPreferTextTitle(data.preferTextTitle === true)
             setShowTextTitle(data.preferTextTitle === true)
+            setExternalLinkConfigs(normalizeExternalLinks(data.tvExternalLinks, defaultTvExternalLinks))
         })
 
         // Check favorite status
@@ -180,6 +189,16 @@ export default function TVDetail() {
         return source ? source.name : 'Unknown'
     }
 
+    const externalLinks = useMemo(() => {
+        if (!show) {
+            return []
+        }
+        return buildExternalLinks(externalLinkConfigs, {
+            tmdbId: show.id,
+            imdbId: show.externalIds?.imdb_id,
+            title: show.name
+        })
+    }, [externalLinkConfigs, show])
 
     const playVideo = async (file: VideoFile, episode: Episode) => {
         if (!show) return
@@ -189,7 +208,7 @@ export default function TVDetail() {
             setSelectedEpisode(null)
             const result = await window.electron.ipcRenderer.invoke('play-video', {
                 url: file.webdavUrl,
-                title: `${show.name} - S${episode.seasonNumber}E${episode.episodeNumber} - ${episode.name}`,
+                title: formatTvPlayTitle(show.name, episode.seasonNumber, episode.episodeNumber, episode.name),
                 history: {
                     mediaId: show.id,
                     mediaType: 'tv',
@@ -383,36 +402,19 @@ export default function TVDetail() {
                     </p>
 
                     {/* External Links */}
-                    <div className="flex flex-wrap gap-4 mb-10">
-                        {show.externalIds?.imdb_id && (
-                            <>
+                    {externalLinks.length > 0 && (
+                        <div className="flex flex-wrap gap-4 mb-10">
+                            {externalLinks.map((link, index) => (
                                 <button
-                                    onClick={() => openExternal(`https://www.imdb.com/title/${show.externalIds!.imdb_id}/`)}
+                                    key={`${link.label}-${index}`}
+                                    onClick={() => openExternal(link.url)}
                                     className="text-gray-400 hover:text-white transition-colors text-sm border-b border-transparent hover:border-white"
                                 >
-                                    View on IMDb
+                                    {link.label}
                                 </button>
-                            </>
-                        )}
-                        <button
-                            onClick={() => openExternal(`https://www.themoviedb.org/tv/${show.id}`)}
-                            className="text-gray-400 hover:text-white transition-colors text-sm border-b border-transparent hover:border-white"
-                        >
-                            View on TMDb
-                        </button>
-                        <button
-                            onClick={() => openExternal(`https://www.douban.com/search?cat=1002&q=${encodeURIComponent(show.name)}`)}
-                            className="text-gray-400 hover:text-white transition-colors text-sm border-b border-transparent hover:border-white"
-                        >
-                            View on douban
-                        </button>
-                        <button
-                            onClick={() => openExternal(`https://screen-lookup.wesluma.com/tv/${show.id}`)}
-                            className="text-gray-400 hover:text-white transition-colors text-sm border-b border-transparent hover:border-white"
-                        >
-                            View Detailed Info
-                        </button>
-                    </div>
+                            ))}
+                        </div>
+                    )}
 
                     <div className="flex flex-col gap-8">
                         {show.createdBy && show.createdBy.length > 0 && (
@@ -606,4 +608,3 @@ export default function TVDetail() {
         </div >
     )
 }
-

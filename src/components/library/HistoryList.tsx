@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Trash2, Play, Loader2, SkipForward, X } from 'lucide-react'
 import { HistoryItem } from '../../types/library'
+import { formatMoviePlayTitle, formatTvPlayTitle } from '../../utils/playTitle'
 
 interface HistoryListProps {
     items: HistoryItem[]
@@ -26,6 +27,13 @@ export const HistoryList: React.FC<HistoryListProps> = ({ items, onDelete, empty
             setError(null)
             errorTimeoutRef.current = null
         }, duration)
+    }
+
+    const getHistoryItemPlayTitle = (item: HistoryItem): string => {
+        if (item.mediaType === 'tv' && item.seasonNumber !== undefined && item.episodeNumber !== undefined) {
+            return formatTvPlayTitle(item.title, item.seasonNumber, item.episodeNumber, item.episodeName)
+        }
+        return formatMoviePlayTitle(item.title)
     }
 
     const handleNavigateToDetail = async (item: HistoryItem) => {
@@ -113,9 +121,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({ items, onDelete, empty
             // Play the video
             await window.electron.ipcRenderer.invoke('play-video', {
                 url: videoFile.webdavUrl,
-                title: item.mediaType === 'tv' && item.seasonNumber && item.episodeNumber
-                    ? `${item.title} - S${item.seasonNumber}E${item.episodeNumber}${item.episodeName ? ' - ' + item.episodeName : ''}`
-                    : item.title,
+                title: getHistoryItemPlayTitle(item),
                 history: {
                     mediaId: item.mediaId,
                     mediaType: item.mediaType,
@@ -166,7 +172,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({ items, onDelete, empty
             
             await window.electron.ipcRenderer.invoke('play-video', {
                 url: videoFile.webdavUrl,
-                title: `${item.title} - S${nextEpisode.seasonNumber}E${nextEpisode.episodeNumber}${nextEpisode.name ? ' - ' + nextEpisode.name : ''}`,
+                title: formatTvPlayTitle(item.title, nextEpisode.seasonNumber, nextEpisode.episodeNumber, nextEpisode.name),
                 history: {
                     mediaId: item.mediaId,
                     mediaType: 'tv',
@@ -280,8 +286,13 @@ export const HistoryList: React.FC<HistoryListProps> = ({ items, onDelete, empty
                                             await window.electron.ipcRenderer.invoke('play-video', {
                                                 url: file.webdavUrl,
                                                 title: isMovie 
-                                                    ? fileSelector.show.name
-                                                    : `${fileSelector.show.name} - S${fileSelector.episode.seasonNumber}E${fileSelector.episode.episodeNumber}${fileSelector.episode.name ? ' - ' + fileSelector.episode.name : ''}`,
+                                                    ? formatMoviePlayTitle(fileSelector.show.name)
+                                                    : formatTvPlayTitle(
+                                                        fileSelector.show.name,
+                                                        fileSelector.episode.seasonNumber,
+                                                        fileSelector.episode.episodeNumber,
+                                                        fileSelector.episode.name
+                                                    ),
                                                 history: {
                                                     mediaId: fileSelector.show.id,
                                                     mediaType: isMovie ? 'movie' : 'tv',

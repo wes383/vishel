@@ -6,8 +6,8 @@ import { getAllMovies, getMovie, getAllTVShows, getTVShow, getHistory, addToHist
 import { testConnection, listDirectory } from './webdavService'
 import { testLocalConnection, listLocalDirectory } from './localFileService'
 import { testConnection as testSMBConnection, listDirectory as listSMBDirectory } from './smbService'
-import { getImdbDbStatus } from './imdbDatabase'
 import { getMovieDetails, getTVShowDetails, getSeasonDetails } from './tmdbService'
+import { probeVideoMetadata } from './mediaProbe'
 
 export const setupIpcHandlers = () => {
     // Settings
@@ -294,9 +294,13 @@ export const setupIpcHandlers = () => {
         await shell.openExternal(url)
     })
 
-    // IMDb Database
-    ipcMain.handle('get-imdb-db-status', async () => {
-        return getImdbDbStatus()
+    ipcMain.handle('probe-video-metadata', async (_, payload: { url: string; sourceId?: string }) => {
+        const settings = store.get('probeVideoMetadataEnabled')
+        if (settings === false) {
+            console.log('[probeVideoMetadata] Disabled by settings, skipping')
+            return null
+        }
+        return probeVideoMetadata(payload)
     })
 
     // Manual Match

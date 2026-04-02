@@ -15,6 +15,11 @@ export interface DataSource {
     paths: string[]
 }
 
+export interface ExternalLinkConfig {
+    label: string
+    template: string
+}
+
 interface Settings {
     tmdbApiKey: string
     playerPath: string
@@ -28,8 +33,24 @@ interface Settings {
     showImdbRating: boolean
     preferTextTitle: boolean
     posterSize: 'small' | 'medium' | 'large'
+    probeVideoMetadataEnabled: boolean
+    movieExternalLinks: ExternalLinkConfig[]
+    tvExternalLinks: ExternalLinkConfig[]
     sources: DataSource[]
 }
+
+const defaultMovieExternalLinks: ExternalLinkConfig[] = [
+    { label: 'View on IMDb', template: 'https://www.imdb.com/title/{imdbId}/' },
+    { label: 'View on TMDB', template: 'https://www.themoviedb.org/movie/{tmdbId}' },
+    { label: 'View on Letterboxd', template: 'https://letterboxd.com/tmdb/{tmdbId}' },
+    { label: 'View Detailed Info', template: 'https://screen-lookup.wesluma.com/movie/{tmdbId}' }
+]
+
+const defaultTvExternalLinks: ExternalLinkConfig[] = [
+    { label: 'View on IMDb', template: 'https://www.imdb.com/title/{imdbId}/' },
+    { label: 'View on TMDB', template: 'https://www.themoviedb.org/tv/{tmdbId}' },
+    { label: 'View Detailed Info', template: 'https://screen-lookup.wesluma.com/tv/{tmdbId}' }
+]
 
 const schema = {
     tmdbApiKey: { type: 'string', default: '' },
@@ -44,6 +65,29 @@ const schema = {
     showImdbRating: { type: 'boolean', default: true },
     preferTextTitle: { type: 'boolean', default: false },
     posterSize: { type: 'string', default: 'medium', enum: ['small', 'medium', 'large'] },
+    probeVideoMetadataEnabled: { type: 'boolean', default: true },
+    movieExternalLinks: {
+        type: 'array',
+        default: defaultMovieExternalLinks,
+        items: {
+            type: 'object',
+            properties: {
+                label: { type: 'string' },
+                template: { type: 'string' }
+            }
+        }
+    },
+    tvExternalLinks: {
+        type: 'array',
+        default: defaultTvExternalLinks,
+        items: {
+            type: 'object',
+            properties: {
+                label: { type: 'string' },
+                template: { type: 'string' }
+            }
+        }
+    },
     sources: {
         type: 'array',
         default: [],

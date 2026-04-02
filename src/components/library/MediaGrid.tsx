@@ -4,6 +4,7 @@ import { LazyImage } from '../LazyImage'
 import { CombinedItem, Movie, TVShow } from '../../types/library'
 import { RematchModal } from './RematchModal'
 import { Film, Tv, Play, Heart, RefreshCw, Repeat, X, Check } from 'lucide-react'
+import { formatMoviePlayTitle, formatTvPlayTitle } from '../../utils/playTitle'
 
 interface MediaGridProps {
     items: CombinedItem[] | Movie[] | TVShow[]
@@ -292,7 +293,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters
                 
                 // Play directly if only one file
                 if (fullMovie.videoFiles.length === 1) {
-                    playVideo(fullMovie.videoFiles[0], fullMovie.title, {
+                    playVideo(fullMovie.videoFiles[0], formatMoviePlayTitle(fullMovie.title), {
                         mediaId: fullMovie.id,
                         mediaType: 'movie',
                         title: fullMovie.title,
@@ -358,7 +359,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters
         if (episode.videoFiles.length > 1) {
             setFileSelector({
                 files: episode.videoFiles,
-                title: `${show.name} - S${episode.seasonNumber}E${episode.episodeNumber}${episode.name ? ' - ' + episode.name : ''}`,
+                title: formatTvPlayTitle(show.name, episode.seasonNumber, episode.episodeNumber, episode.name),
                 history: {
                     mediaId: show.id,
                     mediaType: 'tv',
@@ -374,7 +375,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters
         }
         
         const file = episode.videoFiles[0]
-        playVideo(file, `${show.name} - S${episode.seasonNumber}E${episode.episodeNumber} - ${episode.name}`, {
+        playVideo(file, formatTvPlayTitle(show.name, episode.seasonNumber, episode.episodeNumber, episode.name), {
             mediaId: show.id,
             mediaType: 'tv',
             title: show.name,

@@ -3,8 +3,15 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Play, Calendar, Clock, User, X, Loader2, ChevronLeft, Heart, Check } from 'lucide-react'
 
 
-import { DataSource } from '../../electron/store'
+import type { DataSource } from '../../electron/store'
 import { formatVoteCount } from '../utils/formatNumber'
+import {
+    buildExternalLinks,
+    defaultMovieExternalLinks,
+    normalizeExternalLinks,
+    type ExternalLinkConfig
+} from '../utils/externalLinks'
+import { formatMoviePlayTitle } from '../utils/playTitle'
 
 interface Cast {
     name: string
@@ -18,6 +25,21 @@ interface VideoFile {
     filePath: string
     webdavUrl: string
     sourceId: string
+}
+
+interface VideoProbeMetadata {
+    width: number | null
+    height: number | null
+    codec: string | null
+    isHdr: boolean | null
+    hdrType: string | null
+    bitDepth: number | null
+    frameRate: number | null
+    duration: number | null
+    fileSize: number | null
+    bitrate: number | null
+    audioCodec: string | null
+    audioChannels: number | null
 }
 
 interface Movie {
@@ -50,9 +72,8 @@ export default function MovieDetail() {
     const navigate = useNavigate()
     const [movie, setMovie] = useState<Movie | null>(null)
     const [loading, setLoading] = useState(true)
-    const [showVersionSelector, setShowVersionSelector] = useState(false)
     const [sources, setSources] = useState<DataSource[]>([])
-    const [playing, setPlaying] = useState(false)
+    const [playingFileId, setPlayingFileId] = useState<string | null>(null)
     const [error, setError] = useState<string | null>(null)
     const [isFavorited, setIsFavorited] = useState(false)
     const [isWatched, setIsWatched] = useState(false)
@@ -61,21 +82,19 @@ export default function MovieDetail() {
     const [showTextTitle, setShowTextTitle] = useState(false)
     const [showImdbRating, setShowImdbRating] = useState(true)
     const [preferTextTitle, setPreferTextTitle] = useState(true)
+    const [externalLinkConfigs, setExternalLinkConfigs] = useState<ExternalLinkConfig[]>(defaultMovieExternalLinks)
+    const [videoMetadata, setVideoMetadata] = useState<Record<string, VideoProbeMetadata | null>>({})
+    const [probeVideoMetadataEnabled, setProbeVideoMetadataEnabled] = useState(true)
 
     // Keyboard shortcuts
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            // Escape - close modal or go back
             if (e.key === 'Escape') {
-                if (showVersionSelector) {
-                    setShowVersionSelector(false)
-                } else {
-                    navigate('/')
-                }
+                navigate('/')
                 e.preventDefault()
             }
 
-            if (e.key === ' ' && !showVersionSelector && movie && !playing) {
+            if (e.key === ' ' && movie && !playingFileId) {
                 e.preventDefault()
             }
 
@@ -88,7 +107,7 @@ export default function MovieDetail() {
 
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [navigate, showVersionSelector, movie, playing])
+    }, [navigate, movie, playingFileId])
 
     useEffect(() => {
         const fetchMovie = async () => {
@@ -122,6 +141,8 @@ export default function MovieDetail() {
             const preferText = data.preferTextTitle === true
             setPreferTextTitle(preferText)
             setShowTextTitle(preferText)
+            setExternalLinkConfigs(normalizeExternalLinks(data.movieExternalLinks, defaultMovieExternalLinks))
+            setProbeVideoMetadataEnabled(data.probeVideoMetadataEnabled !== false)
         })
 
         // Check favorite status
@@ -153,25 +174,14 @@ export default function MovieDetail() {
         }
     }
 
-    const handlePlayClick = () => {
-        if (!movie || !movie.videoFiles || movie.videoFiles.length === 0) return
-
-        if (movie.videoFiles.length === 1) {
-            playVideo(movie.videoFiles[0])
-        } else {
-            setShowVersionSelector(true)
-        }
-    }
-
     const playVideo = async (file: VideoFile) => {
         if (!movie) return
-        setPlaying(true)
+        setPlayingFileId(file.id)
         setError(null)
         try {
-            setShowVersionSelector(false)
             const result = await window.electron.ipcRenderer.invoke('play-video', {
                 url: file.webdavUrl,
-                title: movie.title,
+                title: formatMoviePlayTitle(movie.title),
                 history: {
                     mediaId: movie.id,
                     mediaType: 'movie',
@@ -187,7 +197,7 @@ export default function MovieDetail() {
             setError(err?.message || 'Failed to launch player')
             setTimeout(() => setError(null), 5000)
         } finally {
-            setPlaying(false)
+            setPlayingFileId(null)
         }
     }
 
@@ -195,9 +205,114 @@ export default function MovieDetail() {
         window.electron.ipcRenderer.invoke('open-external', url)
     }
 
-    const getSourceName = (sourceId: string): string => {
-        const source = sources.find(s => s.id === sourceId)
-        return source ? source.name : 'Unknown'
+    const externalLinks = useMemo(() => {
+        if (!movie) {
+            return []
+        }
+        return buildExternalLinks(externalLinkConfigs, {
+            tmdbId: movie.id,
+            imdbId: movie.externalIds?.imdb_id,
+            title: movie.title
+        })
+    }, [externalLinkConfigs, movie])
+
+    useEffect(() => {
+        if (!probeVideoMetadataEnabled) {
+            setVideoMetadata({})
+            return
+        }
+        if (!movie?.videoFiles || movie.videoFiles.length === 0) {
+            setVideoMetadata({})
+            return
+        }
+        let active = true
+        setVideoMetadata({})
+        const probe = async () => {
+            const results = await Promise.all(
+                movie.videoFiles.map(async (file) => {
+                    const metadata = await window.electron.ipcRenderer.invoke('probe-video-metadata', {
+                        url: file.webdavUrl,
+                        sourceId: file.sourceId
+                    }) as VideoProbeMetadata | null
+                    return [file.id, metadata] as const
+                })
+            )
+            if (!active) return
+            const mapped: Record<string, VideoProbeMetadata | null> = {}
+            results.forEach(([id, metadata]) => {
+                mapped[id] = metadata
+            })
+            setVideoMetadata(mapped)
+        }
+        probe()
+        return () => {
+            active = false
+        }
+    }, [externalLinkConfigs, movie])
+
+    const formatDuration = (seconds: number | null): string | null => {
+        if (!seconds) return null
+        const h = Math.floor(seconds / 3600)
+        const m = Math.floor((seconds % 3600) / 60)
+        const s = Math.floor(seconds % 60)
+        if (h > 0) {
+            return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+        }
+        return `${m}:${s.toString().padStart(2, '0')}`
+    }
+
+    const formatFileSize = (bytes: number | null): string | null => {
+        if (!bytes) return null
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+        if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+        return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
+    }
+
+    const formatBitrate = (bps: number | null): string | null => {
+        if (!bps) return null
+        const mbps = bps / 1000000
+        if (mbps >= 1) {
+            return `${mbps.toFixed(1)} Mbps`
+        }
+        const kbps = bps / 1000
+        return `${kbps.toFixed(0)} Kbps`
+    }
+
+    const formatAudioChannels = (codec: string, channels: number): string => {
+        const layoutMap: Record<number, string> = {
+            1: 'mono',
+            2: 'stereo',
+            3: '2.1',
+            4: '3.1',
+            5: '5.0',
+            6: '5.1',
+            7: '6.1',
+            8: '7.1',
+            9: '7.1.2',
+            10: '7.1.2',
+            12: '7.1.4'
+        }
+        const layout = layoutMap[channels] || `${channels}ch`
+        return `${codec.toUpperCase()}.${layout}`
+    }
+
+    const formatVideoInfo = (metadata: VideoProbeMetadata | null | undefined): string | null => {
+        if (!metadata) return null
+        const parts: string[] = []
+        if (formatDuration(metadata.duration)) parts.push(formatDuration(metadata.duration)!)
+        if (formatFileSize(metadata.fileSize)) parts.push(formatFileSize(metadata.fileSize)!)
+        if (formatBitrate(metadata.bitrate)) parts.push(formatBitrate(metadata.bitrate)!)
+        if (metadata.hdrType) parts.push(metadata.hdrType)
+        else if (metadata.isHdr === false) parts.push('SDR')
+        if (metadata.bitDepth) parts.push(`${metadata.bitDepth}bit`)
+        if (metadata.codec) parts.push(metadata.codec.toUpperCase())
+        if (metadata.frameRate) parts.push(`${metadata.frameRate}fps`)
+        if (metadata.width && metadata.height) parts.push(`${metadata.width}×${metadata.height}`)
+        if (metadata.audioCodec) {
+            const audioInfo = formatAudioChannels(metadata.audioCodec, metadata.audioChannels || 0)
+            parts.push(audioInfo)
+        }
+        return parts.length > 0 ? parts.join(' · ') : null
     }
 
 
@@ -373,42 +488,19 @@ export default function MovieDetail() {
                     </p>
 
                     {/* External Links */}
-                    <div className="flex flex-wrap gap-4 mb-10">
-                        {movie.externalIds?.imdb_id && (
-                            <>
+                    {externalLinks.length > 0 && (
+                        <div className="flex flex-wrap gap-4 mb-10">
+                            {externalLinks.map((link, index) => (
                                 <button
-                                    onClick={() => openExternal(`https://www.imdb.com/title/${movie.externalIds!.imdb_id}/`)}
+                                    key={`${link.label}-${index}`}
+                                    onClick={() => openExternal(link.url)}
                                     className="text-gray-400 hover:text-white transition-colors text-sm border-b border-transparent hover:border-white"
                                 >
-                                    View on IMDb
+                                    {link.label}
                                 </button>
-                            </>
-                        )}
-                        <button
-                            onClick={() => openExternal(`https://www.themoviedb.org/movie/${movie.id}`)}
-                            className="text-gray-400 hover:text-white transition-colors text-sm border-b border-transparent hover:border-white"
-                        >
-                            View on TMDb
-                        </button>
-                        <button
-                            onClick={() => openExternal(`https://letterboxd.com/tmdb/${movie.id}`)}
-                            className="text-gray-400 hover:text-white transition-colors text-sm border-b border-transparent hover:border-white"
-                        >
-                            View on Letterboxd
-                        </button>
-                        <button
-                            onClick={() => openExternal(`https://www.douban.com/search?cat=1002&q=${encodeURIComponent(movie.title)}`)}
-                            className="text-gray-400 hover:text-white transition-colors text-sm border-b border-transparent hover:border-white"
-                        >
-                            View on douban
-                        </button>
-                        <button
-                            onClick={() => openExternal(`https://screen-lookup.wesluma.com/movie/${movie.id}`)}
-                            className="text-gray-400 hover:text-white transition-colors text-sm border-b border-transparent hover:border-white"
-                        >
-                            View Detailed Info
-                        </button>
-                    </div>
+                            ))}
+                        </div>
+                    )}
 
                     <div className="flex flex-col gap-8 mb-10">
                         {movie.director && Array.isArray(movie.director) && movie.director.length > 0 && (
@@ -463,61 +555,53 @@ export default function MovieDetail() {
                         )}
                     </div>
 
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={handlePlayClick}
-                            disabled={playing}
-                            className="group relative flex-shrink-0 bg-white hover:bg-white w-24 h-12 rounded-full transition-all duration-300 shadow-lg hover:shadow-2xl hover:scale-105 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                        >
-                            {playing ? (
-                                <Loader2 className="w-5 h-5 text-black animate-spin" />
-                            ) : (
-                                <Play className="w-5 h-5 text-black fill-black transition-transform group-hover:scale-110" />
-                            )}
-                        </button>
+                    <div className="flex flex-col gap-4">
+
                         {movie.videoFiles && movie.videoFiles.length > 0 && (
-                            <span className="text-gray-400 text-sm line-clamp-3">
-                                {sources.find(s => s.id === movie.videoFiles[0].sourceId)?.name || 'Unknown Source'} – {movie.videoFiles[0].filePath}
-                            </span>
+                            <div className="flex flex-col gap-2">
+                                {movie.videoFiles.map((file) => {
+                                    const isPlaying = playingFileId === file.id
+                                    const isAnyPlaying = playingFileId !== null
+                                    return (
+                                        <div
+                                            key={file.id}
+                                            className={`group border border-gray-600 rounded-xl px-3 py-3 flex items-center gap-3 transition-colors ${isAnyPlaying ? (isPlaying ? 'cursor-default' : 'cursor-not-allowed opacity-50') : 'hover:bg-white/10 cursor-pointer'}`}
+                                            onClick={() => !isAnyPlaying && playVideo(file)}
+                                        >
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); if (!isAnyPlaying) playVideo(file) }}
+                                                disabled={isAnyPlaying}
+                                                className={`flex-shrink-0 w-8 h-8 flex items-center justify-center transition-transform ${isAnyPlaying ? 'cursor-not-allowed' : 'group-hover:scale-110'}`}
+                                            >
+                                                {isAnyPlaying && isPlaying ? (
+                                                    <Loader2 className="w-5 h-5 text-white animate-spin" />
+                                                ) : (
+                                                    <Play className="w-5 h-5 text-white fill-white" />
+                                                )}
+                                            </button>
+                                            <div className="flex flex-col gap-0.5 flex-1 min-w-0 pr-4">
+                                                <span className="text-gray-200 font-medium text-sm break-all">
+                                                    {file.name}
+                                                </span>
+                                                {formatVideoInfo(videoMetadata[file.id]) && (
+                                                    <span className="text-gray-400 font-mono text-xs">
+                                                        {formatVideoInfo(videoMetadata[file.id])}
+                                                    </span>
+                                                )}
+                                                <span className="text-gray-500 text-xs truncate">
+                                                    {sources.find(s => s.id === file.sourceId)?.name || 'Unknown Source'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
                         )}
                     </div>
                 </div>
             </div>
 
 
-            {/* Version Selector Modal */}
-            {
-                showVersionSelector && movie.videoFiles && movie.videoFiles.length > 1 && (
-                    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-                        <div className="bg-white/50 backdrop-blur-md rounded-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-auto">
-                            <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-2xl font-bold text-gray-900">Select Version</h2>
-                                <button
-                                    onClick={() => setShowVersionSelector(false)}
-                                    className="p-2 hover:bg-black/10 rounded-full transition-colors text-gray-900"
-                                >
-                                    <X className="w-6 h-6" />
-                                </button>
-                            </div>
-                            <div className="space-y-3">
-                                {movie.videoFiles.map((file) => (
-                                    <button
-                                        key={file.id}
-                                        onClick={() => playVideo(file)}
-                                        className="w-full text-left p-4 bg-white/30 hover:bg-white/50 rounded-lg transition-colors flex items-center gap-3"
-                                    >
-                                        <Play className="w-5 h-5 text-gray-900" />
-                                        <div className="flex-1">
-                                            <p className="font-medium text-gray-900">{file.name}</p>
-                                            <p className="text-sm text-gray-700">{getSourceName(file.sourceId)} - {file.filePath}</p>
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
         </div >
     )
 }

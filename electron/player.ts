@@ -61,27 +61,37 @@ export const playVideo = async (fileUrl: string, title?: string) => {
     }
 
     let finalUrl = authUrl
+    let resolveAttempts = 0
+    const maxResolveAttempts = 2
 
-    try {
-        console.log(`Resolving URL: ${fileUrl}`)
-        const resolved = await axios.get(fileUrl, {
-            ...authConfig,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Range': 'bytes=0-0',
-                ...((authConfig as any).headers || {})
-            },
-            maxRedirects: 5,
-            timeout: 5000,
-            validateStatus: (status) => status >= 200 && status < 400
-        })
+    while (resolveAttempts < maxResolveAttempts) {
+        try {
+            console.log(`Resolving URL: ${fileUrl} (attempt ${resolveAttempts + 1})`)
+            const resolved = await axios.get(fileUrl, {
+                ...authConfig,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Range': 'bytes=0-0',
+                    ...((authConfig as any).headers || {})
+                },
+                maxRedirects: 5,
+                timeout: 5000,
+                validateStatus: (status) => status >= 200 && status < 400
+            })
 
-        if (resolved.request.res.responseUrl && resolved.request.res.responseUrl !== fileUrl) {
-            console.log(`Resolved redirect: ${resolved.request.res.responseUrl}`)
-            finalUrl = resolved.request.res.responseUrl
+            if (resolved.request.res.responseUrl && resolved.request.res.responseUrl !== fileUrl) {
+                console.log(`Resolved redirect: ${resolved.request.res.responseUrl}`)
+                finalUrl = resolved.request.res.responseUrl
+            }
+            break
+        } catch (error: any) {
+            resolveAttempts++
+            console.warn(`Failed to resolve redirect (attempt ${resolveAttempts}): ${error.message}`)
+            if (resolveAttempts >= maxResolveAttempts) {
+                console.log('Max resolve attempts reached, falling back to direct URL')
+                finalUrl = authUrl
+            }
         }
-    } catch (error: any) {
-        console.warn('Failed to resolve redirect, falling back to direct URL', error.message)
     }
 
     console.log(`Launching player: ${playerPath} with ${finalUrl}`)

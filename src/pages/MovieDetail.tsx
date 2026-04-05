@@ -416,7 +416,7 @@ export default function MovieDetail() {
                             <div className="flex gap-3">
                                 {movie.voteAverage && (
                                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg">
-                                        <span className="text-[#01b4e4] font-bold text-sm">TMDb</span>
+                                        <span className="text-[#01b4e4] font-bold text-sm">TMDB</span>
                                         <span className="font-semibold">{movie.voteAverage.toFixed(1)}</span>
                                     </div>
                                 )}

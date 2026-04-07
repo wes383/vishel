@@ -772,7 +772,6 @@ export default function SettingsPage() {
                         <p>
                             Supported placeholders: {'{tmdbId}'} {'{imdbId}'} {'{title}'}
                         </p>
-                        <span>·</span>
                         <button
                             onClick={resetExternalLinksToDefault}
                             className="text-xs text-gray-500 hover:underline transition-colors"

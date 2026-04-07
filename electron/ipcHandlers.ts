@@ -27,7 +27,7 @@ export const setupIpcHandlers = () => {
 
     // Data Sources
     ipcMain.handle('test-connection', async (_, config) => {
-        if (config.type === 'local' || config.path) {
+        if (config.type === 'local') {
             return await testLocalConnection(config)
         } else if (config.type === 'smb') {
             return await testSMBConnection(config)
@@ -36,7 +36,7 @@ export const setupIpcHandlers = () => {
     })
 
     ipcMain.handle('list-directory', async (_, { config, path }) => {
-        if (config.type === 'local' || config.path) {
+        if (config.type === 'local') {
             return await listLocalDirectory(config, path)
         } else if (config.type === 'smb') {
             const smbFiles = await listSMBDirectory(config, path)

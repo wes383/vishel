@@ -278,6 +278,38 @@ export default function MovieDetail() {
         return `${kbps.toFixed(0)} Kbps`
     }
 
+    const formatAudioCodecName = (codec: string): string => {
+        const key = codec.toLowerCase().replace(/[_\s-]/g, '')
+        const codecMap: Record<string, string> = {
+            aac: 'AAC',
+            aaclatm: 'AAC',
+            ac3: 'DD',
+            eac3: 'DDP',
+            ddp: 'DDP',
+            truehd: 'TrueHD',
+            mlp: 'TrueHD',
+            dts: 'DTS',
+            dtshd: 'DTS-HD',
+            dtshdma: 'DTS-HD MA',
+            dtshdhra: 'DTS-HD HRA',
+            dtsx: 'DTS:X',
+            flac: 'FLAC',
+            alac: 'ALAC',
+            opus: 'Opus',
+            vorbis: 'Vorbis',
+            mp3: 'MP3',
+            mp2: 'MP2',
+            pcm: 'PCM',
+            pcms16le: 'PCM',
+            pcms24le: 'PCM',
+            pcmbluray: 'PCM',
+            wmapro: 'WMA Pro',
+            wmav2: 'WMA'
+        }
+
+        return codecMap[key] || codec.toUpperCase()
+    }
+
     const formatAudioChannels = (codec: string, channels: number): string => {
         const layoutMap: Record<number, string> = {
             1: 'mono',
@@ -293,11 +325,11 @@ export default function MovieDetail() {
             12: '7.1.4'
         }
         const layout = layoutMap[channels] || `${channels}ch`
-        return `${codec.toUpperCase()}.${layout}`
+        return `${formatAudioCodecName(codec)}.${layout}`
     }
 
-    const formatVideoInfo = (metadata: VideoProbeMetadata | null | undefined): string | null => {
-        if (!metadata) return null
+    const formatVideoInfo = (metadata: VideoProbeMetadata | null | undefined): string[] => {
+        if (!metadata) return []
         const parts: string[] = []
         if (formatDuration(metadata.duration)) parts.push(formatDuration(metadata.duration)!)
         if (formatFileSize(metadata.fileSize)) parts.push(formatFileSize(metadata.fileSize)!)
@@ -312,7 +344,7 @@ export default function MovieDetail() {
             const audioInfo = formatAudioChannels(metadata.audioCodec, metadata.audioChannels || 0)
             parts.push(audioInfo)
         }
-        return parts.length > 0 ? parts.join(' · ') : null
+        return parts
     }
 
 
@@ -558,38 +590,56 @@ export default function MovieDetail() {
                     <div className="flex flex-col gap-4">
 
                         {movie.videoFiles && movie.videoFiles.length > 0 && (
-                            <div className="flex flex-col gap-2">
+                            <div className="flex flex-col gap-3">
                                 {movie.videoFiles.map((file) => {
                                     const isPlaying = playingFileId === file.id
                                     const isAnyPlaying = playingFileId !== null
+                                    const sourceName = sources.find(s => s.id === file.sourceId)?.name || 'Unknown Source'
+                                    const videoInfoParts = formatVideoInfo(videoMetadata[file.id])
                                     return (
                                         <div
                                             key={file.id}
-                                            className={`group border border-gray-600 rounded-xl px-3 py-3 flex items-center gap-3 transition-colors ${isAnyPlaying ? (isPlaying ? 'cursor-default' : 'cursor-not-allowed opacity-50') : 'hover:bg-white/10 cursor-pointer'}`}
+                                            className={`group relative overflow-hidden rounded-2xl border px-4 py-3.5 flex items-center gap-4 transition-all duration-300 ${isAnyPlaying
+                                                    ? (isPlaying
+                                                        ? 'cursor-default border-white/40 bg-white/[0.14] shadow-[0_8px_30px_rgba(255,255,255,0.08)]'
+                                                        : 'cursor-not-allowed opacity-45 border-white/10 bg-white/[0.03]')
+                                                    : 'cursor-pointer border-white/15 bg-white/[0.04] hover:border-white/35 hover:bg-white/[0.10] hover:shadow-[0_10px_36px_rgba(0,0,0,0.35)] hover:-translate-y-0.5'
+                                                }`}
                                             onClick={() => !isAnyPlaying && playVideo(file)}
                                         >
+                                            <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.13),transparent_55%)]" />
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); if (!isAnyPlaying) playVideo(file) }}
                                                 disabled={isAnyPlaying}
-                                                className={`flex-shrink-0 w-8 h-8 flex items-center justify-center transition-transform ${isAnyPlaying ? 'cursor-not-allowed' : 'group-hover:scale-110'}`}
+                                                className={`relative z-10 flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${isAnyPlaying
+                                                        ? 'cursor-not-allowed'
+                                                        : 'group-hover:scale-105'
+                                                    }`}
                                             >
                                                 {isAnyPlaying && isPlaying ? (
                                                     <Loader2 className="w-5 h-5 text-white animate-spin" />
                                                 ) : (
-                                                    <Play className="w-5 h-5 text-white fill-white" />
+                                                    <Play className="w-[18px] h-[18px] text-white fill-white ml-0.5" />
                                                 )}
                                             </button>
-                                            <div className="flex flex-col gap-0.5 flex-1 min-w-0 pr-4">
-                                                <span className="text-gray-200 font-medium text-sm break-all">
+                                            <div className="relative z-10 flex flex-col gap-1 flex-1 min-w-0 pr-2">
+                                                <span className="text-white/90 font-medium text-sm break-all">
                                                     {file.name}
                                                 </span>
-                                                {formatVideoInfo(videoMetadata[file.id]) && (
-                                                    <span className="text-gray-400 font-mono text-xs">
-                                                        {formatVideoInfo(videoMetadata[file.id])}
-                                                    </span>
+                                                {videoInfoParts.length > 0 && (
+                                                    <div className="flex flex-wrap items-center gap-1.5">
+                                                        {videoInfoParts.map((part, index) => (
+                                                            <span
+                                                                key={`${file.id}-${index}-${part}`}
+                                                                className="inline-flex items-center rounded-full px-2 py-0.5 bg-white/5 text-gray-300/90 font-jetbrains-mono text-xs tracking-[0.01em]"
+                                                            >
+                                                                {part}
+                                                            </span>
+                                                        ))}
+                                                    </div>
                                                 )}
                                                 <span className="text-gray-500 text-xs truncate">
-                                                    {sources.find(s => s.id === file.sourceId)?.name || 'Unknown Source'}
+                                                    {sourceName}
                                                 </span>
                                             </div>
                                         </div>

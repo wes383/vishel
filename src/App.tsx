@@ -28,7 +28,7 @@ function AppContent() {
   const titleBarBlur = !isMac && !titleBarTransparent ? 'bg-[#171717]/80 backdrop-blur-md' : ''
 
   useEffect(() => {
-    const handleNavigateToTab = (_event: any, tab: 'all' | 'movies' | 'tv' | 'favorites' | 'history') => {
+    const handleNavigateToTab = (_event: any, tab: 'all' | 'movies' | 'tv' | 'history') => {
       sessionStorage.setItem('library_active_tab', tab)
       if (location.pathname !== '/') {
         navigate('/')

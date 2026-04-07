@@ -72,27 +72,34 @@ export default function LibraryPage() {
     const fetchData = async () => {
         setLoading(true)
         try {
-            const moviesData = await window.electron.ipcRenderer.invoke('get-movies')
+            const [
+                moviesData,
+                tvData,
+                unscannedData,
+                historyData,
+                favoritesData,
+                watchStatusData
+            ] = await Promise.all([
+                window.electron.ipcRenderer.invoke('get-movies'),
+                window.electron.ipcRenderer.invoke('get-tv-shows'),
+                window.electron.ipcRenderer.invoke('get-unscanned-files'),
+                window.electron.ipcRenderer.invoke('get-history'),
+                window.electron.ipcRenderer.invoke('get-favorites'),
+                window.electron.ipcRenderer.invoke('get-all-watch-status')
+            ])
+
             setMovies(moviesData || [])
-
-            const tvData = await window.electron.ipcRenderer.invoke('get-tv-shows')
             setTvShows(tvData || [])
-
-            const unscannedData = await window.electron.ipcRenderer.invoke('get-unscanned-files')
             setUnscannedFiles(unscannedData || [])
-
-            const historyData = await window.electron.ipcRenderer.invoke('get-history')
             setHistory(historyData || [])
-
-            const favoritesData = await window.electron.ipcRenderer.invoke('get-favorites')
             setFavorites(favoritesData || [])
+
             const favMap: { [key: string]: number } = {}
             favoritesData.forEach((f: any) => {
                 favMap[`${f.mediaType}-${f.mediaId}`] = f.timestamp
             })
             setFavoritesMap(favMap)
 
-            const watchStatusData = await window.electron.ipcRenderer.invoke('get-all-watch-status')
             const statusMap: { [key: string]: { watched: boolean, timestamp: number } } = {}
             watchStatusData.forEach((s: any) => {
                 statusMap[`${s.mediaType}-${s.mediaId}`] = { watched: s.watched, timestamp: s.timestamp }

@@ -122,8 +122,12 @@ export default function LibraryPage() {
     const [filteredTvShows, setFilteredTvShows] = useState<TVShow[]>([])
     const [watchStatusMap, setWatchStatusMap] = useState<{ [key: string]: { watched: boolean, timestamp: number } }>({})
     const [favoritesMap, setFavoritesMap] = useState<{ [key: string]: number }>({})
-    const [searchExpanded, setSearchExpanded] = useState(false)
-    const [searchQuery, setSearchQuery] = useState('')
+    const [searchExpanded, setSearchExpanded] = useState(() => {
+        return sessionStorage.getItem('library_search_expanded') === 'true'
+    })
+    const [searchQuery, setSearchQuery] = useState(() => {
+        return sessionStorage.getItem('library_search_query') || ''
+    })
     const [sortBy, setSortBy] = useState<SortOption>(() => {
         return (localStorage.getItem('library_sort_by') as SortOption) || 'name-asc'
     })
@@ -176,6 +180,14 @@ export default function LibraryPage() {
     useEffect(() => {
         localStorage.setItem('library_filter_by', filterBy)
     }, [filterBy])
+
+    useEffect(() => {
+        sessionStorage.setItem('library_search_query', searchQuery)
+    }, [searchQuery])
+
+    useEffect(() => {
+        sessionStorage.setItem('library_search_expanded', String(searchExpanded))
+    }, [searchExpanded])
 
     useEffect(() => {
         localStorage.setItem('library_genre_filter', genreFilter)

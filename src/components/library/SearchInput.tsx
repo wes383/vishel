@@ -6,9 +6,16 @@ interface SearchInputProps {
     onChange: (value: string) => void
     onClose: () => void
     visible: boolean
+    placeholder?: string
 }
 
-export const SearchInput: React.FC<SearchInputProps> = ({ value, onChange, onClose, visible }) => {
+export const SearchInput: React.FC<SearchInputProps> = ({
+    value,
+    onChange,
+    onClose,
+    visible,
+    placeholder = 'Search by title, actor, director, or creator...'
+}) => {
     const inputRef = useRef<HTMLInputElement>(null)
     const clearButtonRef = useRef<HTMLButtonElement>(null)
 
@@ -44,7 +51,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({ value, onChange, onClo
                         }, 100)
                     }
                 }}
-                placeholder="Search by title, actor, director, or creator..."
+                placeholder={placeholder}
                 className="library-search-input w-full bg-neutral-800 text-white px-4 py-3 pr-10 rounded-full focus:outline-none focus:ring-2 focus:ring-white/20"
             />
             {value && (

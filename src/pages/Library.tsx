@@ -504,6 +504,9 @@ export default function LibraryPage() {
                     onChange={setSearchQuery}
                     onClose={() => setSearchExpanded(false)}
                     visible={searchExpanded}
+                    placeholder={activeTab === 'history'
+                        ? 'Search history by title...'
+                        : 'Search by title, actor, director, or creator...'}
                 />
 
                 {loading ? (

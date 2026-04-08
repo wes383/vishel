@@ -573,7 +573,15 @@ export default function SettingsPage() {
                                 <div className={`absolute top-1 w-4 h-4 rounded-full bg-black transition-transform ${settings.probeVideoMetadataEnabled ? 'left-7' : 'left-1'}`} />
                             </button>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">Fetch video resolution, codec, frame rate, etc. Requires FFmpeg installed</p>
+                        <p className="text-xs text-gray-500 mt-1 flex items-center gap-2">
+                            Fetch video resolution, codec, frame rate, etc.
+                            <span className="group relative">
+                                <AlertCircle className="w-3.5 h-3.5 text-gray-500" />
+                                <span className="absolute top-full right-0 mt-2 px-3 py-2 bg-neutral-800 border border-neutral-600 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                    Requires FFmpeg installed.
+                                </span>
+                            </span>
+                        </p>
                     </div>
 
                     <div>
@@ -636,7 +644,7 @@ export default function SettingsPage() {
                             <span className="group relative">
                                 <AlertCircle className="w-3.5 h-3.5 text-gray-500" />
                                 <span className="absolute top-full right-0 mt-2 px-3 py-2 bg-neutral-800 border border-neutral-600 text-white text-xs rounded-lg whitespace-normal w-72 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                                    Formatted title may not appear if the media file contains an embedded metadata title (especially in VLC), or when opening the local file (especially in IINA)
+                                    Formatted title may not appear if the media file contains an embedded metadata title, or when opening the local file. It depends on which player you use.
                                 </span>
                             </span>
                         </p>

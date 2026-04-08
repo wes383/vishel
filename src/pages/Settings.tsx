@@ -514,7 +514,7 @@ export default function SettingsPage() {
                                 ))}
                             </div>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">Hover: show title in poster center on hover. Below: show title below poster. Hidden: hide title and keep hover lift only</p>
+                        <p className="text-xs text-gray-500 mt-1">Hover: show title on hover. Below: show title below poster. Hidden: hide title</p>
                     </div>
 
                     <div>

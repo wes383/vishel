@@ -559,6 +559,13 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ items, posterTitleMode, po
                     className="fixed bg-white/50 backdrop-blur-md rounded-xl shadow-2xl py-1 z-50 w-[240px]"
                     style={{ left: contextMenu.x, top: contextMenu.y }}
                 >
+                    {posterTitleMode === 'hidden' && (
+                        <div className="px-4 py-2 border-b border-black/10">
+                            <p className="text-sm text-gray-900 font-semibold truncate">
+                                {getItemTitle(contextMenu.item)}
+                            </p>
+                        </div>
+                    )}
                     <button
                         onClick={handlePlayClick}
                         disabled={playing}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { LibraryTabs } from '../components/library/LibraryTabs'
 import { LibraryActions, SortOption, FilterOption } from '../components/library/LibraryActions'
@@ -7,6 +7,45 @@ import { MediaGrid } from '../components/library/MediaGrid'
 import { HistoryList } from '../components/library/HistoryList'
 import { UnscannedFiles } from '../components/library/UnscannedFiles'
 import { Movie, TVShow, UnscannedFile, HistoryItem, CombinedItem, FavoriteItem } from '../types/library'
+
+const GENRE_MERGE_MAP: Record<string, string> = {
+    'Action & Adventure': 'Action',
+    'Sci-Fi & Fantasy': 'Science Fiction',
+    'War & Politics': 'War',
+    'TV Movie': 'Other',
+    'Kids': 'Other',
+    'News': 'Other',
+    'Reality': 'Other',
+    'Soap': 'Other',
+    'Talk': 'Other',
+}
+
+const CORE_GENRES = new Set([
+    'Action',
+    'Adventure',
+    'Animation',
+    'Comedy',
+    'Crime',
+    'Drama',
+    'Family',
+    'Fantasy',
+    'Documentary',
+    'History',
+    'Horror',
+    'Music',
+    'Mystery',
+    'Romance',
+    'Science Fiction',
+    'Thriller',
+    'War',
+    'Western',
+])
+
+const normalizeGenres = (genres?: string[]) => {
+    if (!genres || genres.length === 0) return []
+    const normalized = genres.map(genre => GENRE_MERGE_MAP[genre] || genre)
+    return Array.from(new Set(normalized.map(genre => CORE_GENRES.has(genre) ? genre : 'Other')))
+}
 
 export default function LibraryPage() {
     const [movies, setMovies] = useState<Movie[]>([])
@@ -25,6 +64,9 @@ export default function LibraryPage() {
     })
     const [filterBy, setFilterBy] = useState<FilterOption>(() => {
         return (localStorage.getItem('library_filter_by') as FilterOption) || 'all'
+    })
+    const [genreFilter, setGenreFilter] = useState<string>(() => {
+        return localStorage.getItem('library_genre_filter') || 'all'
     })
     const [activeTab, setActiveTab] = useState<'all' | 'movies' | 'tv' | 'history'>(() => {
         return (sessionStorage.getItem('library_active_tab') as 'all' | 'movies' | 'tv' | 'history') || 'all'
@@ -69,6 +111,10 @@ export default function LibraryPage() {
     useEffect(() => {
         localStorage.setItem('library_filter_by', filterBy)
     }, [filterBy])
+
+    useEffect(() => {
+        localStorage.setItem('library_genre_filter', genreFilter)
+    }, [genreFilter])
 
     useEffect(() => {
         if (document.activeElement instanceof HTMLElement) {
@@ -293,8 +339,8 @@ export default function LibraryPage() {
     })
 
     const combinedItems: CombinedItem[] = [
-        ...sortedMovies.filter(m => m).map(m => ({ ...m, type: 'movie' as const, sortKey: m.title || '', sortDate: m.releaseDate || '', popularity: m.popularity, createdAt: m.createdAt })),
-        ...sortedTvShows.filter(s => s).map(s => ({ ...s, type: 'tv' as const, sortKey: s.name || '', sortDate: s.firstAirDate || '', popularity: s.popularity, createdAt: s.createdAt }))
+        ...sortedMovies.filter(m => m && (genreFilter === 'all' || normalizeGenres(m.genres).includes(genreFilter))).map(m => ({ ...m, type: 'movie' as const, sortKey: m.title || '', sortDate: m.releaseDate || '', popularity: m.popularity, createdAt: m.createdAt })),
+        ...sortedTvShows.filter(s => s && (genreFilter === 'all' || normalizeGenres(s.genres).includes(genreFilter))).map(s => ({ ...s, type: 'tv' as const, sortKey: s.name || '', sortDate: s.firstAirDate || '', popularity: s.popularity, createdAt: s.createdAt }))
     ].sort((a, b) => {
         if (!a || !b) return 0
         switch (sortBy) {
@@ -329,6 +375,29 @@ export default function LibraryPage() {
         setHistory(prev => prev.filter(h => h.id !== id))
     }
 
+    const genreFilteredMovies = sortedMovies.filter(m => genreFilter === 'all' || normalizeGenres(m.genres).includes(genreFilter))
+    const genreFilteredTvShows = sortedTvShows.filter(s => genreFilter === 'all' || normalizeGenres(s.genres).includes(genreFilter))
+
+    const genreOptions = useMemo(() => {
+        const allGenres = [
+            ...movies.flatMap(m => normalizeGenres(m.genres)),
+            ...tvShows.flatMap(s => normalizeGenres(s.genres))
+        ]
+        return Array.from(new Set(allGenres)).sort((a, b) => {
+            if (a === 'Other') return 1
+            if (b === 'Other') return -1
+            return a.localeCompare(b)
+        })
+    }, [movies, tvShows])
+
+    useEffect(() => {
+        if (loading) return
+        if (genreOptions.length === 0) return
+        if (genreFilter !== 'all' && !genreOptions.includes(genreFilter)) {
+            setGenreFilter('all')
+        }
+    }, [loading, genreFilter, genreOptions])
+
     return (
         <div className="h-full flex flex-col">
             <div ref={scrollRef} className="library-scroll-container flex-1 overflow-auto pt-12 px-8 lg:px-[72px] pb-8">
@@ -349,6 +418,9 @@ export default function LibraryPage() {
                                 activeTab={activeTab}
                                 filterBy={filterBy}
                                 onFilterChange={setFilterBy}
+                                genreFilter={genreFilter}
+                                genreOptions={genreOptions}
+                                onGenreFilterChange={setGenreFilter}
                             />
                         </div>
                     </div>
@@ -393,7 +465,7 @@ export default function LibraryPage() {
 
                         {activeTab === 'movies' && (
                             <MediaGrid
-                                items={sortedMovies}
+                                items={genreFilteredMovies}
                                 posterTitleMode={posterTitleMode}
                                 posterSize={posterSize}
                                 type="movie"
@@ -417,7 +489,7 @@ export default function LibraryPage() {
 
                         {activeTab === 'tv' && (
                             <MediaGrid
-                                items={sortedTvShows}
+                                items={genreFilteredTvShows}
                                 posterTitleMode={posterTitleMode}
                                 posterSize={posterSize}
                                 type="tv"

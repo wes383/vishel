@@ -3,6 +3,7 @@ export interface Movie {
     title: string
     posterPath: string
     releaseDate: string
+    genres?: string[]
     voteAverage?: number
     popularity?: number
     createdAt?: number
@@ -13,6 +14,7 @@ export interface TVShow {
     name: string
     posterPath: string
     firstAirDate: string
+    genres?: string[]
     voteAverage?: number
     popularity?: number
     createdAt?: number
@@ -58,4 +60,3 @@ export interface WatchStatus {
 export type CombinedItem =
     | (Movie & { type: 'movie', sortKey: string, sortDate: string, createdAt?: number })
     | (TVShow & { type: 'tv', sortKey: string, sortDate: string, createdAt?: number })
-

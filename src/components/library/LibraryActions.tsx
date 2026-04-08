@@ -89,9 +89,7 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
                     </button>
                     {filterMenuOpen && (
                         <div
-                            className={`absolute right-0 top-full mt-2 bg-white/50 backdrop-blur-md rounded-xl shadow-2xl py-2 z-50 ${
-                                activeTab !== 'history' ? 'w-72' : 'w-56'
-                            }`}
+                            className="absolute right-0 top-full mt-2 w-72 bg-white/50 backdrop-blur-md rounded-xl shadow-2xl py-2 z-50"
                         >
                             <div className="px-4 py-2 text-xs font-semibold text-gray-900 uppercase">Filter</div>
                             {filterOptions.map(option => (
@@ -107,37 +105,35 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
                                     {filterBy === option.value && <Check className="w-4 h-4 text-gray-900" />}
                                 </button>
                             ))}
-                            {activeTab !== 'history' && (
-                                <>
-                                    <div className="mx-4 my-1 h-px bg-black/10" />
-                                    <div className="px-4 py-2 text-xs font-semibold text-gray-900 uppercase">Genre</div>
-                                    <div className="px-2 pb-1 grid grid-cols-2 gap-0.5 max-w-[280px] mx-auto">
+                            <>
+                                <div className="mx-4 my-1 h-px bg-black/10" />
+                                <div className="px-4 py-2 text-xs font-semibold text-gray-900 uppercase">Genre</div>
+                                <div className="px-2 pb-1 grid grid-cols-2 gap-0.5 max-w-[280px] mx-auto">
+                                    <button
+                                        onClick={() => {
+                                            onGenreFilterChange?.('all')
+                                            setFilterMenuOpen(false)
+                                        }}
+                                        className="col-span-2 w-full px-2 py-1.5 text-left text-sm hover:bg-black/10 rounded-md transition-colors flex items-center justify-between"
+                                    >
+                                        <span className="text-gray-900 font-medium">All Genres</span>
+                                        {genreFilter === 'all' && <Check className="w-4 h-4 text-gray-900" />}
+                                    </button>
+                                    {genreOptions.map((genre) => (
                                         <button
+                                            key={genre}
                                             onClick={() => {
-                                                onGenreFilterChange?.('all')
+                                                onGenreFilterChange?.(genre)
                                                 setFilterMenuOpen(false)
                                             }}
-                                            className="col-span-2 w-full px-2 py-1.5 text-left text-sm hover:bg-black/10 rounded-md transition-colors flex items-center justify-between"
+                                            className="w-full px-2 py-1.5 text-left text-sm hover:bg-black/10 rounded-md transition-colors flex items-center justify-between"
                                         >
-                                            <span className="text-gray-900 font-medium">All Genres</span>
-                                            {genreFilter === 'all' && <Check className="w-4 h-4 text-gray-900" />}
+                                            <span className="text-gray-900 font-medium truncate pr-2">{genre}</span>
+                                            {genreFilter === genre && <Check className="w-4 h-4 text-gray-900" />}
                                         </button>
-                                        {genreOptions.map((genre) => (
-                                            <button
-                                                key={genre}
-                                                onClick={() => {
-                                                    onGenreFilterChange?.(genre)
-                                                    setFilterMenuOpen(false)
-                                                }}
-                                                className="w-full px-2 py-1.5 text-left text-sm hover:bg-black/10 rounded-md transition-colors flex items-center justify-between"
-                                            >
-                                                <span className="text-gray-900 font-medium truncate pr-2">{genre}</span>
-                                                {genreFilter === genre && <Check className="w-4 h-4 text-gray-900" />}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </>
-                            )}
+                                    ))}
+                                </div>
+                            </>
                         </div>
                     )}
                 </div>

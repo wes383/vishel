@@ -93,21 +93,11 @@ export default function MovieDetail() {
                 navigate('/')
                 e.preventDefault()
             }
-
-            if (e.key === ' ' && movie && !playingFileId) {
-                e.preventDefault()
-            }
-
-            // Ctrl/Cmd + , - Open settings
-            if ((e.ctrlKey || e.metaKey) && e.key === ',') {
-                navigate('/settings')
-                e.preventDefault()
-            }
         }
 
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [navigate, movie, playingFileId])
+    }, [navigate])
 
     useEffect(() => {
         const fetchMovie = async () => {

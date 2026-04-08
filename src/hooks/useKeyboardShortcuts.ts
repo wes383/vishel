@@ -6,6 +6,15 @@ interface KeyboardShortcutsOptions {
     onEscape?: () => void
 }
 
+function scrollHomeToTop() {
+    const scrollContainer = document.querySelector('.library-scroll-container') as HTMLElement | null
+    if (scrollContainer) {
+        scrollContainer.scrollTo({ top: 0, behavior: 'smooth' })
+        return
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
 export function useKeyboardShortcuts(options: KeyboardShortcutsOptions = {}) {
     const navigate = useNavigate()
     const location = useLocation()
@@ -33,6 +42,11 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions = {}) {
                 e.preventDefault()
                 return
             }
+            if (location.pathname === '/') {
+                scrollHomeToTop()
+                e.preventDefault()
+                return
+            }
         }
 
         if (isInputField) return
@@ -44,13 +58,6 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions = {}) {
                 e.preventDefault()
                 return
             }
-        }
-
-        // Ctrl/Cmd + , - Open settings
-        if ((e.ctrlKey || e.metaKey) && e.key === ',') {
-            navigate('/settings')
-            e.preventDefault()
-            return
         }
 
     }, [navigate, location, options])
@@ -73,21 +80,16 @@ export function useGlobalShortcuts() {
                 target.tagName === 'TEXTAREA' ||
                 target.isContentEditable
 
-            // Escape - go back from detail/settings pages
+            // Escape - go back from detail/settings pages, scroll to top on homepage
             if (e.key === 'Escape' && !isInputField) {
-                if (location.pathname !== '/') {
+                if (location.pathname === '/') {
+                    scrollHomeToTop()
+                } else {
                     navigate('/')
-                    e.preventDefault()
-                }
-            }
-
-            // Ctrl/Cmd + , - Open settings
-            if ((e.ctrlKey || e.metaKey) && e.key === ',') {
-                if (location.pathname !== '/settings') {
-                    navigate('/settings')
                 }
                 e.preventDefault()
             }
+
         }
 
         window.addEventListener('keydown', handleKeyDown)

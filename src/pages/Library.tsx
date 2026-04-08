@@ -43,6 +43,13 @@ export default function LibraryPage() {
         if (searchExpanded) {
             setSearchExpanded(false)
             setSearchQuery('')
+        } else {
+            const container = scrollRef.current
+            if (container) {
+                container.scrollTo({ top: 0, behavior: 'smooth' })
+            } else {
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+            }
         }
     }, [searchExpanded])
 

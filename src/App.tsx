@@ -21,11 +21,13 @@ function AppContent() {
   const isMac = useMemo(() => window.electron?.platform === 'darwin', [])
   const isDetailOrSettingsPage = useMemo(() => {
     const path = location.pathname
-    return path.startsWith('/movie') || path.startsWith('/tv') || path === '/settings'
+    return path === '/settings'
   }, [location.pathname])
-  
+
   const titleBarTransparent = isWideScreen && isDetailOrSettingsPage
-  const titleBarBlur = !isMac && !titleBarTransparent ? 'bg-[#171717]/80 backdrop-blur-md' : ''
+  const isSettingsNarrow = !isWideScreen && location.pathname === '/settings'
+  const titleBarBlur = !titleBarTransparent && !isSettingsNarrow ? 'bg-gradient-to-b' : ''
+  const titleBarStyle = !titleBarTransparent && !isSettingsNarrow ? { background: 'linear-gradient(to bottom, rgba(23,23,23,0.6) 0%, rgba(23,23,23,0.35) 10%, rgba(23,23,23,0.18) 25%, rgba(23,23,23,0.1) 40%, rgba(23,23,23,0.05) 55%, rgba(23,23,23,0.02) 70%, transparent 85%)' } : isSettingsNarrow ? { background: '#171717' } : {}
 
   useEffect(() => {
     const handleNavigateToTab = (_event: any, tab: 'all' | 'movies' | 'tv' | 'history') => {
@@ -44,7 +46,7 @@ function AppContent() {
 
   return (
     <div className="h-screen bg-neutral-900 text-white overflow-hidden flex flex-col">
-      <div className={`titlebar-drag-region h-8 w-full fixed top-0 left-0 z-[100] bg-transparent ${titleBarBlur}`} />
+      <div className={`titlebar-drag-region h-8 w-full fixed top-0 left-0 z-[100] bg-transparent ${titleBarBlur}`} style={titleBarStyle} />
       {/* Main Content */}
       <main className="h-full overflow-auto bg-neutral-900">
         <Routes>

@@ -59,7 +59,6 @@ interface TVShow {
 }
 
 export default function TVDetail() {
-    const isMac = useMemo(() => window.electron?.platform === 'darwin', [])
     const { id } = useParams()
     const navigate = useNavigate()
     const [show, setShow] = useState<TVShow | null>(null)
@@ -90,12 +89,6 @@ export default function TVDetail() {
                 } else {
                     navigate('/')
                 }
-                e.preventDefault()
-            }
-
-            // Ctrl/Cmd + , - Open settings
-            if ((e.ctrlKey || e.metaKey) && e.key === ',') {
-                navigate('/settings')
                 e.preventDefault()
             }
         }
@@ -272,7 +265,6 @@ export default function TVDetail() {
             )}
             {/* Backdrop Image */}
             <div className="absolute inset-0 h-[80vh] w-full overflow-hidden">
-                {!isMac && <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-neutral-900/50 to-transparent z-[99]" />}
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-neutral-900/60 to-neutral-900 z-10" />
                 {show.backdropPath && (
                     <>

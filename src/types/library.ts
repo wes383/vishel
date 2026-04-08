@@ -1,9 +1,22 @@
+export interface CastMember {
+    name: string
+    character?: string
+    profilePath?: string | null
+}
+
+export interface CreditMember {
+    name: string
+    profilePath?: string | null
+}
+
 export interface Movie {
     id: number
     title: string
     posterPath: string
     releaseDate: string
     genres?: string[]
+    cast?: CastMember[]
+    director?: CreditMember[]
     voteAverage?: number
     popularity?: number
     createdAt?: number
@@ -15,6 +28,8 @@ export interface TVShow {
     posterPath: string
     firstAirDate: string
     genres?: string[]
+    cast?: CastMember[]
+    createdBy?: CreditMember[]
     voteAverage?: number
     popularity?: number
     createdAt?: number

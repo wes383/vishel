@@ -47,6 +47,71 @@ const normalizeGenres = (genres?: string[]) => {
     return Array.from(new Set(normalized.map(genre => CORE_GENRES.has(genre) ? genre : 'Other')))
 }
 
+const normalizeSearchText = (text: string) =>
+    text
+        .toLowerCase()
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9\u4e00-\u9fa5\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+
+const isSubsequence = (needle: string, haystack: string) => {
+    if (!needle) return true
+    let j = 0
+    for (let i = 0; i < haystack.length && j < needle.length; i++) {
+        if (haystack[i] === needle[j]) j++
+    }
+    return j === needle.length
+}
+
+const matchesSearch = (value: string, query: string) => {
+    const normalizedValue = normalizeSearchText(value)
+    const normalizedQuery = normalizeSearchText(query)
+
+    if (!normalizedQuery) return true
+    if (normalizedValue.includes(normalizedQuery)) return true
+
+    const queryTokens = normalizedQuery.split(' ').filter(Boolean)
+    const valueTokens = normalizedValue.split(' ').filter(Boolean)
+
+    if (queryTokens.every(token => normalizedValue.includes(token))) return true
+
+    if (queryTokens.every(token => valueTokens.some(word => isSubsequence(token, word)))) return true
+
+    return isSubsequence(queryTokens.join(''), normalizedValue.replace(/\s+/g, ''))
+}
+
+const matchesCastSearch = (
+    cast: Array<{ name?: string }> | undefined,
+    query: string
+) => {
+    const normalizedQuery = normalizeSearchText(query)
+    if (!normalizedQuery) return true
+
+    const normalizedNames = (cast || [])
+        .map(actor => normalizeSearchText(actor?.name || ''))
+        .filter(Boolean)
+
+    if (normalizedNames.length === 0) return false
+
+    // Strict actor matching to avoid false positives from title-style fuzzy logic
+    if (normalizedNames.some(name => name.includes(normalizedQuery))) return true
+
+    const queryTokens = normalizedQuery.split(' ').filter(Boolean)
+    if (queryTokens.length > 1) {
+        return normalizedNames.some(name => queryTokens.every(token => name.includes(token)))
+    }
+
+    // Single-token fallback: match on word prefix (e.g. "tom" -> "tom hanks")
+    return normalizedNames.some(name => name.split(' ').some(part => part.startsWith(normalizedQuery)))
+}
+
+const matchesNameListSearch = (
+    people: Array<{ name?: string }> | undefined,
+    query: string
+) => matchesCastSearch(people, query)
+
 export default function LibraryPage() {
     const [movies, setMovies] = useState<Movie[]>([])
     const [tvShows, setTvShows] = useState<TVShow[]>([])
@@ -233,11 +298,19 @@ export default function LibraryPage() {
     useEffect(() => {
         const applyFilters = () => {
             let filteredM = searchQuery
-                ? movies.filter(movie => movie?.title?.toLowerCase().includes(searchQuery.toLowerCase()))
+                ? movies.filter(movie =>
+                    matchesSearch(movie?.title || '', searchQuery) ||
+                    matchesCastSearch(movie.cast, searchQuery) ||
+                    matchesNameListSearch(movie.director, searchQuery)
+                )
                 : movies
 
             let filteredT = searchQuery
-                ? tvShows.filter(show => show?.name?.toLowerCase().includes(searchQuery.toLowerCase()))
+                ? tvShows.filter(show =>
+                    matchesSearch(show?.name || '', searchQuery) ||
+                    matchesCastSearch(show.cast, searchQuery) ||
+                    matchesNameListSearch(show.createdBy, searchQuery)
+                )
                 : tvShows
 
             if (filterBy === 'favorites') {
@@ -283,7 +356,7 @@ export default function LibraryPage() {
     }, [loading, filteredMovies, filteredTvShows])
 
     const filteredHistory = searchQuery
-        ? history.filter(item => item?.title?.toLowerCase().includes(searchQuery.toLowerCase()))
+        ? history.filter(item => matchesSearch(item?.title || '', searchQuery))
         : history
 
     const sortedMovies = [...filteredMovies].sort((a, b) => {

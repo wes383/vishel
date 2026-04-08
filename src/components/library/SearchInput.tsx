@@ -44,8 +44,8 @@ export const SearchInput: React.FC<SearchInputProps> = ({ value, onChange, onClo
                         }, 100)
                     }
                 }}
-                placeholder=""
-                className="w-full bg-neutral-800 text-white px-4 py-3 pr-10 rounded-full focus:outline-none focus:ring-2 focus:ring-white/20"
+                placeholder="Search by title, actor, director, or creator..."
+                className="library-search-input w-full bg-neutral-800 text-white px-4 py-3 pr-10 rounded-full focus:outline-none focus:ring-2 focus:ring-white/20"
             />
             {value && (
                 <button

@@ -18,7 +18,6 @@ function AppContent() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  const isMac = useMemo(() => window.electron?.platform === 'darwin', [])
   const isDetailOrSettingsPage = useMemo(() => {
     const path = location.pathname
     return path === '/settings'

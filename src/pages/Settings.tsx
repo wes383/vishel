@@ -19,6 +19,7 @@ interface SettingsData {
     customPlayerPath: string
     hideEpisodeSpoilers: boolean
     showTitlesOnPosters: boolean
+    posterTitleMode: 'hover' | 'below' | 'hidden'
     minimizeToTray: boolean
     autoMarkWatchedEnabled: boolean
     autoMarkWatchedScope: 'movies' | 'all'
@@ -44,6 +45,7 @@ export default function SettingsPage() {
         customPlayerPath: '',
         hideEpisodeSpoilers: false,
         showTitlesOnPosters: false,
+        posterTitleMode: 'hover',
         minimizeToTray: false,
         autoMarkWatchedEnabled: false,
         autoMarkWatchedScope: 'movies',
@@ -93,7 +95,9 @@ export default function SettingsPage() {
             const sources = Array.isArray(data.sources) ? data.sources : []
             const movieExternalLinks = normalizeExternalLinks(data.movieExternalLinks, defaultMovieExternalLinks)
             const tvExternalLinks = normalizeExternalLinks(data.tvExternalLinks, defaultTvExternalLinks)
-            setSettings({ ...data, sources, movieExternalLinks, tvExternalLinks })
+            const posterTitleMode: 'hover' | 'below' | 'hidden' =
+                data.posterTitleMode || (data.showTitlesOnPosters ? 'below' : 'hover')
+            setSettings({ ...data, posterTitleMode, sources, movieExternalLinks, tvExternalLinks })
 
             const isScanning = await window.electron.ipcRenderer.invoke('get-scan-status')
             setScanning(isScanning)
@@ -482,19 +486,35 @@ export default function SettingsPage() {
 
                     <div>
                         <div className="flex items-center justify-between bg-neutral-800 p-4 rounded-lg">
-                            <h3 className="font-medium">Show Titles Below Posters</h3>
-                            <button
-                                onClick={() => {
-                                    const newSettings = { ...settings, showTitlesOnPosters: !settings.showTitlesOnPosters }
-                                    setSettings(newSettings)
-                                    autoSave(newSettings)
-                                }}
-                                className={`w-12 h-6 rounded-full transition-colors relative ${settings.showTitlesOnPosters ? 'bg-white' : 'bg-neutral-600'}`}
-                            >
-                                <div className={`absolute top-1 w-4 h-4 rounded-full bg-black transition-transform ${settings.showTitlesOnPosters ? 'left-7' : 'left-1'}`} />
-                            </button>
+                            <h3 className="font-medium">Poster Title Display</h3>
+                            <div className="flex bg-neutral-700/50 rounded-full p-1">
+                                {([
+                                    { value: 'hover', label: 'Hover' },
+                                    { value: 'below', label: 'Below' },
+                                    { value: 'hidden', label: 'Hidden' }
+                                ] as const).map((mode) => (
+                                    <button
+                                        key={mode.value}
+                                        onClick={() => {
+                                            const newSettings = {
+                                                ...settings,
+                                                posterTitleMode: mode.value,
+                                                showTitlesOnPosters: mode.value === 'below'
+                                            }
+                                            setSettings(newSettings)
+                                            autoSave(newSettings)
+                                        }}
+                                        className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${settings.posterTitleMode === mode.value
+                                            ? 'bg-white/10 text-white shadow-sm'
+                                            : 'text-gray-400 hover:text-white'
+                                            }`}
+                                    >
+                                        {mode.label}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">Display titles below posters instead of on hover</p>
+                        <p className="text-xs text-gray-500 mt-1">Hover: show title in poster center on hover. Below: show title below poster. Hidden: hide title and keep hover lift only</p>
                     </div>
 
                     <div>
@@ -785,8 +805,12 @@ export default function SettingsPage() {
 
                 <hr className="border-neutral-800" />
 
+                <p className="text-xs text-gray-600 text-center -mt-2">
+                    Shortcuts: Esc to go back | Ctrl/Cmd + F to open search (Library)
+                </p>
+
                 {/* TMDB & IMDb Attribution */}
-                <section className="flex flex-col items-center justify-center gap-3 py-6">
+                <section className="flex flex-col items-center justify-center gap-1 -mt-2 pt-0 pb-6">
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => window.electron.ipcRenderer.invoke('open-external', 'https://www.themoviedb.org')}

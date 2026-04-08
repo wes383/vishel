@@ -26,6 +26,7 @@ interface Settings {
     customPlayerPath: string
     hideEpisodeSpoilers: boolean
     showTitlesOnPosters: boolean
+    posterTitleMode: 'hover' | 'below' | 'hidden'
     minimizeToTray: boolean
     autoMarkWatchedEnabled: boolean
     autoMarkWatchedScope: 'movies' | 'all'
@@ -58,6 +59,7 @@ const schema = {
     customPlayerPath: { type: 'string', default: '' },
     hideEpisodeSpoilers: { type: 'boolean', default: false },
     showTitlesOnPosters: { type: 'boolean', default: false },
+    posterTitleMode: { type: 'string', default: 'hover', enum: ['hover', 'below', 'hidden'] },
     minimizeToTray: { type: 'boolean', default: false },
     autoMarkWatchedEnabled: { type: 'boolean', default: false },
     autoMarkWatchedScope: { type: 'string', default: 'movies', enum: ['movies', 'all'] },

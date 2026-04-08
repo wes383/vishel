@@ -8,7 +8,7 @@ import { formatMoviePlayTitle, formatTvPlayTitle } from '../../utils/playTitle'
 
 interface MediaGridProps {
     items: CombinedItem[] | Movie[] | TVShow[]
-    showTitlesOnPosters: boolean
+    posterTitleMode: 'hover' | 'below' | 'hidden'
     posterSize?: 'small' | 'medium' | 'large'
     emptyMessage?: React.ReactNode
     type?: 'combined' | 'movie' | 'tv'
@@ -18,7 +18,7 @@ interface MediaGridProps {
     onWatchStatusChange?: () => void
 }
 
-export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters, posterSize = 'medium', emptyMessage, type = 'combined', onRematch, isFavoritesView = false, onFavoritesChange, onWatchStatusChange }) => {
+export const MediaGrid: React.FC<MediaGridProps> = ({ items, posterTitleMode, posterSize = 'medium', emptyMessage, type = 'combined', onRematch, isFavoritesView = false, onFavoritesChange, onWatchStatusChange }) => {
     const navigate = useNavigate()
     const [contextMenu, setContextMenu] = useState<{ x: number, y: number, item: any } | null>(null)
     const [rematchItem, setRematchItem] = useState<{ id: number, type: 'movie' | 'tv', title: string, videoFiles: any[] } | null>(null)
@@ -480,6 +480,9 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters
                     const itemType = getItemType(item)
                     const key = `${itemType}-${item.id}`
                     const isContextMenuOpen = contextMenu?.item?.id === item.id
+                    const isBelowMode = posterTitleMode === 'below'
+                    const isHoverMode = posterTitleMode === 'hover'
+                    const shouldShiftOnHover = posterTitleMode !== 'hover'
 
                     return (
                         <div key={key} className="group">
@@ -487,7 +490,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters
                                 isContextMenuOpen 
                                     ? 'shadow-2xl' 
                                     : 'hover:shadow-2xl'
-                            } ${showTitlesOnPosters ? (isContextMenuOpen ? '-translate-y-1' : 'group-hover:-translate-y-1') : ''}`}>
+                            } ${shouldShiftOnHover ? (isContextMenuOpen ? '-translate-y-1' : 'group-hover:-translate-y-1') : ''}`}>
                                 <div
                                     onClick={() => handleNavigate(item)}
                                     onContextMenu={(e) => handleContextMenu(e, item)}
@@ -498,39 +501,37 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters
                                             src={`https://image.tmdb.org/t/p/w500${item.posterPath}`}
                                             alt={title}
                                             className={`w-full h-full object-cover ${
-                                                showTitlesOnPosters 
-                                                    ? '' 
-                                                    : isContextMenuOpen 
-                                                        ? 'blur-sm' 
-                                                        : 'group-hover:blur-sm'
+                                                isHoverMode
+                                                    ? (isContextMenuOpen ? 'blur-sm' : 'group-hover:blur-sm')
+                                                    : ''
                                             }`}
                                             placeholderClassName="w-full h-full"
                                         />
                                     ) : (
                                         <div className={`w-full h-full flex items-center justify-center bg-neutral-700 text-neutral-500 ${
-                                            showTitlesOnPosters 
-                                                ? '' 
-                                                : isContextMenuOpen 
-                                                    ? 'blur-sm' 
-                                                    : 'group-hover:blur-sm'
+                                            isHoverMode
+                                                ? (isContextMenuOpen ? 'blur-sm' : 'group-hover:blur-sm')
+                                                : ''
                                         }`}>
                                             {itemType === 'movie' ? <Film className="w-12 h-12" /> : <Tv className="w-12 h-12" />}
                                         </div>
                                     )}
-                                    {!showTitlesOnPosters && (
+                                    {isHoverMode && (
                                         <div className={`absolute inset-0 bg-black/0 transition-all duration-100 delay-[50ms] flex items-center justify-center p-4 ${
-                                            isContextMenuOpen 
-                                                ? 'bg-black/60 opacity-100' 
+                                            isContextMenuOpen
+                                                ? 'bg-black/60 opacity-100'
                                                 : 'group-hover:bg-black/60 opacity-0 group-hover:opacity-100'
                                         }`}>
-                                            <h3 className="font-medium text-white text-center text-lg font-['Inter']">
+                                            <h3 className={`font-medium text-white text-center font-['Inter'] ${
+                                                posterSize === 'small' ? 'text-base' : 'text-lg'
+                                            }`}>
                                                 {title}
                                             </h3>
                                         </div>
                                     )}
                                 </div>
                             </div>
-                            {showTitlesOnPosters && (
+                            {isBelowMode && (
                                 <div
                                     onClick={() => handleNavigate(item)}
                                     onContextMenu={(e) => handleContextMenu(e, item)}
@@ -540,7 +541,9 @@ export const MediaGrid: React.FC<MediaGridProps> = ({ items, showTitlesOnPosters
                                             : 'group-hover:-translate-y-1'
                                     }`}
                                 >
-                                    <h3 className="font-medium text-white text-base text-center px-1 font-['Inter']">
+                                    <h3 className={`font-medium text-white text-center px-1 font-['Inter'] ${
+                                        posterSize === 'small' ? 'text-sm' : 'text-base'
+                                    }`}>
                                         {title}
                                     </h3>
                                 </div>

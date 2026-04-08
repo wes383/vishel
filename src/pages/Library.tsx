@@ -30,7 +30,7 @@ export default function LibraryPage() {
         return (sessionStorage.getItem('library_active_tab') as 'all' | 'movies' | 'tv' | 'history') || 'all'
     })
     const [loading, setLoading] = useState(false)
-    const [showTitlesOnPosters, setShowTitlesOnPosters] = useState(false)
+    const [posterTitleMode, setPosterTitleMode] = useState<'hover' | 'below' | 'hidden'>('hover')
     const [posterSize, setPosterSize] = useState<'small' | 'medium' | 'large'>('medium')
     const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -157,7 +157,7 @@ export default function LibraryPage() {
         fetchData()
 
         window.electron.ipcRenderer.invoke('get-settings').then((data: any) => {
-            setShowTitlesOnPosters(data.showTitlesOnPosters || false)
+            setPosterTitleMode(data.posterTitleMode || (data.showTitlesOnPosters ? 'below' : 'hover'))
             setPosterSize(data.posterSize || 'medium')
         })
 
@@ -369,7 +369,7 @@ export default function LibraryPage() {
                             <>
                                 <MediaGrid
                                     items={combinedItems}
-                                    showTitlesOnPosters={showTitlesOnPosters}
+                                    posterTitleMode={posterTitleMode}
                                     posterSize={posterSize}
                                     onRematch={fetchData}
                                     onFavoritesChange={fetchFavorites}
@@ -394,7 +394,7 @@ export default function LibraryPage() {
                         {activeTab === 'movies' && (
                             <MediaGrid
                                 items={sortedMovies}
-                                showTitlesOnPosters={showTitlesOnPosters}
+                                posterTitleMode={posterTitleMode}
                                 posterSize={posterSize}
                                 type="movie"
                                 onRematch={fetchData}
@@ -418,7 +418,7 @@ export default function LibraryPage() {
                         {activeTab === 'tv' && (
                             <MediaGrid
                                 items={sortedTvShows}
-                                showTitlesOnPosters={showTitlesOnPosters}
+                                posterTitleMode={posterTitleMode}
                                 posterSize={posterSize}
                                 type="tv"
                                 onRematch={fetchData}

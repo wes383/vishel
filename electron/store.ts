@@ -44,13 +44,13 @@ const defaultMovieExternalLinks: ExternalLinkConfig[] = [
     { label: 'View on IMDb', template: 'https://www.imdb.com/title/{imdbId}/' },
     { label: 'View on TMDB', template: 'https://www.themoviedb.org/movie/{tmdbId}' },
     { label: 'View on Letterboxd', template: 'https://letterboxd.com/tmdb/{tmdbId}' },
-    { label: 'View Detailed Info', template: 'https://screen-lookup.wesluma.com/movie/{tmdbId}' }
+    { label: 'View Detailed Info', template: 'https://kino.wesluma.com/movie/{tmdbId}' }
 ]
 
 const defaultTvExternalLinks: ExternalLinkConfig[] = [
     { label: 'View on IMDb', template: 'https://www.imdb.com/title/{imdbId}/' },
     { label: 'View on TMDB', template: 'https://www.themoviedb.org/tv/{tmdbId}' },
-    { label: 'View Detailed Info', template: 'https://screen-lookup.wesluma.com/tv/{tmdbId}' }
+    { label: 'View Detailed Info', template: 'https://kino.wesluma.com/tv/{tmdbId}' }
 ]
 
 const schema = {

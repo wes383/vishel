@@ -4,10 +4,14 @@ import { Settings, Search, ArrowUpDown, Check, SlidersHorizontal } from 'lucide-
 import { useNavigate } from 'react-router-dom'
 import Button from '../ui/Button'
 import Menu, { MenuItem, MenuLabel, MenuSeparator } from '../ui/Menu'
+import type { LibraryTab } from '../../types/ipc'
 
 export type SortOption = 'name-asc' | 'name-desc' | 'date-desc' | 'date-asc' | 'popularity-desc' | 'recently-added'
 
-export type FilterOption = 'all' | 'watched' | 'unwatched' | 'favorites'
+export type FilterOption = 'all' | 'watched' | 'unwatched'
+
+/** Order is the menu order; the page also validates the persisted value against this list. */
+export const FILTER_VALUES: readonly FilterOption[] = ['all', 'watched', 'unwatched']
 
 interface LibraryActionsProps {
     sortBy: SortOption
@@ -15,7 +19,7 @@ interface LibraryActionsProps {
     onSearchToggle: () => void
     /** The search field lives in the library page, which owns this toggle's pressed state. */
     searchExpanded: boolean
-    activeTab?: 'all' | 'movies' | 'tv' | 'history'
+    activeTab?: LibraryTab
     filterBy?: FilterOption
     onFilterChange?: (filter: FilterOption) => void
     genreFilter?: string
@@ -67,14 +71,13 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
 
     const sortOptions = allSortOptions
 
-    const allFilterOptions: { value: FilterOption; label: string }[] = [
-        { value: 'all', label: t('library:filterAll') },
-        { value: 'watched', label: t('library:filterWatched') },
-        { value: 'unwatched', label: t('library:filterUnwatched') },
-        { value: 'favorites', label: t('library:filterFavorites') },
-    ]
+    const filterLabels: Record<FilterOption, string> = {
+        all: t('library:filterAll'),
+        watched: t('library:filterWatched'),
+        unwatched: t('library:filterUnwatched')
+    }
 
-    const filterOptions = allFilterOptions
+    const filterOptions = FILTER_VALUES.map(value => ({ value, label: filterLabels[value] }))
 
     const handleMenuKeys = (event: React.KeyboardEvent<HTMLDivElement>) => {
         if (event.key !== 'Escape') return

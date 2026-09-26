@@ -8,15 +8,19 @@ interface LibraryTabsProps {
     onTabChange: (tab: LibraryTab) => void
 }
 
-type TabLabelKey = 'tabAll' | 'tabMovies' | 'tabTvShows' | 'tabHistory'
+type TabLabelKey = 'tabAll' | 'tabMovies' | 'tabTvShows' | 'tabFavorites' | 'tabHistory'
 
 /** Only the i18n key lives here: a module-scope constant cannot call the `t` hook. */
 const TABS: ReadonlyArray<{ id: LibraryTab; labelKey: TabLabelKey }> = [
     { id: 'all', labelKey: 'tabAll' },
     { id: 'movies', labelKey: 'tabMovies' },
     { id: 'tv', labelKey: 'tabTvShows' },
+    { id: 'favorites', labelKey: 'tabFavorites' },
     { id: 'history', labelKey: 'tabHistory' },
 ]
+
+/** Order doubles as the whitelist for the `?tab=` URL, so the strip has one definition. */
+export const LIBRARY_TAB_IDS: readonly LibraryTab[] = TABS.map(tab => tab.id)
 
 const NAVIGATION_KEYS = ['ArrowRight', 'ArrowLeft', 'Home', 'End']
 

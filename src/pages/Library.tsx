@@ -3,8 +3,8 @@ import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { usePersistedState } from '../hooks/usePersistedState'
-import { LibraryTabs } from '../components/library/LibraryTabs'
-import { LibraryActions, SortOption, FilterOption } from '../components/library/LibraryActions'
+import { LibraryTabs, LIBRARY_TAB_IDS } from '../components/library/LibraryTabs'
+import { LibraryActions, SortOption, FilterOption, FILTER_VALUES } from '../components/library/LibraryActions'
 import { SearchInput } from '../components/library/SearchInput'
 import { MediaGrid } from '../components/library/MediaGrid'
 import { HistoryList } from '../components/library/HistoryList'
@@ -22,10 +22,8 @@ import { useMediaStatus, mediaKey } from '../contexts/MediaStatusContext'
 import { useScan } from '../contexts/ScanContext'
 import type { LibraryTab } from '../types/ipc'
 
-const TABS: LibraryTab[] = ['all', 'movies', 'tv', 'history']
-
 const isTab = (value: string | null): value is LibraryTab =>
-    value !== null && (TABS as string[]).includes(value)
+    value !== null && (LIBRARY_TAB_IDS as readonly string[]).includes(value)
 
 /** What the grid needs to order an entry, kept separate so the sort is memo-friendly. */
 interface Sortable {
@@ -48,7 +46,7 @@ export default function LibraryPage() {
     const { t } = useTranslation(['library', 'common'])
     const [searchParams, setSearchParams] = useSearchParams()
     const { settings } = useSettings()
-    const { favorites, watchStatus, statusTimestamp } = useMediaStatus()
+    const { isFavorite, watchStatus, statusTimestamp } = useMediaStatus()
     const { scanning, addFinishListener } = useScan()
 
     const [movies, setMovies] = useState<MovieRecord[]>([])
@@ -78,6 +76,12 @@ export default function LibraryPage() {
         const migrated = SORT_MIGRATION[sortBy]
         if (migrated) setSortBy(migrated)
     }, [sortBy, setSortBy])
+
+    // Favorites became a tab, so a persisted 'favorites' filter would leave the Filter button
+    // looking engaged while applying nothing.
+    useEffect(() => {
+        if (!(FILTER_VALUES as readonly string[]).includes(filterBy)) setFilterBy('all')
+    }, [filterBy, setFilterBy])
 
     const handleSearchShortcut = useCallback(() => {
         setSearchExpanded(true)
@@ -162,31 +166,22 @@ export default function LibraryPage() {
         )
     }, [tvShows, deferredQuery])
 
+    /** The tab narrows the collection and the status filter narrows what the tab left. */
     const statusFilteredMovies = useMemo(() => {
-        if (filterBy === 'favorites') {
-            return matchedMovies.filter(movie => favorites.some(f => mediaKey('movie', movie.id) === mediaKey(f.mediaType, f.mediaId)))
-        }
-        if (filterBy === 'watched') {
-            return matchedMovies.filter(movie => watchStatus[mediaKey('movie', movie.id)]?.watched)
-        }
-        if (filterBy === 'unwatched') {
-            return matchedMovies.filter(movie => !watchStatus[mediaKey('movie', movie.id)]?.watched)
-        }
-        return matchedMovies
-    }, [matchedMovies, filterBy, favorites, watchStatus])
+        let list = matchedMovies
+        if (activeTab === 'favorites') list = list.filter(movie => isFavorite('movie', movie.id))
+        if (filterBy === 'watched') list = list.filter(movie => watchStatus[mediaKey('movie', movie.id)]?.watched)
+        if (filterBy === 'unwatched') list = list.filter(movie => !watchStatus[mediaKey('movie', movie.id)]?.watched)
+        return list
+    }, [matchedMovies, activeTab, filterBy, isFavorite, watchStatus])
 
     const statusFilteredTvShows = useMemo(() => {
-        if (filterBy === 'favorites') {
-            return matchedTvShows.filter(show => favorites.some(f => mediaKey('tv', show.id) === mediaKey(f.mediaType, f.mediaId)))
-        }
-        if (filterBy === 'watched') {
-            return matchedTvShows.filter(show => watchStatus[mediaKey('tv', show.id)]?.watched)
-        }
-        if (filterBy === 'unwatched') {
-            return matchedTvShows.filter(show => !watchStatus[mediaKey('tv', show.id)]?.watched)
-        }
-        return matchedTvShows
-    }, [matchedTvShows, filterBy, favorites, watchStatus])
+        let list = matchedTvShows
+        if (activeTab === 'favorites') list = list.filter(show => isFavorite('tv', show.id))
+        if (filterBy === 'watched') list = list.filter(show => watchStatus[mediaKey('tv', show.id)]?.watched)
+        if (filterBy === 'unwatched') list = list.filter(show => !watchStatus[mediaKey('tv', show.id)]?.watched)
+        return list
+    }, [matchedTvShows, activeTab, filterBy, isFavorite, watchStatus])
 
     const genreFilteredMovies = useMemo(
         () => statusFilteredMovies.filter(movie => genreFilter === 'all' || normalizeGenres(movie.genres).includes(genreFilter)),
@@ -216,7 +211,9 @@ export default function LibraryPage() {
                 return bWeighted - aWeighted
             }
             case 'recently-added': {
-                if (filterBy === 'watched' || filterBy === 'favorites') {
+                // On the Favorites tab and under the watched filter the interesting recency is
+                // when the title was marked, not when it was scanned in.
+                if (filterBy === 'watched' || activeTab === 'favorites') {
                     return statusTimestamp(b.type, b.id) - statusTimestamp(a.type, a.id)
                 }
                 return (b.createdAt || 0) - (a.createdAt || 0)
@@ -224,7 +221,7 @@ export default function LibraryPage() {
             default:
                 return 0
         }
-    }, [sortBy, filterBy, statusTimestamp])
+    }, [sortBy, filterBy, activeTab, statusTimestamp])
 
     const toSortable = useCallback((record: MovieRecord | TVShowRecord, type: 'movie' | 'tv'): Sortable => ({
         type,
@@ -410,16 +407,19 @@ export default function LibraryPage() {
                     <LoadingPanel label={t('library:loadingLibrary')} className="mt-20" />
                 ) : (
                     <>
-                        {activeTab === 'all' && (
+                        {(activeTab === 'all' || activeTab === 'favorites') && (
                             <>
                                 <MediaGrid
                                     items={combinedGridItems}
                                     posterTitleMode={posterTitleMode}
                                     posterSize={posterSize}
                                     onChanged={fetchData}
-                                    emptyMessage={emptyMessage(t('library:noContentFound'), undefined)}
+                                    emptyMessage={emptyMessage(
+                                        activeTab === 'favorites' ? t('library:noFavoritesFound') : t('library:noContentFound'),
+                                        t('library:tryAdjustingSearch')
+                                    )}
                                 />
-                                <UnscannedFiles files={unscannedFiles} onRefresh={fetchData} />
+                                {activeTab === 'all' && <UnscannedFiles files={unscannedFiles} onRefresh={fetchData} />}
                             </>
                         )}
 

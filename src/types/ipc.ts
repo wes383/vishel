@@ -7,7 +7,7 @@ import type { DetectedPlayer } from '../../electron/playerDetector'
 import type { TmdbSearchResponse } from '../../electron/tmdbService'
 
 export type MediaType = 'movie' | 'tv'
-export type LibraryTab = 'all' | 'movies' | 'tv' | 'history'
+export type LibraryTab = 'all' | 'movies' | 'tv' | 'favorites' | 'history'
 
 export interface ImdbRating {
     rating: number

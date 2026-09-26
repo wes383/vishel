@@ -29,6 +29,20 @@ interface LibraryActionsProps {
     onClearFilters: () => void
 }
 
+/**
+ * `right-0` snaps the menu's own right edge to the trigger's, so the trigger needs to sit at
+ * least one menu-width from the left edge. The header wraps to a second line at the window's
+ * 480px minimum, where it does not - then the menu opens left-anchored instead of being cut off.
+ * Both numbers mirror the w-72 and w-56 classes on the menus below.
+ */
+const MENU_WIDTH = { filter: 288, sort: 224 } as const
+const MENU_EDGE_GAP = 8
+
+type MenuAnchor = 'left' | 'right'
+
+const anchorFor = (trigger: HTMLButtonElement, width: number): MenuAnchor =>
+    (trigger.getBoundingClientRect().right - width >= MENU_EDGE_GAP ? 'right' : 'left')
+
 export const LibraryActions: React.FC<LibraryActionsProps> = ({
     sortBy,
     onSortChange,
@@ -44,6 +58,8 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
 }) => {
     const [filterMenuOpen, setFilterMenuOpen] = useState(false)
     const [sortMenuOpen, setSortMenuOpen] = useState(false)
+    /** One value serves both because opening either menu closes the other. */
+    const [menuAnchor, setMenuAnchor] = useState<MenuAnchor>('right')
     const filterMenuRef = useRef<HTMLDivElement>(null)
     const sortMenuRef = useRef<HTMLDivElement>(null)
     const navigate = useNavigate()
@@ -91,7 +107,7 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
     const hasActiveFilter = filterBy !== 'all' || genreFilter !== 'all'
 
     return (
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
             {hasActiveFilter && activeTab !== 'history' && (
                 <Button
                     size="sm"
@@ -108,7 +124,8 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
                     <Button
                         size="sm"
                         variant={hasActiveFilter ? 'subtle' : 'ghost'}
-                        onClick={() => {
+                        onClick={(event) => {
+                            setMenuAnchor(anchorFor(event.currentTarget, MENU_WIDTH.filter))
                             setFilterMenuOpen(!filterMenuOpen)
                             setSortMenuOpen(false)
                         }}
@@ -123,7 +140,7 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
                         <Menu
                             placement="absolute"
                             label={t('library:filterAndGenre')}
-                            className="right-0 top-full mt-2 w-72"
+                            className={`${menuAnchor === 'left' ? 'left-0' : 'right-0'} top-full mt-2 w-72`}
                             onKeyDown={handleMenuKeys}
                         >
                             <MenuLabel className="uppercase">{t('library:filterHeading')}</MenuLabel>
@@ -187,7 +204,8 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
                     <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => {
+                        onClick={(event) => {
+                            setMenuAnchor(anchorFor(event.currentTarget, MENU_WIDTH.sort))
                             setSortMenuOpen(!sortMenuOpen)
                             setFilterMenuOpen(false)
                         }}
@@ -201,7 +219,7 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
                         <Menu
                             placement="absolute"
                             label={t('library:sortBy')}
-                            className="right-0 top-full mt-2 w-56"
+                            className={`${menuAnchor === 'left' ? 'left-0' : 'right-0'} top-full mt-2 w-56`}
                             onKeyDown={handleMenuKeys}
                         >
                             <MenuLabel className="uppercase">{t('library:sortByHeading')}</MenuLabel>

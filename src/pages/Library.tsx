@@ -360,7 +360,7 @@ export default function LibraryPage() {
             <div ref={scrollRef} className="library-scroll-container flex-1 overflow-auto pt-12 px-8 lg:px-[72px] pb-8">
                 <div className="titlebar-fade fixed top-0 left-0 right-0 h-8 z-[99] pointer-events-none" />
                 <div className="mb-8">
-                    <div className="flex flex-wrap items-center justify-between gap-y-4">
+                    <div className="flex flex-wrap items-center gap-y-4">
                         <LibraryTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
                         <LibraryActions

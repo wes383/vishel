@@ -1,7 +1,7 @@
 {
   "name": "vishel",
   "private": true,
-  "version": "1.6.0",
+  "version": "1.6.1",
   "author": "Vishel",
   "type": "module",
   "repository": {
@@ -54,5 +54,6 @@
     "vite-plugin-electron-renderer": "^1.0.0",
     "vitest": "^5.0.2"
   },
-  "main": "dist-electron/main.js"
+  "main": "dist-electron/main.js",
+  "description": "Media library for WebDAV, SMB and local movie and TV folders"
 }

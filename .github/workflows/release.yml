@@ -9,6 +9,10 @@ jobs:
   release:
     runs-on: ${{ matrix.os }}
 
+    # electron-builder uploads the installers to the GitHub release.
+    permissions:
+      contents: write
+
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
@@ -41,14 +45,32 @@ jobs:
       - name: Rebuild native modules
         run: npm run rebuild
 
+      # electron-builder reads an empty CSC_LINK as "a certificate was configured" and tries to
+      # import it, so passing the optional secrets verbatim fails the macOS job with
+      # "<repo root> not a file". Export them only when they actually hold a value.
+      - name: Export Code Signing Settings
+        shell: bash
+        env:
+          CSC_LINK_VALUE: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD_VALUE: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID_VALUE: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID_VALUE: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD_VALUE: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          export_var() {
+            printf '%s<<%s_EOF\n%s\n%s_EOF\n' "$1" "$1" "$2" "$1" >> "$GITHUB_ENV"
+          }
+          if [ -n "$CSC_LINK_VALUE" ]; then
+            export_var CSC_LINK "$CSC_LINK_VALUE"
+            export_var CSC_KEY_PASSWORD "$CSC_KEY_PASSWORD_VALUE"
+          fi
+          if [ -n "$APPLE_ID_VALUE" ]; then
+            export_var APPLE_ID "$APPLE_ID_VALUE"
+            export_var APPLE_TEAM_ID "$APPLE_TEAM_ID_VALUE"
+            export_var APPLE_APP_SPECIFIC_PASSWORD "$APPLE_APP_SPECIFIC_PASSWORD_VALUE"
+          fi
+
       - name: Build & Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Optional: set these repo secrets to enable code signing / notarisation.
-          # electron-builder picks them up automatically and skips signing when absent.
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
         run: npm run build -- --publish always

@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { ChevronDown, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import Modal from '../ui/Modal'
+import Button from '../ui/Button'
+import Select from '../ui/Select'
 import { useToast } from '../../contexts/ToastContext'
 import {
     EpisodeFields,
@@ -107,27 +108,20 @@ export function RematchModal({
     const footer = (
         <div className="space-y-4">
             {showEpisodeFields && <EpisodeFields value={episodeInfo} onChange={setEpisodeInfo} />}
-            <p aria-live="polite" className="text-sm text-red-600">
+            <p aria-live="polite" className="text-sm text-danger">
                 {matchError}
             </p>
             <div className="flex items-center justify-end gap-3">
-                <button
-                    type="button"
-                    onClick={onClose}
-                    disabled={submitting}
-                    className="px-6 py-2 rounded-xl font-medium bg-black/10 hover:bg-black/20 transition-colors text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                <Button variant="ghost" onClick={onClose} disabled={submitting}>
                     {t('common:cancel')}
-                </button>
-                <button
-                    type="button"
+                </Button>
+                <Button
                     onClick={() => void handleConfirm()}
-                    disabled={!selectedResult || selectedResult.id === mediaId || submitting}
-                    className="px-6 py-2 rounded-xl font-medium bg-neutral-800 text-white hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    disabled={!selectedResult || selectedResult.id === mediaId}
+                    loading={submitting}
                 >
-                    {submitting && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
                     {submitting ? t('match:rematching') : t('match:confirmRematch')}
-                </button>
+                </Button>
             </div>
         </div>
     )
@@ -142,32 +136,24 @@ export function RematchModal({
             bodyClassName="flex flex-col gap-4 min-h-0"
         >
             <div>
-                <label htmlFor="rematch-file" className="sr-only">
-                    {t('match:filesToRematch')}
-                </label>
-                <div className="relative">
-                    <select
-                        id="rematch-file"
-                        value={selectedFileId}
-                        onChange={event => setSelectedFileId(event.target.value)}
-                        disabled={videoFiles.length <= 1}
-                        className="w-full appearance-none bg-black/10 border border-gray-900/20 rounded-xl px-4 py-2 outline-none focus:border-gray-900 transition-colors text-gray-900 disabled:opacity-70"
-                    >
-                        {videoFiles.length > 1 && <option value={ALL_FILES}>{t('match:allFilesCount', { count: videoFiles.length })}</option>}
-                        {videoFiles.length === 0 && <option value={ALL_FILES}>{t('match:noFile')}</option>}
-                        {videoFiles.map(videoFile => (
-                            <option key={videoFile.id} value={videoFile.id}>
-                                {videoFile.name}
-                            </option>
-                        ))}
-                    </select>
-                    <ChevronDown
-                        className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-600 pointer-events-none"
-                        aria-hidden="true"
-                    />
-                </div>
+                <Select
+                    id="rematch-file"
+                    size="md"
+                    value={selectedFileId}
+                    onChange={event => setSelectedFileId(event.target.value)}
+                    disabled={videoFiles.length <= 1}
+                    label={t('match:filesToRematch')}
+                >
+                    {videoFiles.length > 1 && <option value={ALL_FILES}>{t('match:allFilesCount', { count: videoFiles.length })}</option>}
+                    {videoFiles.length === 0 && <option value={ALL_FILES}>{t('match:noFile')}</option>}
+                    {videoFiles.map(videoFile => (
+                        <option key={videoFile.id} value={videoFile.id}>
+                            {videoFile.name}
+                        </option>
+                    ))}
+                </Select>
                 {singleFile && videoFiles.length > 1 && (
-                    <p className="text-xs text-gray-600 mt-2">
+                    <p className="text-xs text-foreground-muted mt-2">
                         {t('match:onlyFileMoved', { name: selectedFile?.name || t('match:theSelectedFile') })}
                     </p>
                 )}

@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import Modal from '../ui/Modal'
+import Button from '../ui/Button'
 import { useToast } from '../../contexts/ToastContext'
 import {
     EpisodeFields,
@@ -80,27 +80,20 @@ export function ManualMatchModal({ file, onClose, onMatched }: ManualMatchModalP
     const footer = (
         <div className="space-y-4">
             {showEpisodeFields && <EpisodeFields value={episodeInfo} onChange={setEpisodeInfo} />}
-            <p aria-live="polite" className="text-sm text-red-600">
+            <p aria-live="polite" className="text-sm text-danger">
                 {matchError}
             </p>
             <div className="flex items-center justify-end gap-3">
-                <button
-                    type="button"
-                    onClick={onClose}
-                    disabled={submitting}
-                    className="px-6 py-2 rounded-xl font-medium bg-black/10 hover:bg-black/20 transition-colors text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                <Button variant="ghost" onClick={onClose} disabled={submitting}>
                     {t('common:cancel')}
-                </button>
-                <button
-                    type="button"
+                </Button>
+                <Button
                     onClick={() => void handleConfirm()}
-                    disabled={!selectedResult || submitting}
-                    className="px-6 py-2 rounded-xl font-medium bg-neutral-800 text-white hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    disabled={!selectedResult}
+                    loading={submitting}
                 >
-                    {submitting && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
                     {submitting ? t('match:matching') : t('match:confirmMatch')}
-                </button>
+                </Button>
             </div>
         </div>
     )

@@ -29,9 +29,8 @@ export interface ModalProps {
     footer?: React.ReactNode
     /** Content is scrolled by the caller instead of the shell. */
     bodyClassName?: string
-    /** Extra class for the panel, used for the lighter overlays in the library. */
+    /** Extra class for the panel, e.g. a fixed width the size preset cannot express. */
     panelClassName?: string
-    variant?: 'light' | 'dark'
 }
 
 /**
@@ -46,8 +45,7 @@ export default function Modal({
     description,
     footer,
     bodyClassName = '',
-    panelClassName = '',
-    variant = 'light'
+    panelClassName = ''
 }: ModalProps) {
     const panelRef = useRef<HTMLDivElement>(null)
     const { t } = useTranslation(['common'])
@@ -81,7 +79,7 @@ export default function Modal({
         if (!panel) return
 
         const focusables = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE))
-            .filter(el => el.offsetParent !== null)
+            .filter(el => !el.hasAttribute('inert') && el.getClientRects().length > 0)
         if (focusables.length === 0) return
 
         const first = focusables[0]
@@ -105,12 +103,12 @@ export default function Modal({
         }
     }, [handleKeyDown, opener])
 
-    const isLight = variant === 'light'
-
     return createPortal(
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+            className="fixed inset-0 z-modal flex items-center justify-center bg-overlay p-4 backdrop-blur-sm"
             onMouseDown={(event) => {
+                // No element may be introduced between this overlay and the panel: the
+                // click-outside test compares the event target against this node.
                 if (event.target === event.currentTarget) onClose()
             }}
         >
@@ -120,22 +118,20 @@ export default function Modal({
                 aria-modal="true"
                 aria-labelledby={titleId}
                 aria-describedby={description ? descriptionId : undefined}
-                className={`rounded-xl backdrop-blur-md w-full ${SIZES[size]} max-h-[90vh] flex flex-col overflow-hidden ${
-                    isLight ? 'bg-white/50 text-gray-900 ring-[0.8px] ring-white/30' : 'bg-neutral-900/95 text-white ring-[0.8px] ring-white/10'
-                } ${panelClassName}`}
+                className={`flex max-h-[90vh] w-full flex-col overflow-hidden rounded-xl border border-border bg-surface text-foreground shadow-dialog ${SIZES[size]} ${panelClassName}`}
             >
-                <div className={`flex items-start justify-between gap-4 px-6 py-4 border-b ${isLight ? 'border-gray-900/10' : 'border-white/10'}`}>
+                <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-4">
                     <div>
-                        <h2 id={titleId} className={`text-xl font-bold ${isLight ? 'text-gray-900' : 'text-white'}`}>{title}</h2>
+                        <h2 id={titleId} className="font-display text-xl font-semibold tracking-tight">{title}</h2>
                         {description && (
-                            <p id={descriptionId} className={`text-sm mt-1 ${isLight ? 'text-gray-700' : 'text-white/60'}`}>{description}</p>
+                            <p id={descriptionId} className="mt-1 text-sm text-foreground-muted">{description}</p>
                         )}
                     </div>
                     <button
                         type="button"
                         onClick={onClose}
                         aria-label={t('common:closeDialog')}
-                        className={`p-2 rounded-full transition-colors ${isLight ? 'hover:bg-black/10 text-gray-900' : 'hover:bg-white/10 text-white'}`}
+                        className="-mr-2 inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md text-foreground-muted transition-colors duration-150 ease-out hover:bg-hover-bg hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                         <X className="w-5 h-5" aria-hidden="true" />
                     </button>
@@ -146,7 +142,7 @@ export default function Modal({
                 </div>
 
                 {footer && (
-                    <div className={`px-6 py-4 border-t ${isLight ? 'border-gray-900/10' : 'border-white/10'}`}>
+                    <div className="border-t border-border px-6 py-4">
                         {footer}
                     </div>
                 )}

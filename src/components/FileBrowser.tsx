@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Folder, FileVideo, ChevronRight, Loader2 } from 'lucide-react'
+import { Folder, FileVideo, ChevronRight } from 'lucide-react'
+import { Checkbox } from './ui/Choice'
+import { Spinner } from './ui/Feedback'
 import type { DataSource } from '../../electron/store'
 
 interface FileBrowserProps {
@@ -67,11 +69,9 @@ export default function FileBrowser({ config, type, onSelect, selectedPaths, sou
         onSelect(path)
     }
 
-    // Owns its text color: the panel is dark on purpose, and the light modal that hosts it
-    // sets `text-gray-900`, which would otherwise render these names invisible.
     return (
-        <div className="border border-border rounded-lg overflow-hidden bg-background text-foreground h-96 flex flex-col">
-            <div className="p-3 bg-surface border-b border-border flex items-center gap-2">
+        <div className="border border-border rounded-lg overflow-hidden bg-background h-96 flex flex-col">
+            <div className="p-3 bg-surface-raised border-b border-border flex items-center gap-2">
                 <button
                     type="button"
                     onClick={handleUp}
@@ -87,7 +87,7 @@ export default function FileBrowser({ config, type, onSelect, selectedPaths, sou
             <div className="flex-1 overflow-auto p-2">
                 {loading ? (
                     <div className="flex items-center justify-center h-full">
-                        <Loader2 className="w-6 h-6 animate-spin text-foreground-muted" />
+                        <Spinner size="lg" label={t('common:loading')} />
                     </div>
                 ) : error ? (
                     <div className="text-danger text-center p-4">{error}</div>
@@ -100,18 +100,11 @@ export default function FileBrowser({ config, type, onSelect, selectedPaths, sou
                                 <div key={item.filename} className="flex items-center gap-2 p-2 hover:bg-hover-bg rounded group">
                                     {item.type === 'directory' ? (
                                         <>
-                                            <button
-                                                type="button"
-                                                role="checkbox"
-                                                aria-checked={selected}
-                                                aria-label={t('settings:scanFolderAria', { name: item.basename })}
-                                                onClick={() => toggleSelection(item.filename)}
-                                                className={`w-4 h-4 border rounded flex items-center justify-center flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                                                    selected ? 'bg-accent border-accent' : 'border-border-strong hover:border-ring'
-                                                }`}
-                                            >
-                                                {selected && <span className="w-2 h-2 bg-accent-foreground rounded-sm" />}
-                                            </button>
+                                            <Checkbox
+                                                checked={selected}
+                                                onCheckedChange={() => toggleSelection(item.filename)}
+                                                label={t('settings:scanFolderAria', { name: item.basename })}
+                                            />
                                             <button
                                                 type="button"
                                                 onClick={() => handleNavigate(item)}

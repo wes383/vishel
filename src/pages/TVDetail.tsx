@@ -9,6 +9,7 @@ import {
     PersonChips
 } from '../components/media/MediaDetailShell'
 import Modal from '../components/ui/Modal'
+import ListItemButton from '../components/ui/ListItemButton'
 import { buildExternalLinks, defaultTvExternalLinks, normalizeExternalLinks } from '../utils/externalLinks'
 import { tmdbImage } from '../utils/formatMediaInfo'
 import { formatTvPlayTitle } from '../utils/playTitle'
@@ -324,20 +325,13 @@ export default function TVDetail() {
                 >
                     <div className="space-y-3">
                         {activeVersion.videoFiles.map(file => (
-                            <button
+                            <ListItemButton
                                 key={file.id}
-                                type="button"
+                                icon={<Play className="w-5 h-5" aria-hidden="true" />}
+                                title={file.name}
+                                meta={sourceNames[file.sourceId] || t('common:unknown')}
                                 onClick={() => void playFile(file, activeVersion)}
-                                className="w-full text-left p-4 bg-white/30 hover:bg-white/50 rounded-lg transition-colors flex items-center gap-3"
-                            >
-                                <Play className="w-5 h-5 text-gray-900" aria-hidden="true" />
-                                <span className="flex-1 min-w-0">
-                                    <span className="block font-medium text-gray-900 truncate">{file.name}</span>
-                                    <span className="block text-sm text-gray-700 truncate">
-                                        {sourceNames[file.sourceId] || t('common:unknown')}
-                                    </span>
-                                </span>
-                            </button>
+                            />
                         ))}
                     </div>
                 </Modal>

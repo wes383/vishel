@@ -8,18 +8,21 @@ import {
     type ChangeEvent,
     type KeyboardEvent
 } from 'react'
-import { Film, Loader2, Search, Tv } from 'lucide-react'
+import { Film, Search, Tv } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../../contexts/ToastContext'
+import Button from '../ui/Button'
+import Input from '../ui/Input'
+import Segmented from '../ui/Segmented'
+import EmptyState from '../ui/EmptyState'
+import { Spinner } from '../ui/Feedback'
+import { Field } from '../ui/Field'
 import type { EpisodeMatchInfo, MatchResult, MediaType } from '../../types/ipc'
 import type { TmdbSearchResult } from '../../../electron/tmdbService'
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w185'
 const SEARCH_DEBOUNCE_MS = 350
 const MAX_EPISODE_NUMBER = 10000
-
-const INPUT_CLASSES =
-    'w-full bg-black/10 border border-gray-900/20 rounded-xl px-4 py-2 outline-none focus:border-gray-900 transition-colors text-gray-900'
 
 /** A TMDB hit reduced to what the result card can actually render. */
 export interface TmdbSearchItem {
@@ -267,7 +270,6 @@ export function TmdbSearchControls({
     onSubmit
 }: TmdbSearchControlsProps) {
     const { t } = useTranslation(['match', 'common'])
-    const typeGroupId = useId()
     const inputId = useId()
 
     const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -280,62 +282,42 @@ export function TmdbSearchControls({
     return (
         <div>
             <div className="flex flex-wrap gap-3">
-                <div role="group" aria-labelledby={typeGroupId} className="flex gap-2">
-                    <span id={typeGroupId} className="sr-only">
-                        {t('match:mediaType')}
-                    </span>
-                    {TYPES.map(type => (
-                        <button
-                            key={type.value}
-                            type="button"
-                            aria-pressed={mediaType === type.value}
-                            onClick={() => onMediaTypeChange(type.value)}
-                            className={`px-4 py-2 rounded-xl font-medium transition-colors whitespace-nowrap ${
-                                mediaType === type.value
-                                    ? 'bg-neutral-800 text-white'
-                                    : 'bg-black/10 text-gray-900 hover:bg-black/20'
-                            }`}
-                        >
-                            {t(type.labelKey)}
-                        </button>
-                    ))}
-                </div>
+                <Segmented
+                    label={t('match:mediaType')}
+                    value={mediaType}
+                    options={TYPES.map(type => ({ value: type.value, label: t(type.labelKey) }))}
+                    onChange={onMediaTypeChange}
+                />
 
                 <div className="flex-1 relative min-w-[12rem]">
                     <label htmlFor={inputId} className="sr-only">
                         {mediaType === 'movie' ? t('match:searchTmdbMovie') : t('match:searchTmdbTvShow')}
                     </label>
                     <Search
-                        className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-600"
+                        className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-foreground-subtle pointer-events-none"
                         aria-hidden="true"
                     />
-                    <input
+                    <Input
                         id={inputId}
                         data-autofocus=""
                         type="text"
+                        className="pl-10"
                         value={query}
                         aria-busy={searching}
                         onChange={(event: ChangeEvent<HTMLInputElement>) => onQueryChange(event.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder={mediaType === 'movie' ? t('match:searchMoviePlaceholder') : t('match:searchTvShowPlaceholder')}
-                        className={`${INPUT_CLASSES} pl-10 pr-4 py-3`}
                     />
                 </div>
 
-                <button
-                    type="button"
-                    onClick={onSubmit}
-                    disabled={searching || !query.trim()}
-                    className="bg-neutral-800 hover:bg-neutral-700 text-white px-6 py-3 rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap"
-                >
-                    {searching && <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />}
+                <Button onClick={onSubmit} disabled={!query.trim()} loading={searching}>
                     {searching ? t('match:searching') : t('common:search')}
-                </button>
+                </Button>
             </div>
 
             <p
                 aria-live="polite"
-                className={`text-sm mt-2 ${statusTone === 'error' ? 'text-red-600' : 'text-gray-600'}`}
+                className={`text-sm mt-2 ${statusTone === 'error' ? 'text-danger' : 'text-foreground-muted'}`}
             >
                 {statusMessage}
             </p>
@@ -400,10 +382,7 @@ export function TmdbResultList({
             className={`min-h-0 flex-1 overflow-y-auto ${className}`}
         >
             {items.length === 0 ? (
-                <div className="text-center text-gray-600 py-12">
-                    <Search className="w-12 h-12 mx-auto mb-3 opacity-50" aria-hidden="true" />
-                    <p>{emptyMessage}</p>
-                </div>
+                <EmptyState compact icon={Search} title={emptyMessage} />
             ) : (
                 <>
                     <ul className="space-y-3" aria-label={t('match:tmdbResultsLabel')}>
@@ -418,10 +397,10 @@ export function TmdbResultList({
                                         type="button"
                                         onClick={() => onSelect(item)}
                                         aria-pressed={selected}
-                                        className={`w-full text-left flex gap-4 p-4 rounded-xl transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+                                        className={`w-full text-left flex gap-4 p-4 rounded-lg border transition-colors duration-150 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                                             selected
-                                                ? 'bg-black/20 border-2 border-gray-900'
-                                                : 'bg-black/10 hover:bg-black/20 border-2 border-transparent'
+                                                ? 'bg-accent-muted border-border-strong ring-1 ring-ring'
+                                                : 'bg-hover-bg hover:bg-hover-bg-strong border-transparent'
                                         }`}
                                     >
                                         {item.posterPath ? (
@@ -434,17 +413,17 @@ export function TmdbResultList({
                                         ) : (
                                             <span
                                                 aria-hidden="true"
-                                                className="w-16 h-24 bg-black/20 rounded flex items-center justify-center text-gray-600 shrink-0"
+                                                className="w-16 h-24 bg-hover-bg-strong rounded flex items-center justify-center text-foreground-faint shrink-0"
                                             >
                                                 <Placeholder className="w-8 h-8" />
                                             </span>
                                         )}
                                         <span className="flex-1 min-w-0">
-                                            <span className="block font-bold text-lg truncate text-gray-900">
+                                            <span className="block font-bold text-lg truncate">
                                                 {title}
-                                                {year && <span className="text-gray-900"> ({year})</span>}
+                                                {year && <span className="text-foreground-muted"> ({year})</span>}
                                             </span>
-                                            <span className="block text-sm text-gray-900 line-clamp-2 mt-1">
+                                            <span className="block text-sm text-foreground-muted line-clamp-2 mt-1">
                                                 {item.overview || t('match:noDescription')}
                                             </span>
                                         </span>
@@ -457,14 +436,14 @@ export function TmdbResultList({
                     {hasMore && <div ref={sentinelRef} aria-hidden="true" className="h-1" />}
 
                     {loadingMore && (
-                        <p role="status" className="flex items-center justify-center gap-2 py-4 text-gray-600">
-                            <Loader2 className="w-6 h-6 animate-spin" aria-hidden="true" />
+                        <p role="status" className="flex items-center justify-center gap-2 py-4 text-foreground-muted">
+                            <Spinner size="md" />
                             {t('match:loadingMore')}
                         </p>
                     )}
 
                     {!hasMore && !loadingMore && (
-                        <p className="text-center py-4 text-gray-600 text-sm">{t('match:noMoreResults')}</p>
+                        <p className="text-center py-4 text-foreground-muted text-sm">{t('match:noMoreResults')}</p>
                     )}
                 </>
             )}
@@ -491,17 +470,15 @@ export function EpisodeFields({ value, onChange }: EpisodeFieldsProps) {
 
     return (
         <div>
-            <h3 id={groupId} className="font-semibold mb-3 text-gray-900">
+            <h3 id={groupId} className="font-semibold mb-3">
                 {t('match:episodeInformation')}
             </h3>
             <div className="flex gap-4" role="group" aria-labelledby={groupId}>
-                <div className="flex-1">
-                    <label className="block text-sm text-gray-600 mb-1" htmlFor={seasonId}>
-                        {t('match:season')}
-                    </label>
-                    <input
+                <Field id={seasonId} label={t('match:season')} className="flex-1">
+                    <Input
                         id={seasonId}
                         type="number"
+                        size="md"
                         inputMode="numeric"
                         min={1}
                         max={MAX_EPISODE_NUMBER}
@@ -509,16 +486,13 @@ export function EpisodeFields({ value, onChange }: EpisodeFieldsProps) {
                         onChange={(event: ChangeEvent<HTMLInputElement>) =>
                             onChange({ ...value, season: clampNumber(event.target.value) })
                         }
-                        className={INPUT_CLASSES}
                     />
-                </div>
-                <div className="flex-1">
-                    <label className="block text-sm text-gray-600 mb-1" htmlFor={episodeId}>
-                        {t('match:episode')}
-                    </label>
-                    <input
+                </Field>
+                <Field id={episodeId} label={t('match:episode')} className="flex-1">
+                    <Input
                         id={episodeId}
                         type="number"
+                        size="md"
                         inputMode="numeric"
                         min={1}
                         max={MAX_EPISODE_NUMBER}
@@ -526,9 +500,8 @@ export function EpisodeFields({ value, onChange }: EpisodeFieldsProps) {
                         onChange={(event: ChangeEvent<HTMLInputElement>) =>
                             onChange({ ...value, episode: clampNumber(event.target.value) })
                         }
-                        className={INPUT_CLASSES}
                     />
-                </div>
+                </Field>
             </div>
         </div>
     )

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { LazyImage } from '../LazyImage'
 import Modal from '../ui/Modal'
+import ListItemButton from '../ui/ListItemButton'
 import { GridItem } from '../../types/library'
 import { RematchModal } from './RematchModal'
 import { useMediaStatus } from '../../contexts/MediaStatusContext'
@@ -491,21 +492,16 @@ export const MediaGrid: React.FC<MediaGridProps> = ({
                 >
                     <div className="space-y-3">
                         {fileSelector.files.map(file => (
-                            <button
+                            <ListItemButton
                                 key={file.id}
-                                type="button"
+                                icon={<Play className="w-5 h-5" aria-hidden="true" />}
+                                title={file.name}
+                                meta={file.filePath}
                                 onClick={() => {
                                     void playVideo(file, fileSelector.title, { ...fileSelector.history, filePath: file.filePath })
                                     setFileSelector(null)
                                 }}
-                                className="w-full text-left p-4 bg-white/30 hover:bg-white/50 rounded-lg transition-colors flex items-center gap-3"
-                            >
-                                <Play className="w-5 h-5 text-gray-900" aria-hidden="true" />
-                                <span className="flex-1 min-w-0">
-                                    <span className="block font-medium text-gray-900 truncate">{file.name}</span>
-                                    <span className="block text-sm text-gray-700 truncate">{file.filePath}</span>
-                                </span>
-                            </button>
+                            />
                         ))}
                     </div>
                 </Modal>
@@ -530,7 +526,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({
 
                                 return (
                                     <div key={season.seasonNumber}>
-                                        <h3 className="text-lg font-bold mb-3 text-gray-900">{t('grid:seasonHeading', { number: season.seasonNumber })}</h3>
+                                        <h3 className="font-display text-lg font-semibold tracking-tight mb-3">{t('grid:seasonHeading', { number: season.seasonNumber })}</h3>
                                         <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2">
                                             {playable.map(episode => (
                                                 <button
@@ -540,7 +536,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({
                                                     aria-label={episode.name
                                                         ? t('grid:playEpisodeNamedAriaLabel', { season: episode.seasonNumber, episode: episode.episodeNumber, name: episode.name })
                                                         : t('grid:playEpisodeAriaLabel', { season: episode.seasonNumber, episode: episode.episodeNumber })}
-                                                    className="aspect-square bg-black/20 hover:bg-black/30 rounded-full transition-colors flex items-center justify-center font-medium text-lg text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                                                    className="aspect-square flex items-center justify-center rounded-full bg-hover-bg hover:bg-hover-bg-strong text-foreground text-lg font-medium transition-colors duration-150 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                                 >
                                                     {episode.episodeNumber}
                                                 </button>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Trash2, Play, Loader2, SkipForward } from 'lucide-react'
 import Modal from '../ui/Modal'
+import ListItemButton from '../ui/ListItemButton'
 import { useToast } from '../../contexts/ToastContext'
 import { HistoryItem } from '../../types/library'
 import { useListVirtualizer } from '../../hooks/useRowVirtualizer'
@@ -540,17 +541,12 @@ export const HistoryList: React.FC<HistoryListProps> = ({ items, onDelete, empty
                 >
                     <div className="space-y-3">
                         {fileSelector.files.map(file => (
-                            <button
+                            <ListItemButton
                                 key={file.id}
-                                type="button"
+                                icon={<Play className="w-5 h-5" aria-hidden="true" />}
+                                title={file.name}
                                 onClick={() => void handleSelectFile(file, fileSelector)}
-                                className="w-full text-left p-4 bg-white/30 hover:bg-white/50 rounded-lg transition-colors flex items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
-                            >
-                                <Play className="w-5 h-5 text-gray-900 flex-shrink-0" aria-hidden="true" />
-                                <span className="flex-1 min-w-0">
-                                    <span className="block font-medium text-gray-900 truncate">{file.name}</span>
-                                </span>
-                            </button>
+                            />
                         ))}
                     </div>
                 </Modal>

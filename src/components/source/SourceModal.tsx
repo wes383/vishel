@@ -1,8 +1,12 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, ChevronLeft, Loader2 } from 'lucide-react'
+import { Check, ChevronLeft } from 'lucide-react'
 import Modal from '../ui/Modal'
 import FileBrowser from '../FileBrowser'
+import Button from '../ui/Button'
+import Input from '../ui/Input'
+import Segmented from '../ui/Segmented'
+import { Field } from '../ui/Field'
 import type { DataSource } from '../../../electron/store'
 import type { RedactedSource, WritableSource } from '../../../electron/settings'
 import type { SourceConnectionRequest } from '../../types/ipc'
@@ -33,9 +37,6 @@ const EMPTY_CONFIG: ConfigFields = {
     password: '',
     domain: ''
 }
-
-const INPUT_CLASSES = 'w-full bg-white/30 border border-gray-900/20 rounded-lg px-4 py-2 outline-none focus:border-gray-900 transition-colors text-gray-900'
-const LABEL_CLASSES = 'block text-sm font-medium text-gray-700 mb-1'
 
 /**
  * Add and edit were two near-identical components; the copy is why the stored password used
@@ -157,39 +158,23 @@ export default function SourceModal({ source, onClose, onSubmit }: SourceModalPr
 
     const footer = step === 1 ? (
         <div className="flex justify-end gap-3">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-gray-900 hover:bg-black/10 transition-colors">
-                {t('common:cancel')}
-            </button>
-            <button
-                type="button"
-                onClick={handleTest}
-                disabled={testing || requiredFieldMissing}
-                className="bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 disabled:opacity-50 transition-colors"
-            >
-                {testing && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
+            <Button variant="ghost" onClick={onClose}>{t('common:cancel')}</Button>
+            <Button onClick={handleTest} disabled={requiredFieldMissing} loading={testing}>
                 {t('settings:next')}
-            </button>
+            </Button>
         </div>
     ) : (
         <div className="flex justify-between gap-3">
             {!isEdit ? (
-                <button
-                    type="button"
-                    onClick={() => setStep(1)}
-                    className="px-4 py-2 rounded-lg text-gray-900 hover:bg-black/10 transition-colors flex items-center gap-1"
-                >
+                <Button variant="ghost" onClick={() => setStep(1)}>
                     <ChevronLeft className="w-4 h-4" aria-hidden="true" />
                     {t('common:back')}
-                </button>
+                </Button>
             ) : <span />}
-            <button
-                type="button"
-                onClick={handleFinish}
-                className="bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
-            >
+            <Button onClick={handleFinish}>
                 <Check className="w-4 h-4" aria-hidden="true" />
                 {isEdit ? t('common:save') : t('settings:finish')}
-            </button>
+            </Button>
         </div>
     )
 
@@ -204,62 +189,47 @@ export default function SourceModal({ source, onClose, onSubmit }: SourceModalPr
         >
             {step === 1 ? (
                 <div className="space-y-4">
-                    <div>
-                        <span className={LABEL_CLASSES} id="source-type-label">{t('settings:sourceTypeLabel')}</span>
+                    <Field label={t('settings:sourceTypeLabel')}>
                         {isEdit ? (
-                            <p className="py-2 font-medium text-gray-900">{typeLabels[type]}</p>
+                            <p className="py-2 font-medium">{typeLabels[type]}</p>
                         ) : (
-                            <div className="flex gap-4" role="group" aria-labelledby="source-type-label">
-                                {(['webdav', 'local', 'smb'] as SourceType[]).map(option => (
-                                    <button
-                                        key={option}
-                                        type="button"
-                                        aria-pressed={type === option}
-                                        onClick={() => {
-                                            setType(option)
-                                            setSelectedPaths([])
-                                            setStep(1)
-                                        }}
-                                        className={`flex-1 py-2 rounded-lg border transition-colors ${
-                                            type === option
-                                                ? 'bg-neutral-800 border-neutral-800 text-white'
-                                                : 'border-gray-900/20 hover:bg-black/10 text-gray-900'
-                                        }`}
-                                    >
-                                        {typeLabels[option]}
-                                    </button>
-                                ))}
-                            </div>
+                            <Segmented
+                                fill
+                                label={t('settings:sourceTypeLabel')}
+                                value={type}
+                                options={(['webdav', 'local', 'smb'] as SourceType[]).map(option => ({ value: option, label: typeLabels[option] }))}
+                                onChange={option => {
+                                    setType(option)
+                                    setSelectedPaths([])
+                                    setStep(1)
+                                }}
+                            />
                         )}
-                    </div>
+                    </Field>
 
-                    <div>
-                        <label className={LABEL_CLASSES} htmlFor="source-name">{t('settings:sourceNameLabel')}</label>
-                        <input
+                    <Field id="source-name" label={t('settings:sourceNameLabel')}>
+                        <Input
                             id="source-name"
                             type="text"
                             value={name}
                             onChange={event => setName(event.target.value)}
                             placeholder={namePlaceholders[type]}
                             spellCheck={false}
-                            className={INPUT_CLASSES}
                         />
-                    </div>
+                    </Field>
 
                     {type === 'webdav' && (
                         <>
-                            <div>
-                                <label className={LABEL_CLASSES} htmlFor="source-url">{t('settings:webdavUrlLabel')}</label>
-                                <input
+                            <Field id="source-url" label={t('settings:webdavUrlLabel')}>
+                                <Input
                                     id="source-url"
                                     type="text"
                                     value={config.url}
                                     onChange={event => update({ url: event.target.value })}
                                     placeholder="https://example.com/webdav"
                                     spellCheck={false}
-                                    className={INPUT_CLASSES}
                                 />
-                            </div>
+                            </Field>
                             <SourceCredentialFields
                                 config={config}
                                 update={update}
@@ -274,19 +244,16 @@ export default function SourceModal({ source, onClose, onSubmit }: SourceModalPr
 
                     {type === 'smb' && (
                         <>
-                            <div>
-                                <label className={LABEL_CLASSES} htmlFor="source-share">{t('settings:smbSharePathLabel')}</label>
-                                <input
+                            <Field id="source-share" label={t('settings:smbSharePathLabel')} hint={t('settings:smbShareFormat')}>
+                                <Input
                                     id="source-share"
                                     type="text"
                                     value={config.share}
                                     onChange={event => update({ share: event.target.value })}
                                     placeholder="//192.168.1.100/movies"
                                     spellCheck={false}
-                                    className={INPUT_CLASSES}
                                 />
-                                <p className="text-xs text-gray-700 mt-1">{t('settings:smbShareFormat')}</p>
-                            </div>
+                            </Field>
                             <SourceCredentialFields
                                 config={config}
                                 update={update}
@@ -299,37 +266,30 @@ export default function SourceModal({ source, onClose, onSubmit }: SourceModalPr
                     )}
 
                     {type === 'local' && (
-                        <div>
-                            <label className={LABEL_CLASSES} htmlFor="source-path">{t('settings:folderPathLabel')}</label>
+                        <Field id="source-path" label={t('settings:folderPathLabel')} hint={t('settings:folderPathHint')}>
                             <div className="flex gap-2">
-                                <input
+                                <Input
                                     id="source-path"
                                     type="text"
                                     value={config.path}
                                     onChange={event => update({ path: event.target.value })}
                                     placeholder="D:\Movies"
                                     spellCheck={false}
-                                    className="flex-1 bg-white/30 border border-gray-900/20 rounded-lg px-4 py-2 outline-none focus:border-gray-900 transition-colors text-gray-900"
                                 />
-                                <button
-                                    type="button"
-                                    onClick={browseDirectory}
-                                    className="bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                                >
+                                <Button variant="outline" onClick={browseDirectory}>
                                     {t('common:browse')}
-                                </button>
+                                </Button>
                             </div>
-                            <p className="text-xs text-gray-700 mt-1">{t('settings:folderPathHint')}</p>
-                        </div>
+                        </Field>
                     )}
 
                     {error && (
-                        <p className="text-red-600 text-sm" role="alert">{error}</p>
+                        <p className="text-sm text-danger" role="alert">{error}</p>
                     )}
                 </div>
             ) : (
                 <div className="space-y-4">
-                    <p className="text-sm text-gray-700">{t('settings:selectFoldersToScan')}</p>
+                    <p className="text-sm text-foreground-muted">{t('settings:selectFoldersToScan')}</p>
                     <FileBrowser
                         config={{
                             url: config.url || undefined,
@@ -345,7 +305,7 @@ export default function SourceModal({ source, onClose, onSubmit }: SourceModalPr
                         selectedPaths={selectedPaths}
                     />
                     {error && (
-                        <p className="text-red-600 text-sm" role="alert">{error}</p>
+                        <p className="text-sm text-danger" role="alert">{error}</p>
                     )}
                 </div>
             )}
@@ -378,9 +338,8 @@ function SourceCredentialFields({
 
     return (
         <>
-            <div>
-                <label className={LABEL_CLASSES} htmlFor="source-username">{usernameLabel ?? t('common:username')}</label>
-                <input
+            <Field id="source-username" label={usernameLabel ?? t('common:username')}>
+                <Input
                     id="source-username"
                     type="text"
                     value={config.username}
@@ -388,15 +347,15 @@ function SourceCredentialFields({
                     placeholder={t('settings:placeholderUsername')}
                     spellCheck={false}
                     autoComplete="off"
-                    className={INPUT_CLASSES}
                 />
-            </div>
+            </Field>
 
-            <div>
-                <label className={LABEL_CLASSES} htmlFor="source-password">
-                    {requiredPassword ? t('common:password') : t('settings:passwordOptional')}
-                </label>
-                <input
+            <Field
+                id="source-password"
+                label={requiredPassword ? t('common:password') : t('settings:passwordOptional')}
+                hint={isEdit && hasStoredPassword ? t('settings:storedPasswordHint') : undefined}
+            >
+                <Input
                     id="source-password"
                     type="password"
                     value={config.password}
@@ -407,28 +366,20 @@ function SourceCredentialFields({
                     placeholder={isEdit && hasStoredPassword ? t('settings:storedPasswordPlaceholder') : t('settings:placeholderPassword')}
                     spellCheck={false}
                     autoComplete="new-password"
-                    className={INPUT_CLASSES}
                 />
-                {isEdit && hasStoredPassword && (
-                    <p className="text-xs text-gray-700 mt-1">
-                        {t('settings:storedPasswordHint')}
-                    </p>
-                )}
-            </div>
+            </Field>
 
             {domain && (
-                <div>
-                    <label className={LABEL_CLASSES} htmlFor="source-domain">{t('settings:domainOptional')}</label>
-                    <input
+                <Field id="source-domain" label={t('settings:domainOptional')}>
+                    <Input
                         id="source-domain"
                         type="text"
                         value={config.domain}
                         onChange={event => update({ domain: event.target.value })}
                         placeholder="WORKGROUP"
                         spellCheck={false}
-                        className={INPUT_CLASSES}
                     />
-                </div>
+                </Field>
             )}
         </>
     )

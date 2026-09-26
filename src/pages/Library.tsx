@@ -87,6 +87,11 @@ export default function LibraryPage() {
         setSearchExpanded(true)
     }, [setSearchExpanded])
 
+    const handleClearFilters = useCallback(() => {
+        setFilterBy('all')
+        setGenreFilter('all')
+    }, [setFilterBy, setGenreFilter])
+
     const handleEscapeShortcut = useCallback(() => {
         if (searchExpanded) {
             setSearchExpanded(false)
@@ -369,6 +374,7 @@ export default function LibraryPage() {
                             genreFilter={genreFilter}
                             genreOptions={genreOptions}
                             onGenreFilterChange={setGenreFilter}
+                            onClearFilters={handleClearFilters}
                         />
                     </div>
                 </div>

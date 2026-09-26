@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Settings, Search, ArrowUpDown, Check, SlidersHorizontal } from 'lucide-react'
+import { Settings, Search, ArrowUpDown, Check, SlidersHorizontal, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Button from '../ui/Button'
 import Menu, { MenuItem, MenuLabel, MenuSeparator } from '../ui/Menu'
@@ -25,6 +25,8 @@ interface LibraryActionsProps {
     genreFilter?: string
     genreOptions?: string[]
     onGenreFilterChange?: (genre: string) => void
+    /** Resets the status and genre narrowing. The current tab is a view, not a filter, so it stays. */
+    onClearFilters: () => void
 }
 
 export const LibraryActions: React.FC<LibraryActionsProps> = ({
@@ -37,7 +39,8 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
     onFilterChange,
     genreFilter = 'all',
     genreOptions = [],
-    onGenreFilterChange
+    onGenreFilterChange,
+    onClearFilters
 }) => {
     const [filterMenuOpen, setFilterMenuOpen] = useState(false)
     const [sortMenuOpen, setSortMenuOpen] = useState(false)
@@ -167,6 +170,12 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
                         </Menu>
                     )}
                 </div>
+            )}
+            {hasActiveFilter && activeTab !== 'history' && (
+                <Button size="sm" variant="ghost" onClick={onClearFilters}>
+                    <X className="w-4 h-4" aria-hidden="true" />
+                    {t('library:clearFilters')}
+                </Button>
             )}
             {activeTab !== 'history' && (
                 <div className="relative" ref={sortMenuRef}>

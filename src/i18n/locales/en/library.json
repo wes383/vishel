@@ -1,5 +1,6 @@
 {
     "allGenres": "All Genres",
+    "clearFilters": "Clear filters",
     "clearSearch": "Clear search",
     "couldNotLoadLibrary": "Could not load your library",
     "fileCount_one": "{{count}} file",

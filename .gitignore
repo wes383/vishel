@@ -24,3 +24,6 @@ release
 *.njsproj
 *.sln
 *.sw?
+
+# Local reference design project, not part of the app source
+orkest-ui/

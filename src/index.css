@@ -1,5 +1,8 @@
-@import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+/* Sources are pinned: the untracked orkest-ui/ reference app must not be
+   scanned for class names, or the generated stylesheet depends on its contents. */
+@import "tailwindcss" source(none);
+@source "./**/*.{ts,tsx}";
+@source "../index.html";
 
 :root {
     font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
@@ -84,14 +87,6 @@ input::placeholder {
     color: rgba(0, 0, 0, 0.3);
 }
 
-.player-path-input::placeholder {
-    color: rgba(255, 255, 255, 0.5);
-}
-
 .library-search-input::placeholder {
     color: rgba(255, 255, 255, 0.6);
-}
-
-.font-jetbrains-mono {
-    font-family: 'JetBrains Mono', 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 }

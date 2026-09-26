@@ -325,16 +325,16 @@ export function PersonChips({ label, pluralLabel, people = [] }: PersonChipsProp
             </h3>
             <div className="flex flex-wrap gap-4">
                 {people.map((person, index) => (
-                    <div key={`${person.name}-${index}`} className="flex items-center gap-3 bg-muted px-3 py-2 rounded-lg w-fit">
+                    <div key={`${person.name}-${index}`} className="flex items-center gap-3 bg-muted pl-3 pr-5 py-2 rounded-full w-fit">
                         {person.profilePath ? (
                             <img
                                 src={tmdbImage(person.profilePath, 'w185')}
                                 alt=""
                                 aria-hidden="true"
-                                className="w-10 h-10 rounded-md object-cover"
+                                className="w-10 h-10 rounded-full object-cover"
                             />
                         ) : (
-                            <div className="w-10 h-10 rounded-md bg-surface-raised flex items-center justify-center" aria-hidden="true">
+                            <div className="w-10 h-10 rounded-full bg-surface-raised flex items-center justify-center" aria-hidden="true">
                                 <User className="w-5 h-5 text-foreground-muted" />
                             </div>
                         )}

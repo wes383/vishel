@@ -331,10 +331,10 @@ export function PersonChips({ label, pluralLabel, people = [] }: PersonChipsProp
                                 src={tmdbImage(person.profilePath, 'w185')}
                                 alt=""
                                 aria-hidden="true"
-                                className="w-10 h-10 rounded-full object-cover"
+                                className="w-10 h-10 rounded-md object-cover"
                             />
                         ) : (
-                            <div className="w-10 h-10 rounded-full bg-surface-raised flex items-center justify-center" aria-hidden="true">
+                            <div className="w-10 h-10 rounded-md bg-surface-raised flex items-center justify-center" aria-hidden="true">
                                 <User className="w-5 h-5 text-foreground-muted" />
                             </div>
                         )}

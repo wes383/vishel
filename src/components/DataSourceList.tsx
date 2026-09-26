@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Trash2, FolderOpen, Pencil } from 'lucide-react'
 import type { RedactedSource } from '../../electron/settings'
+import Button from '../components/ui/Button'
 
 interface DataSourceListProps {
     sources: RedactedSource[]
@@ -39,22 +40,23 @@ export default function DataSourceList({ sources, onRemove, onEdit }: DataSource
                     </div>
 
                     <div className="flex gap-1">
-                        <button
-                            type="button"
+                        <Button
+                            size="icon"
+                            variant="ghost"
                             onClick={() => onEdit(source)}
                             aria-label={t('settings:editSourceAria', { name: source.name })}
-                            className="p-2 hover:bg-hover-bg text-foreground-subtle hover:text-foreground rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                             <Pencil className="w-5 h-5" aria-hidden="true" />
-                        </button>
-                        <button
-                            type="button"
+                        </Button>
+                        <Button
+                            size="icon"
+                            variant="ghost"
+                            tone="danger"
                             onClick={() => void onRemove(source.id)}
                             aria-label={t('settings:removeSourceAria', { name: source.name })}
-                            className="p-2 hover:bg-danger-soft text-foreground-subtle hover:text-danger rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                             <Trash2 className="w-5 h-5" aria-hidden="true" />
-                        </button>
+                        </Button>
                     </div>
                 </div>
             ))}

@@ -10,6 +10,22 @@ const VARIANTS = {
     danger: 'bg-danger text-background hover:bg-danger-strong'
 } as const
 
+const DANGER_VARIANTS = {
+    outline: 'bg-surface border border-border text-foreground-muted hover:bg-danger-soft hover:border-danger-border hover:text-danger',
+    ghost: 'text-foreground-muted hover:bg-danger-soft hover:text-danger',
+    subtle: 'bg-hover-bg text-foreground-muted hover:bg-danger-soft hover:text-danger',
+    default: 'bg-danger text-background hover:bg-danger-strong',
+    danger: 'bg-danger text-background hover:bg-danger-strong'
+} as const
+
+/**
+ * A tone never layers a second `hover:bg-*` onto the variant: two utilities for
+ * the same property on one element resolve by stylesheet order, not by the order
+ * they are written in the class attribute.
+ */
+const variantClasses = (variant: ButtonVariant, danger: boolean) =>
+    (danger ? DANGER_VARIANTS[variant] : VARIANTS[variant])
+
 const SIZES = {
     sm: 'h-9 px-4 text-sm',
     md: 'h-10 px-5 text-sm',
@@ -31,6 +47,8 @@ export const BUTTON_BASE = cn(
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     variant?: ButtonVariant
     size?: ButtonSize
+    /** Semantic red on hover, for controls that destroy something. */
+    tone?: 'default' | 'danger'
     loading?: boolean
     fullWidth?: boolean
 }
@@ -40,7 +58,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
  * but must not restate a utility already set here (rounded, colour, height).
  */
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-    { variant = 'default', size = 'md', loading = false, fullWidth = false, className, type = 'button', disabled, children, ...rest },
+    { variant = 'default', size = 'md', tone = 'default', loading = false, fullWidth = false, className, type = 'button', disabled, children, ...rest },
     ref
 ) {
     return (
@@ -49,7 +67,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
             type={type}
             disabled={disabled || loading}
             aria-busy={loading || undefined}
-            className={cn(BUTTON_BASE, VARIANTS[variant], SIZES[size], fullWidth && 'w-full', className)}
+            className={cn(BUTTON_BASE, variantClasses(variant, tone === 'danger'), SIZES[size], fullWidth && 'w-full', className)}
             {...rest}
         >
             {loading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}

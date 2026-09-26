@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { InfoHint, Segmented, SettingRow, Toggle } from './SettingsControls'
+import SettingRow from '../../components/ui/SettingRow'
+import { InfoHint } from '../../components/ui/Tooltip'
+import Segmented from '../../components/ui/Segmented'
+import Toggle from '../../components/ui/Toggle'
+import Input from '../../components/ui/Input'
+import { Field } from '../../components/ui/Field'
 import { useSettings } from '../../contexts/SettingsContext'
 import { useToast } from '../../contexts/ToastContext'
 import type { RendererSettings } from '../../../electron/settings'
@@ -42,25 +47,21 @@ export default function GeneralSection() {
 
     return (
         <section className="space-y-4" aria-labelledby="general-heading">
-            <h2 id="general-heading" className="text-xl font-semibold text-white -mt-[5px]">{t('settings:generalHeading')}</h2>
+            <h2 id="general-heading" className="text-xl font-semibold -mt-[5px]">{t('settings:generalHeading')}</h2>
 
-            <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1" htmlFor="tmdb-api-key">{t('settings:tmdbApiKeyLabel')}</label>
-                <input
+            <Field id="tmdb-api-key" label={t('settings:tmdbApiKeyLabel')} hint={t('settings:tmdbApiKeyHint')}>
+                <Input
                     id="tmdb-api-key"
                     type="text"
+                    size="md"
                     value={apiKey}
                     onChange={event => setApiKey(event.target.value)}
                     onBlur={handleApiKeyBlur}
                     spellCheck={false}
                     autoComplete="off"
                     aria-describedby="tmdb-api-key-hint"
-                    className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-4 py-2 outline-none focus:border-white transition-colors"
                 />
-                <p id="tmdb-api-key-hint" className="text-xs text-gray-500 mt-1">
-                    {t('settings:tmdbApiKeyHint')}
-                </p>
-            </div>
+            </Field>
 
             <SettingRow
                 title={t('settings:hideEpisodeDetailsTitle')}
@@ -144,7 +145,7 @@ export default function GeneralSection() {
                 )}
             >
                 <div className="flex items-center justify-between">
-                    <h3 className={`font-medium ${settings?.autoMarkWatchedEnabled ? '' : 'text-gray-500'}`}>{t('settings:applyToMoviesOnlyTitle')}</h3>
+                    <h3 className={`font-medium ${settings?.autoMarkWatchedEnabled ? '' : 'text-foreground-subtle'}`}>{t('settings:applyToMoviesOnlyTitle')}</h3>
                     <Toggle
                         label={t('settings:applyToMoviesOnlyAria')}
                         disabled={settings?.autoMarkWatchedEnabled !== true}

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check } from 'lucide-react'
 import { useSettings } from '../../contexts/SettingsContext'
 import { useToast } from '../../contexts/ToastContext'
+import Card from '../../components/ui/Card'
+import Input from '../../components/ui/Input'
+import { RadioIndicator } from '../../components/ui/Choice'
 import type { DetectedPlayer } from '../../../electron/playerDetector'
 
 const isIinaApp = (path: string) =>
@@ -74,11 +76,11 @@ export default function PlayerSection() {
     return (
         <section aria-labelledby="player-heading">
             <div className="flex items-center justify-between mb-2">
-                <h2 id="player-heading" className="text-xl font-semibold text-white">{t('settings:externalPlayerHeading')}</h2>
-                {detecting && <span className="text-xs text-gray-500 animate-pulse">{t('settings:detectingPlayers')}</span>}
+                <h2 id="player-heading" className="text-xl font-semibold">{t('settings:externalPlayerHeading')}</h2>
+                {detecting && <span className="text-xs text-foreground-muted animate-pulse">{t('settings:detectingPlayers')}</span>}
             </div>
 
-            <div className="bg-neutral-800 rounded-xl overflow-hidden mb-3">
+            <Card className="overflow-hidden mb-3">
                 {players.map(player => {
                     const selected = !customSelected && settings?.playerPath === player.path
                     return (
@@ -90,24 +92,20 @@ export default function PlayerSection() {
                                 setCustomSelected(false)
                                 void selectPlayer(player.path)
                             }}
-                            className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all hover:bg-white/5 focus:outline-none focus-visible:bg-white/10 ${
-                                selected ? 'bg-white/10' : ''
-                            } ${player !== players[0] ? 'border-t border-neutral-700/60' : ''}`}
+                            className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-hover-bg focus:outline-none focus-visible:bg-hover-bg-strong ${
+                                selected ? 'bg-accent-muted' : ''
+                            } ${player !== players[0] ? 'border-t border-border' : ''}`}
                         >
-                            <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-                                selected ? 'border-white bg-white' : 'border-neutral-500'
-                            }`}>
-                                {selected && <Check className="w-3 h-3 text-black" aria-hidden="true" />}
-                            </span>
+                            <RadioIndicator checked={selected} />
                             <span className="min-w-0 flex-1">
-                                <span className={`block text-sm font-medium ${selected ? 'text-white' : 'text-gray-300'}`}>{player.name}</span>
-                                <span className="block text-xs text-gray-500 truncate">{player.path}</span>
+                                <span className={`block text-sm font-medium ${selected ? 'text-foreground' : 'text-foreground-muted'}`}>{player.name}</span>
+                                <span className="block text-xs text-foreground-muted truncate">{player.path}</span>
                             </span>
                         </button>
                     )
                 })}
 
-                <div className={`flex items-center gap-3 px-4 py-3 ${players.length > 0 ? 'border-t border-neutral-700/60' : ''} ${usingCustom ? 'bg-white/10' : ''}`}>
+                <div className={`flex items-center gap-3 px-4 py-3 ${players.length > 0 ? 'border-t border-border' : ''} ${usingCustom ? 'bg-accent-muted' : ''}`}>
                     <button
                         type="button"
                         role="radio"
@@ -117,14 +115,14 @@ export default function PlayerSection() {
                             setCustomSelected(true)
                             void commitCustomPath()
                         }}
-                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${
-                            usingCustom ? 'border-white bg-white' : 'border-neutral-500'
-                        }`}
+                        className="flex-shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                        {usingCustom && <Check className="w-3 h-3 text-black" aria-hidden="true" />}
+                        <RadioIndicator checked={usingCustom} />
                     </button>
-                    <input
+                    <Input
                         type="text"
+                        size="md"
+                        className="flex-1"
                         value={customPath}
                         onFocus={() => setCustomSelected(true)}
                         onChange={event => setCustomPath(event.target.value)}
@@ -138,13 +136,12 @@ export default function PlayerSection() {
                         spellCheck={false}
                         aria-label={t('settings:customPlayerPathAria')}
                         placeholder={t('settings:customPlayerPathPlaceholder')}
-                        className="flex-1 min-w-0 bg-white/5 border border-neutral-600 focus:border-white rounded-xl px-3 py-2 outline-none transition-all text-sm text-white"
                     />
                 </div>
-            </div>
+            </Card>
 
             {isIinaApp(customPath) && (
-                <p className="text-xs text-yellow-500 mt-2" role="status">
+                <p className="text-xs text-warning mt-2" role="status">
                     {t('settings:iinaCliHint')}
                 </p>
             )}

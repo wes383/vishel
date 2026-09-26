@@ -7,6 +7,7 @@ import PlayerSection from './settings/PlayerSection'
 import GeneralSection from './settings/GeneralSection'
 import LinksSection from './settings/LinksSection'
 import UpdateSection from './settings/UpdateSection'
+import Button from '../components/ui/Button'
 import { useSettings } from '../contexts/SettingsContext'
 import TMDBLogo from '../assets/TMDB_logo.svg'
 
@@ -48,14 +49,14 @@ export default function SettingsPage() {
         <div className="p-8 max-w-4xl mx-auto">
             <div className="flex items-center justify-between mb-8">
                 <h1 className="text-3xl font-bold">{t('settings:heading')}</h1>
-                <button
-                    type="button"
+                <Button
+                    size="icon"
+                    variant="ghost"
                     onClick={() => navigate('/')}
                     aria-label={t('settings:closeSettingsAria')}
-                    className="p-2 hover:bg-hover-bg rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                    <X className="w-6 h-6" aria-hidden="true" />
-                </button>
+                    <X className="w-5 h-5" aria-hidden="true" />
+                </Button>
             </div>
 
             {!ready ? (

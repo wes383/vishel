@@ -3,13 +3,14 @@ import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronUp, Plus, X } from 'lucide-react'
 import { useSettings } from '../../contexts/SettingsContext'
 import { useToast } from '../../contexts/ToastContext'
+import Button from '../../components/ui/Button'
+import Card from '../../components/ui/Card'
+import Input from '../../components/ui/Input'
 import { defaultMovieExternalLinks, defaultTvExternalLinks, normalizeExternalLinks } from '../../utils/externalLinks'
 import type { ExternalLinkConfig } from '../../../electron/store'
 import type { RendererSettingsPatch } from '../../../electron/settings'
 
 type LinksKey = 'movieExternalLinks' | 'tvExternalLinks'
-
-const INPUT_CLASSES = 'bg-surface border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-border-strong transition-colors min-w-0'
 
 export default function LinksSection() {
     const { t } = useTranslation(['settings', 'common'])
@@ -82,74 +83,71 @@ export default function LinksSection() {
     return (
         <section aria-labelledby="links-heading">
             <h2 id="links-heading" className="sr-only">{t('settings:externalLinksHeading')}</h2>
-            <div className="bg-surface p-4 rounded-lg space-y-5">
+            <Card padded className="space-y-5">
                 {groups.map(group => (
                     <div key={group.key}>
                         <div className="flex items-center justify-between mb-3">
                             <h3 className="font-medium">{group.title}</h3>
-                            <button
-                                type="button"
-                                onClick={() => addLink(group.key)}
-                                className="bg-hover-bg hover:bg-hover-bg-strong text-foreground px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors"
-                            >
+                            <Button size="sm" variant="subtle" onClick={() => addLink(group.key)}>
                                 <Plus className="w-3.5 h-3.5" aria-hidden="true" />
                                 {t('common:add')}
-                            </button>
+                            </Button>
                         </div>
                         <div className="space-y-2">
                             {group.links.map((link, index) => (
-                                <div key={`${group.key}-${index}`} className="grid grid-cols-[1fr_2fr_auto] gap-2 min-w-0">
-                                    <input
+                                <div key={`${group.key}-${index}`} className="grid grid-cols-[1fr_2fr_auto] gap-2 min-w-0 items-start">
+                                    <Input
                                         type="text"
+                                        size="md"
                                         value={link.label}
                                         onChange={event => updateLink(group.key, index, 'label', event.target.value)}
                                         onBlur={() => void persist(group.key, group.links)}
                                         aria-label={t('settings:linkLabelAria', { title: group.title, number: index + 1 })}
-                                        className={INPUT_CLASSES}
                                     />
-                                    <input
+                                    <Input
                                         type="text"
+                                        size="md"
                                         value={link.template}
                                         onChange={event => updateLink(group.key, index, 'template', event.target.value)}
                                         onBlur={() => void persist(group.key, group.links)}
                                         spellCheck={false}
                                         aria-label={t('settings:linkTemplateAria', { title: group.title, number: index + 1 })}
-                                        className={INPUT_CLASSES}
                                     />
                                     <div className="flex items-center gap-1">
-                                        <button
-                                            type="button"
+                                        <Button
+                                            size="icon"
+                                            variant="outline"
                                             onClick={() => moveLink(group.key, index, 'up')}
                                             disabled={index === 0}
                                             aria-label={t('settings:moveLinkUpAria', { title: group.title, number: index + 1 })}
-                                            className="px-2.5 py-2 rounded-lg border border-border hover:border-border-strong disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                         >
                                             <ChevronUp className="w-4 h-4" aria-hidden="true" />
-                                        </button>
-                                        <button
-                                            type="button"
+                                        </Button>
+                                        <Button
+                                            size="icon"
+                                            variant="outline"
                                             onClick={() => moveLink(group.key, index, 'down')}
                                             disabled={index === group.links.length - 1}
                                             aria-label={t('settings:moveLinkDownAria', { title: group.title, number: index + 1 })}
-                                            className="px-2.5 py-2 rounded-lg border border-border hover:border-border-strong disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                         >
                                             <ChevronDown className="w-4 h-4" aria-hidden="true" />
-                                        </button>
-                                        <button
-                                            type="button"
+                                        </Button>
+                                        <Button
+                                            size="icon"
+                                            variant="outline"
+                                            tone="danger"
                                             onClick={() => removeLink(group.key, index)}
                                             aria-label={t('settings:removeLinkAria', { title: group.title, number: index + 1 })}
-                                            className="px-2.5 py-2 rounded-lg border border-border hover:border-danger-border hover:text-danger transition-colors"
                                         >
                                             <X className="w-4 h-4" aria-hidden="true" />
-                                        </button>
+                                        </Button>
                                     </div>
                                 </div>
                             ))}
                         </div>
                     </div>
                 ))}
-            </div>
+            </Card>
             <div className="flex items-center gap-1.5 mt-1.5 text-xs text-foreground-muted">
                 <p>
                     {t('settings:supportedPlaceholders')}

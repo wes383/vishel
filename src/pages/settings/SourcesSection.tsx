@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { Plus, RefreshCw, Square } from 'lucide-react'
 import DataSourceList from '../../components/DataSourceList'
 import SourceModal from '../../components/source/SourceModal'
+import Button from '../../components/ui/Button'
+import Card from '../../components/ui/Card'
 import { useSettings } from '../../contexts/SettingsContext'
 import { useToast } from '../../contexts/ToastContext'
 import { useScan } from '../../contexts/ScanContext'
@@ -81,56 +83,38 @@ export default function SourcesSection() {
     return (
         <section aria-labelledby="sources-heading">
             <div className="flex items-center justify-between mb-4">
-                <h2 id="sources-heading" className="text-xl font-semibold text-white">{t('settings:dataSourcesHeading')}</h2>
+                <h2 id="sources-heading" className="text-xl font-semibold">{t('settings:dataSourcesHeading')}</h2>
                 <div className="flex gap-3">
-                    <button
-                        type="button"
-                        onClick={() => void runScan(false)}
-                        disabled={scanning}
-                        className="flex items-center gap-2 bg-white hover:bg-gray-200 text-black px-4 py-1.5 rounded-full text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
+                    <Button size="sm" onClick={() => void runScan(false)} disabled={scanning}>
                         <RefreshCw className={`w-4 h-4 ${scanning ? 'animate-spin' : ''}`} aria-hidden="true" />
                         {scanning ? t('settings:scanningButton') : t('settings:quickScan')}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => void runScan(true)}
-                        disabled={scanning}
-                        className="flex items-center gap-2 bg-white hover:bg-gray-200 text-black px-4 py-1.5 rounded-full text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
+                    </Button>
+                    <Button size="sm" onClick={() => void runScan(true)} disabled={scanning}>
                         <RefreshCw className={`w-4 h-4 ${scanning ? 'animate-spin' : ''}`} aria-hidden="true" />
                         {scanning ? t('settings:scanningButton') : t('settings:fullRescan')}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setShowAddModal(true)}
-                        className="bg-white hover:bg-gray-200 text-black px-4 py-1.5 rounded-full text-sm font-medium flex items-center gap-2 transition-colors"
-                    >
+                    </Button>
+                    <Button size="sm" onClick={() => setShowAddModal(true)}>
                         <Plus className="w-4 h-4" aria-hidden="true" />
                         {t('settings:addSource')}
-                    </button>
+                    </Button>
                 </div>
             </div>
 
             {scanning && (
                 <div className="mb-4 flex justify-end">
-                    <button
-                        type="button"
-                        onClick={() => void cancel()}
-                        className="flex items-center gap-1.5 bg-neutral-700 hover:bg-neutral-600 text-white px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
-                    >
+                    <Button size="sm" variant="subtle" onClick={() => void cancel()}>
                         <Square className="w-3 h-3" aria-hidden="true" />
                         {t('settings:stopScan')}
-                    </button>
+                    </Button>
                 </div>
             )}
 
             <div className="mb-4 px-1">
-                <p className="text-sm text-gray-400 mb-1">
-                    <span className="font-semibold text-gray-300">{t('settings:quickScanLabel')}</span> {t('settings:quickScanHelp')}
+                <p className="text-sm text-foreground-muted mb-1">
+                    <span className="font-semibold text-foreground">{t('settings:quickScanLabel')}</span> {t('settings:quickScanHelp')}
                 </p>
-                <p className="text-sm text-gray-400">
-                    <span className="font-semibold text-gray-300">{t('settings:fullRescanLabel')}</span> {t('settings:fullRescanHelp')}
+                <p className="text-sm text-foreground-muted">
+                    <span className="font-semibold text-foreground">{t('settings:fullRescanLabel')}</span> {t('settings:fullRescanHelp')}
                 </p>
             </div>
 
@@ -141,14 +125,14 @@ export default function SourcesSection() {
             />
 
             <div className="grid grid-cols-2 gap-4 mt-6">
-                <div className="bg-neutral-800 p-4 rounded-lg">
-                    <h3 className="text-sm font-medium text-gray-400 mb-1">{t('settings:totalMovies')}</h3>
-                    <p className="text-2xl font-bold text-white">{stats.movies}</p>
-                </div>
-                <div className="bg-neutral-800 p-4 rounded-lg">
-                    <h3 className="text-sm font-medium text-gray-400 mb-1">{t('settings:totalTvShows')}</h3>
-                    <p className="text-2xl font-bold text-white">{stats.tvShows}</p>
-                </div>
+                <Card padded>
+                    <h3 className="text-sm font-medium text-foreground-muted mb-1">{t('settings:totalMovies')}</h3>
+                    <p className="text-2xl font-bold">{stats.movies}</p>
+                </Card>
+                <Card padded>
+                    <h3 className="text-sm font-medium text-foreground-muted mb-1">{t('settings:totalTvShows')}</h3>
+                    <p className="text-2xl font-bold">{stats.tvShows}</p>
+                </Card>
             </div>
 
             <div aria-live="polite" className="sr-only">

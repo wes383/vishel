@@ -67,8 +67,10 @@ export default function FileBrowser({ config, type, onSelect, selectedPaths, sou
         onSelect(path)
     }
 
+    // Owns its text color: the panel is dark on purpose, and the light modal that hosts it
+    // sets `text-gray-900`, which would otherwise render these names invisible.
     return (
-        <div className="border border-neutral-700 rounded-lg overflow-hidden bg-neutral-900 h-96 flex flex-col">
+        <div className="border border-neutral-700 rounded-lg overflow-hidden bg-neutral-900 text-white h-96 flex flex-col">
             <div className="p-3 bg-neutral-800 border-b border-neutral-700 flex items-center gap-2">
                 <button
                     type="button"

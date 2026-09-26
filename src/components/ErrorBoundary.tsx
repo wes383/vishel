@@ -1,4 +1,5 @@
 import { Component, ErrorInfo, ReactNode } from 'react'
+import i18n from '../i18n'
 
 interface Props {
     children: ReactNode
@@ -41,16 +42,16 @@ class ErrorBoundary extends Component<Props, State> {
             return (
                 <div className="h-screen bg-neutral-900 text-white flex items-center justify-center p-8">
                     <div className="max-w-2xl">
-                        <h1 className="text-3xl font-bold mb-4 text-red-500">Something went wrong</h1>
+                        <h1 className="text-3xl font-bold mb-4 text-red-500">{i18n.t('common:somethingWentWrong')}</h1>
                         <div className="bg-neutral-800 rounded-lg p-6 mb-4">
-                            <h2 className="text-xl font-semibold mb-2">Error:</h2>
+                            <h2 className="text-xl font-semibold mb-2">{i18n.t('common:errorHeading')}</h2>
                             <pre className="text-sm text-red-400 whitespace-pre-wrap break-words">
                                 {this.state.error?.toString()}
                             </pre>
                         </div>
                         {this.state.errorInfo && (
                             <div className="bg-neutral-800 rounded-lg p-6 mb-4">
-                                <h2 className="text-xl font-semibold mb-2">Stack Trace:</h2>
+                                <h2 className="text-xl font-semibold mb-2">{i18n.t('common:stackTrace')}</h2>
                                 <pre className="text-xs text-gray-400 whitespace-pre-wrap break-words overflow-auto max-h-96">
                                     {this.state.errorInfo.componentStack}
                                 </pre>
@@ -60,7 +61,7 @@ class ErrorBoundary extends Component<Props, State> {
                             onClick={() => window.location.reload()}
                             className="bg-white text-black px-6 py-3 rounded-lg font-medium hover:bg-gray-200 transition-colors"
                         >
-                            Reload Application
+                            {i18n.t('common:reloadApplication')}
                         </button>
                     </div>
                 </div>

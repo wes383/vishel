@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { DataSource } from './store'
+import type { DataSource } from './store'
 
 export interface LocalFileStat {
     filename: string

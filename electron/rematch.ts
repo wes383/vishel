@@ -62,32 +62,32 @@ const rematchMovie = async (oldTmdbId: number, newTmdbId: number) => {
             throw new Error('Failed to fetch new movie details from TMDB')
         }
 
-        const cast = details.credits?.cast?.slice(0, 10).map((c: any) => ({
+        const cast = details.credits?.cast?.slice(0, 10).map(c => ({
             name: c.name,
-            character: c.character,
-            profilePath: c.profile_path
+            character: c.character ?? '',
+            profilePath: c.profile_path ?? ''
         }))
 
-        const directors = details.credits?.crew?.filter((c: any) => c.job === 'Director')
-        const directorObj = directors?.map((d: any) => ({
+        const directors = details.credits?.crew?.filter(c => c.job === 'Director')
+        const directorObj = directors?.map(d => ({
             name: d.name,
-            profilePath: d.profile_path || null
+            profilePath: d.profile_path ?? null
         }))
 
-        const logoPath = details.images?.logos?.find((l: any) => l.iso_639_1 === 'en')?.file_path
+        const logoPath = details.images?.logos?.find(l => l.iso_639_1 === 'en')?.file_path
 
         const newMovie: Movie = {
             id: details.id,
             title: details.title,
-            logoPath: logoPath || '',
+            logoPath: logoPath ?? '',
             overview: details.overview,
-            posterPath: details.poster_path,
-            backdropPath: details.backdrop_path,
-            releaseDate: details.release_date,
-            runtime: details.runtime,
+            posterPath: details.poster_path ?? '',
+            backdropPath: details.backdrop_path ?? '',
+            releaseDate: details.release_date ?? '',
+            runtime: details.runtime ?? undefined,
             voteAverage: details.vote_average,
             popularity: details.popularity,
-            genres: details.genres?.map((g: any) => g.name),
+            genres: details.genres?.map(g => g.name),
             sourceId: oldMovie.sourceId,
             status: details.status,
             cast,
@@ -125,13 +125,13 @@ const rematchTVShow = async (oldTmdbId: number, newTmdbId: number) => {
         console.log(`New TV show ${newTmdbId} already exists, merging episodes`)
         
         for (const oldSeason of oldShow.seasons) {
-            let newSeason = existingNewShow.seasons.find(s => s.seasonNumber === oldSeason.seasonNumber)
+            const newSeason = existingNewShow.seasons.find(s => s.seasonNumber === oldSeason.seasonNumber)
             
             if (!newSeason) {
                 existingNewShow.seasons.push(oldSeason)
             } else {
                 for (const oldEpisode of oldSeason.episodes) {
-                    let newEpisode = newSeason.episodes.find(e => e.episodeNumber === oldEpisode.episodeNumber)
+                    const newEpisode = newSeason.episodes.find(e => e.episodeNumber === oldEpisode.episodeNumber)
                     
                     if (!newEpisode) {
                         newSeason.episodes.push(oldEpisode)
@@ -165,30 +165,30 @@ const rematchTVShow = async (oldTmdbId: number, newTmdbId: number) => {
             throw new Error('Failed to fetch new TV show details from TMDB')
         }
 
-        const cast = details.credits?.cast?.slice(0, 10).map((c: any) => ({
+        const cast = details.credits?.cast?.slice(0, 10).map(c => ({
             name: c.name,
-            character: c.character,
-            profilePath: c.profile_path
+            character: c.character ?? '',
+            profilePath: c.profile_path ?? ''
         }))
 
-        const createdBy = details.created_by?.map((c: any) => ({
+        const createdBy = details.created_by?.map(c => ({
             name: c.name,
-            profilePath: c.profile_path
+            profilePath: c.profile_path ?? ''
         }))
 
-        const logoPath = details.images?.logos?.find((l: any) => l.iso_639_1 === 'en')?.file_path
+        const logoPath = details.images?.logos?.find(l => l.iso_639_1 === 'en')?.file_path
 
         // Save new show
         const newShow: TVShow = {
             id: details.id,
             name: details.name,
-            logoPath: logoPath || '',
-            posterPath: details.poster_path,
-            backdropPath: details.backdrop_path,
+            logoPath: logoPath ?? '',
+            posterPath: details.poster_path ?? '',
+            backdropPath: details.backdrop_path ?? '',
             overview: details.overview,
-            firstAirDate: details.first_air_date,
+            firstAirDate: details.first_air_date ?? '',
             sourceId: oldShow.sourceId,
-            genres: details.genres?.map((g: any) => g.name),
+            genres: details.genres?.map(g => g.name),
             voteAverage: details.vote_average,
             popularity: details.popularity,
             status: details.status,
@@ -209,7 +209,7 @@ const rematchTVShow = async (oldTmdbId: number, newTmdbId: number) => {
                     posterPath: seasonDetails?.poster_path || oldSeason.posterPath,
                     episodes: oldSeason.episodes.map(oldEpisode => {
                         const episodeMeta = seasonDetails?.episodes?.find(
-                            (e: any) => e.episode_number === oldEpisode.episodeNumber
+                            e => e.episode_number === oldEpisode.episodeNumber
                         )
                         
                         return {

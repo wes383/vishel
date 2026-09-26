@@ -13,41 +13,46 @@
     "build": "tsc && vite build && electron-builder",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "rebuild": "electron-rebuild -f -w better-sqlite3"
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
+    "test": "vitest run"
   },
   "dependencies": {
     "@marsaud/smb2": "^0.18.0",
-    "axios": "^1.13.2",
-    "better-sqlite3": "^12.4.6",
+    "axios": "^1.20.0",
+    "better-sqlite3": "^13.0.3",
     "electron-store": "^11.0.2",
+    "electron-updater": "^6.8.9",
+    "i18next": "^26.4.2",
     "lucide-react": "^0.554.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-i18next": "^17.0.15",
     "react-router-dom": "^7.9.6",
-    "webdav": "^5.8.0"
+    "webdav": "^5.11.0"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.2.0",
     "@tailwindcss/postcss": "^4.1.17",
     "@types/better-sqlite3": "^7.6.13",
     "@types/react": "^18.2.64",
     "@types/react-dom": "^18.2.21",
     "@typescript-eslint/eslint-plugin": "^7.1.1",
     "@typescript-eslint/parser": "^7.1.1",
-    "@vitejs/plugin-react": "^4.2.1",
+    "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.4.22",
     "baseline-browser-mapping": "^2.10.14",
-    "electron": "^30.0.1",
-    "electron-builder": "^24.13.3",
-    "electron-rebuild": "^3.2.9",
+    "electron": "^44.4.5",
+    "electron-builder": "^26.16.1",
     "eslint": "^8.57.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.17",
     "typescript": "^5.2.2",
-    "vite": "^5.1.6",
-    "vite-plugin-electron": "^0.28.6",
-    "vite-plugin-electron-renderer": "^0.14.5"
+    "vite": "^6.4.3",
+    "vite-plugin-electron": "^1.1.2",
+    "vite-plugin-electron-renderer": "^1.0.0",
+    "vitest": "^5.0.2"
   },
   "main": "dist-electron/main.js"
 }

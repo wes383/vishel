@@ -1,12 +1,32 @@
 import { spawn } from 'node:child_process'
-import store from './store'
+import store, { getSources } from './store'
+import { maskUrl } from './redact'
 import axios from 'axios'
 import fs from 'fs'
 import path from 'path'
 
+/** Player title text: drop control characters and filesystem-hostile punctuation. */
+const sanitizeTitle = (value: string): string => value
+    .split('')
+    .filter(char => {
+        const code = char.codePointAt(0) || 0
+        return code >= 0x20 && code !== 0x7f
+    })
+    .join('')
+    .replace(/[/:*?"<>|]/g, '')
+    .trim()
+
+/** Options merged into the URL-resolution probe; only set when the matched source has credentials. */
+interface ResolveRequestConfig {
+    auth?: { username: string, password: string }
+    maxRedirects?: number
+    validateStatus?: (status: number) => boolean
+    headers?: Record<string, string>
+}
+
 export const playVideo = async (fileUrl: string, title?: string) => {
     const playerPath = store.get('playerPath') as string
-    const sources = store.get('sources') as any[]
+    const sources = getSources()
 
     if (!playerPath) {
         throw new Error('Player path not configured')
@@ -38,7 +58,7 @@ export const playVideo = async (fileUrl: string, title?: string) => {
     }
 
     let authUrl = fileUrl
-    let authConfig = {}
+    let authConfig: ResolveRequestConfig = {}
 
     if (username && password) {
         try {
@@ -72,7 +92,7 @@ export const playVideo = async (fileUrl: string, title?: string) => {
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                     'Range': 'bytes=0-0',
-                    ...((authConfig as any).headers || {})
+                    ...(authConfig.headers || {})
                 },
                 maxRedirects: 5,
                 timeout: 5000,
@@ -80,13 +100,14 @@ export const playVideo = async (fileUrl: string, title?: string) => {
             })
 
             if (resolved.request.res.responseUrl && resolved.request.res.responseUrl !== fileUrl) {
-                console.log(`Resolved redirect: ${resolved.request.res.responseUrl}`)
+                console.log(`Resolved redirect: ${maskUrl(resolved.request.res.responseUrl)}`)
                 finalUrl = resolved.request.res.responseUrl
             }
             break
-        } catch (error: any) {
+        } catch (error: unknown) {
             resolveAttempts++
-            console.warn(`Failed to resolve redirect (attempt ${resolveAttempts}): ${error.message}`)
+            const reason = error instanceof Error ? error.message : String(error)
+            console.warn(`Failed to resolve redirect (attempt ${resolveAttempts}): ${reason}`)
             if (resolveAttempts >= maxResolveAttempts) {
                 console.log('Max resolve attempts reached, falling back to direct URL')
                 finalUrl = authUrl
@@ -94,7 +115,8 @@ export const playVideo = async (fileUrl: string, title?: string) => {
         }
     }
 
-    console.log(`Launching player: ${playerPath} with ${finalUrl}`)
+    // finalUrl may embed credentials: only ever log it masked.
+    console.log(`Launching player: ${playerPath} with ${maskUrl(finalUrl)}`)
 
     const args = [finalUrl]
 
@@ -103,15 +125,9 @@ export const playVideo = async (fileUrl: string, title?: string) => {
     if (title) {
         let displayTitle: string
         if (useFormattedTitle) {
-            displayTitle = title
-                .replace(/[\x00-\x1F\x7F]/g, '')
-                .replace(/[\\/:*?"<>|]/g, '')
-                .trim()
+            displayTitle = sanitizeTitle(title)
         } else {
-            displayTitle = path.basename(fileUrl)
-                .replace(/[\x00-\x1F\x7F]/g, '')
-                .replace(/[\\/:*?"<>|]/g, '')
-                .trim()
+            displayTitle = sanitizeTitle(path.basename(fileUrl))
         }
 
         const playerFilename = path.basename(playerPath).toLowerCase()

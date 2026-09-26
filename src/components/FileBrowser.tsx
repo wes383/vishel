@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Folder, FileVideo, ChevronRight, Loader2 } from 'lucide-react'
-import { DataSource } from '../../electron/store'
+import type { DataSource } from '../../electron/store'
 
 interface FileBrowserProps {
     config: DataSource['config']
     type: 'webdav' | 'local' | 'smb'
     onSelect: (path: string) => void
     selectedPaths: string[]
+    /** Existing sources keep their password in the main process; browsing needs its id. */
+    sourceId?: string
 }
 
 interface FileItem {
@@ -17,7 +20,8 @@ interface FileItem {
     type: 'file' | 'directory'
 }
 
-export default function FileBrowser({ config, type, onSelect, selectedPaths }: FileBrowserProps) {
+export default function FileBrowser({ config, type, onSelect, selectedPaths, sourceId }: FileBrowserProps) {
+    const { t } = useTranslation(['settings', 'common'])
     const [currentPath, setCurrentPath] = useState('/')
     const [items, setItems] = useState<FileItem[]>([])
     const [loading, setLoading] = useState(false)
@@ -27,20 +31,25 @@ export default function FileBrowser({ config, type, onSelect, selectedPaths }: F
         setLoading(true)
         setError('')
         try {
-            const result = await window.electron.ipcRenderer.invoke('list-directory', { config: { ...config, type }, path })
+            const result = await window.electron.ipcRenderer.invoke('list-directory', { config: { ...config, type }, path, sourceId })
             setItems(result)
             setCurrentPath(path)
         } catch (err) {
             console.error(err)
-            setError('Failed to load directory')
+            setItems([])
+            setError(t('settings:browserLoadError'))
         } finally {
             setLoading(false)
         }
     }
 
     useEffect(() => {
-        loadDirectory('/')
-    }, [config])
+        void loadDirectory('/')
+        // The connection settings object is rebuilt by the parent on every keystroke, so only
+        // the identity fields may trigger a reload. `t` is left out on purpose: switching
+        // language must not re-run the directory listing.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [type, sourceId, config.url, config.path, config.share, config.username, config.domain, config.password])
 
     const handleNavigate = (item: FileItem) => {
         if (item.type === 'directory') {
@@ -62,13 +71,15 @@ export default function FileBrowser({ config, type, onSelect, selectedPaths }: F
         <div className="border border-neutral-700 rounded-lg overflow-hidden bg-neutral-900 h-96 flex flex-col">
             <div className="p-3 bg-neutral-800 border-b border-neutral-700 flex items-center gap-2">
                 <button
+                    type="button"
                     onClick={handleUp}
                     disabled={currentPath === '/'}
-                    className="p-1 hover:bg-neutral-700 rounded disabled:opacity-50"
+                    aria-label={t('settings:parentFolderAria')}
+                    className="p-1 hover:bg-neutral-700 rounded disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
                 >
-                    <ChevronRight className="w-4 h-4 rotate-180" />
+                    <ChevronRight className="w-4 h-4 rotate-180" aria-hidden="true" />
                 </button>
-                <span className="text-sm font-mono truncate flex-1">{currentPath}</span>
+                <span className="text-sm font-mono truncate flex-1" aria-live="polite">{currentPath}</span>
             </div>
 
             <div className="flex-1 overflow-auto p-2">
@@ -80,38 +91,44 @@ export default function FileBrowser({ config, type, onSelect, selectedPaths }: F
                     <div className="text-red-400 text-center p-4">{error}</div>
                 ) : (
                     <div className="space-y-1">
-                        {items.map((item) => (
-                            <div
-                                key={item.filename}
-                                className="flex items-center gap-2 p-2 hover:bg-neutral-800 rounded cursor-pointer group"
-                            >
-                                {item.type === 'directory' ? (
-                                    <>
-                                        <button
-                                            onClick={() => toggleSelection(item.filename)}
-                                            className={`w-4 h-4 border rounded flex items-center justify-center ${selectedPaths.includes(item.filename)
-                                                ? 'bg-indigo-600 border-indigo-600'
-                                                : 'border-neutral-600 hover:border-neutral-400'
+                        {items.map((item) => {
+                            const selected = selectedPaths.includes(item.filename)
+
+                            return (
+                                <div key={item.filename} className="flex items-center gap-2 p-2 hover:bg-neutral-800 rounded group">
+                                    {item.type === 'directory' ? (
+                                        <>
+                                            <button
+                                                type="button"
+                                                role="checkbox"
+                                                aria-checked={selected}
+                                                aria-label={t('settings:scanFolderAria', { name: item.basename })}
+                                                onClick={() => toggleSelection(item.filename)}
+                                                className={`w-4 h-4 border rounded flex items-center justify-center flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${
+                                                    selected ? 'bg-indigo-600 border-indigo-600' : 'border-neutral-600 hover:border-neutral-400'
                                                 }`}
-                                        >
-                                            {selectedPaths.includes(item.filename) && <div className="w-2 h-2 bg-white rounded-sm" />}
-                                        </button>
-                                        <div
-                                            className="flex-1 flex items-center gap-2"
-                                            onClick={() => handleNavigate(item)}
-                                        >
-                                            <Folder className="w-4 h-4 text-yellow-500" />
+                                            >
+                                                {selected && <span className="w-2 h-2 bg-white rounded-sm" />}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleNavigate(item)}
+                                                aria-label={t('settings:openFolderAria', { name: item.basename })}
+                                                className="flex-1 flex items-center gap-2 text-left rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                                            >
+                                                <Folder className="w-4 h-4 text-yellow-500" aria-hidden="true" />
+                                                <span className="text-sm">{item.basename}</span>
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <div className="flex-1 flex items-center gap-2 opacity-50 pl-8">
+                                            <FileVideo className="w-4 h-4 text-blue-400" aria-hidden="true" />
                                             <span className="text-sm">{item.basename}</span>
                                         </div>
-                                    </>
-                                ) : (
-                                    <div className="flex-1 flex items-center gap-2 opacity-50 pl-8">
-                                        <FileVideo className="w-4 h-4 text-blue-400" />
-                                        <span className="text-sm">{item.basename}</span>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
+                                    )}
+                                </div>
+                            )
+                        })}
                     </div>
                 )}
             </div>

@@ -3,6 +3,11 @@ export interface ExternalLinkConfig {
     template: string
 }
 
+export interface ExternalLink {
+    label: string
+    url: string
+}
+
 export interface ExternalLinkContext {
     tmdbId: number
     imdbId?: string
@@ -21,6 +26,21 @@ export const defaultTvExternalLinks: ExternalLinkConfig[] = [
     { label: 'View on TMDB', template: 'https://www.themoviedb.org/tv/{tmdbId}' },
     { label: 'View Detailed Info', template: 'https://kino.wesluma.com/tv/{tmdbId}' }
 ]
+
+/**
+ * The link configs themselves stay untranslated data: they are read and written by the settings
+ * editor. Only the built-in labels are recognised here, so the render site can localise them while
+ * anything a user typed themselves passes through untouched.
+ */
+const DEFAULT_LINK_LABEL_KEYS: Record<string, string> = {
+    'View on IMDb': 'detail:externalLinkImdb',
+    'View on TMDB': 'detail:externalLinkTmdb',
+    'View on Letterboxd': 'detail:externalLinkLetterboxd',
+    'View Detailed Info': 'detail:externalLinkDetailedInfo'
+}
+
+export const getExternalLinkLabelKey = (label: string): string | undefined =>
+    DEFAULT_LINK_LABEL_KEYS[label.trim()]
 
 const cloneLinks = (links: ExternalLinkConfig[]): ExternalLinkConfig[] => links.map(link => ({ ...link }))
 
@@ -45,7 +65,7 @@ export const normalizeExternalLinks = (value: unknown, defaults: ExternalLinkCon
 export const buildExternalLinks = (
     configs: ExternalLinkConfig[],
     context: ExternalLinkContext
-): { label: string; url: string }[] => {
+): ExternalLink[] => {
     return configs
         .map((config) => {
             const label = config.label.trim()
@@ -68,5 +88,5 @@ export const buildExternalLinks = (
             }
             return { label, url }
         })
-        .filter((item): item is { label: string; url: string } => item !== null)
+        .filter((item): item is ExternalLink => item !== null)
 }

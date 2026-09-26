@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
-    branches: [main]
+    branches: [master]
 
 jobs:
   lint:
@@ -27,3 +27,16 @@ jobs:
 
       - name: Type Check
         run: npx tsc --noEmit
+
+      - name: Unit Tests
+        run: npm test
+
+      # Verify the app actually bundles. Deliberately not `npm run build`, which would run
+      # electron-builder and try to package/sign the app.
+      - name: Build
+        run: npx vite build
+
+      # Advisory report only: an audit finding must never block a push or a PR.
+      - name: Dependency Audit
+        run: npm audit --audit-level=high
+        continue-on-error: true

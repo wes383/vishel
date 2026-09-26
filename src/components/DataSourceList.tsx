@@ -1,20 +1,23 @@
+import { useTranslation } from 'react-i18next'
 import { Trash2, FolderOpen, Pencil } from 'lucide-react'
-import { DataSource } from '../../electron/store'
+import type { RedactedSource } from '../../electron/settings'
 
 interface DataSourceListProps {
-    sources: DataSource[]
-    onRemove: (id: string) => void
-    onEdit: (source: DataSource) => void
+    sources: RedactedSource[]
+    onRemove: (id: string) => void | Promise<void>
+    onEdit: (source: RedactedSource) => void
 }
 
 export default function DataSourceList({ sources, onRemove, onEdit }: DataSourceListProps) {
+    const { t } = useTranslation(['settings', 'common'])
+
     return (
         <div className="space-y-3">
             {sources.map(source => (
                 <div key={source.id} className="bg-neutral-800 border border-neutral-700 rounded-lg p-3 flex items-center justify-between group">
                     <div className="flex items-center gap-3">
                         <div className="bg-neutral-700 p-2 rounded-lg">
-                            <FolderOpen className="w-6 h-6 text-white" />
+                            <FolderOpen className="w-6 h-6 text-white" aria-hidden="true" />
                         </div>
                         <div>
                             <h4 className="font-bold">{source.name}</h4>
@@ -29,7 +32,7 @@ export default function DataSourceList({ sources, onRemove, onEdit }: DataSource
                                         </span>
                                     ))
                                 ) : (
-                                    <span className="text-xs bg-neutral-700 px-2 py-0.5 rounded text-gray-300">All (/)</span>
+                                    <span className="text-xs bg-neutral-700 px-2 py-0.5 rounded text-gray-300">{t('settings:allFolders')}</span>
                                 )}
                             </div>
                         </div>
@@ -37,25 +40,29 @@ export default function DataSourceList({ sources, onRemove, onEdit }: DataSource
 
                     <div className="flex gap-1">
                         <button
+                            type="button"
                             onClick={() => onEdit(source)}
-                            className="p-2 hover:bg-blue-900/30 text-gray-500 hover:text-blue-400 rounded-lg transition-colors"
+                            aria-label={t('settings:editSourceAria', { name: source.name })}
+                            className="p-2 hover:bg-blue-900/30 text-gray-500 hover:text-blue-400 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
                         >
-                            <Pencil className="w-5 h-5" />
+                            <Pencil className="w-5 h-5" aria-hidden="true" />
                         </button>
                         <button
-                            onClick={() => onRemove(source.id)}
-                            className="p-2 hover:bg-red-900/30 text-gray-500 hover:text-red-400 rounded-lg transition-colors"
+                            type="button"
+                            onClick={() => void onRemove(source.id)}
+                            aria-label={t('settings:removeSourceAria', { name: source.name })}
+                            className="p-2 hover:bg-red-900/30 text-gray-500 hover:text-red-400 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
                         >
-                            <Trash2 className="w-5 h-5" />
+                            <Trash2 className="w-5 h-5" aria-hidden="true" />
                         </button>
                     </div>
                 </div>
             ))}
 
             {sources.length === 0 && (
-                <div className="text-center py-8 text-gray-500 border-2 border-dashed border-neutral-800 rounded-lg">
-                    No data sources configured
-                </div>
+                <p className="text-center py-8 text-gray-500 border-2 border-dashed border-neutral-800 rounded-lg">
+                    {t('settings:noSourcesEmpty')}
+                </p>
             )}
         </div>
     )

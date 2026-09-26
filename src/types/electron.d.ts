@@ -1,15 +1,22 @@
-export interface IpcRenderer {
-    on(channel: string, listener: (event: any, ...args: any[]) => void): void
-    off(channel: string, listener: (...args: any[]) => void): void
-    send(channel: string, ...args: any[]): void
-    invoke(channel: string, ...args: any[]): Promise<any>
+import type { InvokeChannel, ReceiveChannel } from '../../electron/ipcChannels'
+import type { IpcRequestMap, IpcEventMap } from './ipc'
+
+export type IpcListener<K extends ReceiveChannel> = (event: unknown, payload: IpcEventMap[K]) => void
+
+export interface TypedIpcRenderer {
+    invoke<K extends InvokeChannel>(
+        channel: K,
+        ...args: IpcRequestMap[K]['args']
+    ): Promise<IpcRequestMap[K]['result']>
+    on<K extends ReceiveChannel>(channel: K, listener: IpcListener<K>): void
+    off<K extends ReceiveChannel>(channel: K, listener: IpcListener<K>): void
 }
 
 declare global {
     interface Window {
         electron: {
             platform: string
-            ipcRenderer: IpcRenderer
+            ipcRenderer: TypedIpcRenderer
         }
     }
 }

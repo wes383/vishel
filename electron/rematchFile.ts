@@ -1,6 +1,6 @@
 import { getDb, getMovie, getTVShow, saveMovie, saveTVShow, Movie, VideoFile } from './db'
 import { getMovieDetails, getTVShowDetails, getSeasonDetails } from './tmdbService'
-import store, { DataSource } from './store'
+import { DataSource, getSources } from './store'
 
 export const rematchSingleFile = async (
     oldTmdbId: number,
@@ -73,7 +73,7 @@ export const rematchSingleFile = async (
         }
     }
 
-    const sources = store.get('sources') as DataSource[]
+    const sources = getSources()
     const source = sources.find(s => s.id === sourceId)
     if (!source) throw new Error('Source not found')
 
@@ -91,7 +91,7 @@ export const rematchSingleFile = async (
 }
 
 const addFileToMovie = async (tmdbId: number, file: VideoFile, source: DataSource) => {
-    let movie = getMovie(tmdbId)
+    const movie = getMovie(tmdbId)
 
     if (movie) {
         console.log(`Movie ${tmdbId} already exists, adding file`)
@@ -114,34 +114,34 @@ const addFileToMovie = async (tmdbId: number, file: VideoFile, source: DataSourc
             throw new Error('Failed to fetch movie details from TMDB')
         }
 
-        const cast = details.credits?.cast?.slice(0, 10).map((c: any) => ({
+        const cast = details.credits?.cast?.slice(0, 10).map(c => ({
             name: c.name,
-            character: c.character,
-            profilePath: c.profile_path
+            character: c.character ?? '',
+            profilePath: c.profile_path ?? ''
         }))
 
-        const directors = details.credits?.crew?.filter((c: any) => c.job === 'Director')
-        const directorObj = directors?.map((d: any) => ({
+        const directors = details.credits?.crew?.filter(c => c.job === 'Director')
+        const directorObj = directors?.map(d => ({
             name: d.name,
-            profilePath: d.profile_path || null
+            profilePath: d.profile_path ?? null
         }))
 
-        const logoPath = details.images?.logos?.find((l: any) => l.iso_639_1 === 'en')?.file_path
+        const logoPath = details.images?.logos?.find(l => l.iso_639_1 === 'en')?.file_path
 
         file.manuallyMatched = true
 
         const newMovie: Movie = {
             id: details.id,
             title: details.title,
-            logoPath: logoPath || '',
+            logoPath: logoPath ?? '',
             overview: details.overview,
-            posterPath: details.poster_path,
-            backdropPath: details.backdrop_path,
-            releaseDate: details.release_date,
-            runtime: details.runtime,
+            posterPath: details.poster_path ?? '',
+            backdropPath: details.backdrop_path ?? '',
+            releaseDate: details.release_date ?? '',
+            runtime: details.runtime ?? undefined,
             voteAverage: details.vote_average,
             popularity: details.popularity,
-            genres: details.genres?.map((g: any) => g.name),
+            genres: details.genres?.map(g => g.name),
             sourceId: source.id,
             status: details.status,
             cast,
@@ -173,29 +173,29 @@ const addFileToTVShow = async (
             throw new Error('Failed to fetch TV show details from TMDB')
         }
 
-        const cast = details.credits?.cast?.slice(0, 10).map((c: any) => ({
+        const cast = details.credits?.cast?.slice(0, 10).map(c => ({
             name: c.name,
-            character: c.character,
-            profilePath: c.profile_path
+            character: c.character ?? '',
+            profilePath: c.profile_path ?? ''
         }))
 
-        const createdBy = details.created_by?.map((c: any) => ({
+        const createdBy = details.created_by?.map(c => ({
             name: c.name,
-            profilePath: c.profile_path
+            profilePath: c.profile_path ?? ''
         }))
 
-        const logoPath = details.images?.logos?.find((l: any) => l.iso_639_1 === 'en')?.file_path
+        const logoPath = details.images?.logos?.find(l => l.iso_639_1 === 'en')?.file_path
 
         show = {
             id: details.id,
             name: details.name,
-            logoPath: logoPath || '',
-            posterPath: details.poster_path,
-            backdropPath: details.backdrop_path,
+            logoPath: logoPath ?? '',
+            posterPath: details.poster_path ?? '',
+            backdropPath: details.backdrop_path ?? '',
             overview: details.overview,
-            firstAirDate: details.first_air_date,
+            firstAirDate: details.first_air_date ?? '',
             sourceId: source.id,
-            genres: details.genres?.map((g: any) => g.name),
+            genres: details.genres?.map(g => g.name),
             voteAverage: details.vote_average,
             popularity: details.popularity,
             status: details.status,
@@ -228,7 +228,7 @@ const addFileToTVShow = async (
     if (!episode) {
         console.log(`Fetching episode S${seasonNumber}E${episodeNumber} details`)
         const seasonDetails = await getSeasonDetails(tmdbId, seasonNumber)
-        const episodeMeta = seasonDetails?.episodes?.find((e: any) => e.episode_number === episodeNumber)
+        const episodeMeta = seasonDetails?.episodes?.find(e => e.episode_number === episodeNumber)
 
         file.manuallyMatched = true
 

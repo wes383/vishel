@@ -72,6 +72,14 @@ export interface WatchStatus {
     timestamp: number
 }
 
+/** Minimal projection the poster grid renders; keeps memoised lists independent of full records. */
+export interface GridItem {
+    id: number
+    type: 'movie' | 'tv'
+    title: string
+    posterPath: string
+}
+
 export type CombinedItem =
     | (Movie & { type: 'movie', sortKey: string, sortDate: string, createdAt?: number })
     | (TVShow & { type: 'tv', sortKey: string, sortDate: string, createdAt?: number })

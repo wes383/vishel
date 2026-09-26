@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Settings, Search, ArrowUpDown, Check, SlidersHorizontal } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
-export type SortOption = 'name-asc' | 'name-desc' | 'date-desc' | 'date-asc' | 'rating-desc' | 'added-desc' | 'recently-added'
+export type SortOption = 'name-asc' | 'name-desc' | 'date-desc' | 'date-asc' | 'popularity-desc' | 'recently-added'
 
 export type FilterOption = 'all' | 'watched' | 'unwatched' | 'favorites'
 
@@ -34,6 +35,7 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
     const filterMenuRef = useRef<HTMLDivElement>(null)
     const sortMenuRef = useRef<HTMLDivElement>(null)
     const navigate = useNavigate()
+    const { t } = useTranslation(['library', 'common'])
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (filterMenuRef.current && !filterMenuRef.current.contains(event.target as Node)) {
@@ -50,24 +52,31 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
     }, [filterMenuOpen, sortMenuOpen])
 
     const allSortOptions: { value: SortOption; label: string }[] = [
-        { value: 'recently-added', label: 'Recently Added' },
-        { value: 'name-asc', label: 'Name (A-Z)' },
-        { value: 'name-desc', label: 'Name (Z-A)' },
-        { value: 'date-desc', label: 'Date (Newest)' },
-        { value: 'date-asc', label: 'Date (Oldest)' },
-        { value: 'rating-desc', label: 'Popularity' },
+        { value: 'recently-added', label: t('library:sortRecentlyAdded') },
+        { value: 'name-asc', label: t('library:sortNameAsc') },
+        { value: 'name-desc', label: t('library:sortNameDesc') },
+        { value: 'date-desc', label: t('library:sortDateDesc') },
+        { value: 'date-asc', label: t('library:sortDateAsc') },
+        { value: 'popularity-desc', label: t('library:sortPopularity') },
     ]
 
     const sortOptions = allSortOptions
 
     const allFilterOptions: { value: FilterOption; label: string }[] = [
-        { value: 'all', label: 'All' },
-        { value: 'watched', label: 'Watched' },
-        { value: 'unwatched', label: 'Unwatched' },
-        { value: 'favorites', label: 'Favorites' },
+        { value: 'all', label: t('library:filterAll') },
+        { value: 'watched', label: t('library:filterWatched') },
+        { value: 'unwatched', label: t('library:filterUnwatched') },
+        { value: 'favorites', label: t('library:filterFavorites') },
     ]
 
     const filterOptions = allFilterOptions
+
+    const handleMenuKeys = (event: React.KeyboardEvent<HTMLDivElement>) => {
+        if (event.key !== 'Escape') return
+        event.stopPropagation()
+        setFilterMenuOpen(false)
+        setSortMenuOpen(false)
+    }
     const hasActiveFilter = filterBy !== 'all' || genreFilter !== 'all'
 
     return (
@@ -79,6 +88,9 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
                             setFilterMenuOpen(!filterMenuOpen)
                             setSortMenuOpen(false)
                         }}
+                        aria-haspopup="menu"
+                        aria-expanded={filterMenuOpen}
+                        aria-label={hasActiveFilter ? t('library:filterAndGenreActive') : t('library:filterAndGenre')}
                         className={`p-2 rounded-full transition-colors ${
                             hasActiveFilter
                                 ? 'text-green-300 hover:bg-neutral-800 hover:text-green-400'
@@ -89,13 +101,18 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
                     </button>
                     {filterMenuOpen && (
                         <div
+                            role="menu"
+                            aria-label={t('library:filterAndGenre')}
                             className="absolute right-0 top-full mt-2 w-72 bg-white/50 backdrop-blur-md rounded-xl shadow-2xl py-2 z-50"
+                            onKeyDown={handleMenuKeys}
                         >
-                            <div className="px-4 py-2 text-xs font-semibold text-gray-900 uppercase">Filter</div>
+                            <div className="px-4 py-2 text-xs font-semibold text-gray-900 uppercase">{t('library:filterHeading')}</div>
                             {filterOptions.map(option => (
                                 <button
                                     key={option.value}
-                                    onClick={() => {
+                                    role="menuitemradio"
+                                        aria-checked={filterBy === option.value}
+                                        onClick={() => {
                                         onFilterChange?.(option.value)
                                         setFilterMenuOpen(false)
                                     }}
@@ -107,7 +124,7 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
                             ))}
                             <>
                                 <div className="mx-4 my-1 h-px bg-black/10" />
-                                <div className="px-4 py-2 text-xs font-semibold text-gray-900 uppercase">Genre</div>
+                                <div className="px-4 py-2 text-xs font-semibold text-gray-900 uppercase">{t('library:genreHeading')}</div>
                                 <div className="px-2 pb-1 grid grid-cols-2 gap-0.5 max-w-[280px] mx-auto">
                                     <button
                                         onClick={() => {
@@ -116,7 +133,7 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
                                         }}
                                         className="col-span-2 w-full px-2 py-1.5 text-left text-sm hover:bg-black/10 rounded-md transition-colors flex items-center justify-between"
                                     >
-                                        <span className="text-gray-900 font-medium">All Genres</span>
+                                        <span className="text-gray-900 font-medium">{t('library:allGenres')}</span>
                                         {genreFilter === 'all' && <Check className="w-4 h-4 text-gray-900" />}
                                     </button>
                                     {genreOptions.map((genre) => (
@@ -145,19 +162,27 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
                             setSortMenuOpen(!sortMenuOpen)
                             setFilterMenuOpen(false)
                         }}
+                        aria-haspopup="menu"
+                        aria-expanded={sortMenuOpen}
+                        aria-label={t('library:sortBy')}
                         className="p-2 rounded-full text-gray-400 hover:bg-neutral-800 hover:text-white transition-colors"
                     >
                         <ArrowUpDown className="w-6 h-6" />
                     </button>
                     {sortMenuOpen && (
                         <div
+                            role="menu"
+                            aria-label={t('library:sortBy')}
                             className="absolute right-0 top-full mt-2 w-56 bg-white/50 backdrop-blur-md rounded-xl shadow-2xl py-2 z-50"
+                            onKeyDown={handleMenuKeys}
                         >
-                            <div className="px-4 py-2 text-xs font-semibold text-gray-900 uppercase">Sort By</div>
+                            <div className="px-4 py-2 text-xs font-semibold text-gray-900 uppercase">{t('library:sortByHeading')}</div>
                             {sortOptions.map(option => (
                                 <button
                                     key={option.value}
-                                    onClick={() => {
+                                    role="menuitemradio"
+                                        aria-checked={sortBy === option.value}
+                                        onClick={() => {
                                         onSortChange(option.value)
                                         setSortMenuOpen(false)
                                     }}
@@ -172,13 +197,18 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
                 </div>
             )}
             <button
+                type="button"
                 onClick={onSearchToggle}
+                aria-label={t('common:search')}
+                aria-pressed={false}
                 className="p-2 rounded-full text-gray-400 hover:bg-neutral-800 hover:text-white transition-colors"
             >
                 <Search className="w-6 h-6" />
             </button>
             <button
+                type="button"
                 onClick={() => navigate('/settings')}
+                aria-label={t('library:openSettings')}
                 className="p-2 rounded-full text-gray-400 hover:bg-neutral-800 hover:text-white transition-colors"
             >
                 <Settings className="w-6 h-6" />

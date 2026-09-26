@@ -1,6 +1,10 @@
-import { getDb, getUnscannedFiles, saveMovie, saveTVShow, Movie, VideoFile } from './db'
+import { getDb, getUnscannedFiles, saveMovie, saveTVShow, Movie, TVShow, Season, Episode, VideoFile } from './db'
 import { getMovieDetails, getTVShowDetails, getSeasonDetails } from './tmdbService'
-import store, { DataSource } from './store'
+import { DataSource, getSources } from './store'
+
+/** Rows come straight from SQLite, where the array/object fields are still JSON TEXT. */
+const parseColumn = <T>(value: unknown, fallback: T): T =>
+    typeof value === 'string' && value.length > 0 ? JSON.parse(value) as T : fallback
 
 export const manualMatchFile = async (
     fileId: string,
@@ -18,7 +22,7 @@ export const manualMatchFile = async (
         throw new Error('File not found in unscanned files')
     }
 
-    const sources = store.get('sources') as DataSource[]
+    const sources = getSources()
     const source = sources.find(s => s.id === file.sourceId)
 
     if (!source) {
@@ -42,16 +46,16 @@ export const manualMatchFile = async (
 const matchMovie = async (tmdbId: number, file: VideoFile, source: DataSource) => {
     const db = getDb()
 
-    let movie = db.prepare('SELECT * FROM movies WHERE id = ?').get(tmdbId) as any
+    let movie = db.prepare('SELECT * FROM movies WHERE id = ?').get(tmdbId) as Movie | undefined
 
     if (movie) {
         console.log(`Movie ${tmdbId} already exists, adding video file`)
         movie = {
             ...movie,
-            genres: JSON.parse(movie.genres || '[]'),
-            cast: JSON.parse(movie.cast || '[]'),
-            director: JSON.parse(movie.director || '[]'),
-            externalIds: JSON.parse(movie.externalIds || '{}'),
+            genres: parseColumn<Movie['genres']>(movie.genres, []),
+            cast: parseColumn<Movie['cast']>(movie.cast, []),
+            director: parseColumn<Movie['director']>(movie.director, []),
+            externalIds: parseColumn<Movie['externalIds']>(movie.externalIds, {}),
             videoFiles: []
         }
         const existingFiles = db.prepare('SELECT * FROM video_files WHERE movieId = ?').all(tmdbId) as VideoFile[]
@@ -66,32 +70,32 @@ const matchMovie = async (tmdbId: number, file: VideoFile, source: DataSource) =
             throw new Error('Failed to fetch movie details from TMDB')
         }
 
-        const cast = details.credits?.cast?.slice(0, 10).map((c: any) => ({
+        const cast = details.credits?.cast?.slice(0, 10).map(c => ({
             name: c.name,
-            character: c.character,
-            profilePath: c.profile_path
+            character: c.character ?? '',
+            profilePath: c.profile_path ?? ''
         }))
 
-        const directors = details.credits?.crew?.filter((c: any) => c.job === 'Director')
-        const directorObj = directors?.map((d: any) => ({
+        const directors = details.credits?.crew?.filter(c => c.job === 'Director')
+        const directorObj = directors?.map(d => ({
             name: d.name,
             profilePath: d.profile_path || null
         }))
 
-        const logoPath = details.images?.logos?.find((l: any) => l.iso_639_1 === 'en')?.file_path
+        const logoPath = details.images?.logos?.find(l => l.iso_639_1 === 'en')?.file_path
 
         const newMovie: Movie = {
             id: details.id,
             title: details.title,
-            logoPath: logoPath || '',
+            logoPath: logoPath ?? '',
             overview: details.overview,
-            posterPath: details.poster_path,
-            backdropPath: details.backdrop_path,
-            releaseDate: details.release_date,
-            runtime: details.runtime,
+            posterPath: details.poster_path ?? '',
+            backdropPath: details.backdrop_path ?? '',
+            releaseDate: details.release_date ?? '',
+            runtime: details.runtime ?? undefined,
             voteAverage: details.vote_average,
             popularity: details.popularity,
-            genres: details.genres?.map((g: any) => g.name),
+            genres: details.genres?.map(g => g.name),
             sourceId: source.id,
             status: details.status,
             cast,
@@ -116,23 +120,24 @@ const matchTVShow = async (
 ) => {
     const db = getDb()
 
-    let show = db.prepare('SELECT * FROM tv_shows WHERE id = ?').get(tmdbId) as any
+    let show = db.prepare('SELECT * FROM tv_shows WHERE id = ?').get(tmdbId) as TVShow | undefined
 
     if (show) {
         console.log(`TV show ${tmdbId} already exists, adding episode`)
 
         show = {
             ...show,
-            genres: JSON.parse(show.genres || '[]'),
-            cast: JSON.parse(show.cast || '[]'),
-            createdBy: JSON.parse(show.createdBy || '[]'),
-            externalIds: JSON.parse(show.externalIds || '{}'),
+            genres: parseColumn<TVShow['genres']>(show.genres, []),
+            cast: parseColumn<TVShow['cast']>(show.cast, []),
+            createdBy: parseColumn<TVShow['createdBy']>(show.createdBy, []),
+            externalIds: parseColumn<TVShow['externalIds']>(show.externalIds, {}),
             seasons: []
         }
 
-        const seasons = db.prepare('SELECT * FROM seasons WHERE tvShowId = ? ORDER BY seasonNumber').all(tmdbId) as any[]
+        const seasons = db.prepare('SELECT * FROM seasons WHERE tvShowId = ? ORDER BY seasonNumber').all(tmdbId) as Season[]
         for (const season of seasons) {
-            const episodes = db.prepare('SELECT * FROM episodes WHERE tvShowId = ? AND seasonNumber = ? ORDER BY episodeNumber').all(tmdbId, season.seasonNumber) as any[]
+            // Episode rows keep the local rowid in `id`, so the TMDB id has to be swapped in below.
+            const episodes = db.prepare('SELECT * FROM episodes WHERE tvShowId = ? AND seasonNumber = ? ORDER BY episodeNumber').all(tmdbId, season.seasonNumber) as (Episode & { tmdbId: number })[]
             const fullEpisodes = episodes.map(ep => {
                 const videoFiles = db.prepare('SELECT * FROM video_files WHERE episodeId = ?').all(ep.id) as VideoFile[]
                 return {
@@ -152,29 +157,29 @@ const matchTVShow = async (
             throw new Error('Failed to fetch TV show details from TMDB')
         }
 
-        const cast = details.credits?.cast?.slice(0, 10).map((c: any) => ({
+        const cast = details.credits?.cast?.slice(0, 10).map(c => ({
             name: c.name,
-            character: c.character,
-            profilePath: c.profile_path
+            character: c.character ?? '',
+            profilePath: c.profile_path ?? ''
         }))
 
-        const createdBy = details.created_by?.map((c: any) => ({
+        const createdBy = details.created_by?.map(c => ({
             name: c.name,
-            profilePath: c.profile_path
+            profilePath: c.profile_path ?? ''
         }))
 
-        const logoPath = details.images?.logos?.find((l: any) => l.iso_639_1 === 'en')?.file_path
+        const logoPath = details.images?.logos?.find(l => l.iso_639_1 === 'en')?.file_path
 
         show = {
             id: details.id,
             name: details.name,
-            logoPath: logoPath || '',
-            posterPath: details.poster_path,
-            backdropPath: details.backdrop_path,
+            logoPath: logoPath ?? '',
+            posterPath: details.poster_path ?? '',
+            backdropPath: details.backdrop_path ?? '',
             overview: details.overview,
-            firstAirDate: details.first_air_date,
+            firstAirDate: details.first_air_date ?? '',
             sourceId: source.id,
-            genres: details.genres?.map((g: any) => g.name),
+            genres: details.genres?.map(g => g.name),
             voteAverage: details.vote_average,
             popularity: details.popularity,
             status: details.status,
@@ -185,7 +190,7 @@ const matchTVShow = async (
         }
     }
 
-    let season = show.seasons.find((s: any) => s.seasonNumber === seasonNumber)
+    let season = show.seasons.find(s => s.seasonNumber === seasonNumber)
 
     if (!season) {
         console.log(`Fetching season ${seasonNumber} details`)
@@ -200,12 +205,12 @@ const matchTVShow = async (
         show.seasons.push(season)
     }
 
-    let episode = season.episodes.find((e: any) => e.episodeNumber === episodeNumber)
+    let episode = season.episodes.find(e => e.episodeNumber === episodeNumber)
 
     if (!episode) {
         console.log(`Fetching episode S${seasonNumber}E${episodeNumber} details`)
         const seasonDetails = await getSeasonDetails(tmdbId, seasonNumber)
-        const episodeMeta = seasonDetails?.episodes?.find((e: any) => e.episode_number === episodeNumber)
+        const episodeMeta = seasonDetails?.episodes?.find(e => e.episode_number === episodeNumber)
 
         file.manuallyMatched = true
 

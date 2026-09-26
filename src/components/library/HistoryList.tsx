@@ -1,8 +1,14 @@
-import React, { useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Trash2, Play, Loader2, SkipForward, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { Trash2, Play, Loader2, SkipForward } from 'lucide-react'
+import Modal from '../ui/Modal'
+import { useToast } from '../../contexts/ToastContext'
 import { HistoryItem } from '../../types/library'
+import { useListVirtualizer } from '../../hooks/useRowVirtualizer'
 import { formatMoviePlayTitle, formatTvPlayTitle } from '../../utils/playTitle'
+import type { Episode, Movie, TVShow, VideoFile } from '../../../electron/db'
+import type { MediaType, PlayHistoryDraft } from '../../types/ipc'
 
 interface HistoryListProps {
     items: HistoryItem[]
@@ -10,420 +16,545 @@ interface HistoryListProps {
     emptyMessage?: React.ReactNode
 }
 
+type MediaRecord = Movie | TVShow
+
+/** `p-3` around a 96px poster plus the `space-y-2` gap. */
+const HISTORY_ROW_PITCH = 128
+
+/**
+ * Outcome of a single library lookup. `missing` means the record was deleted from the
+ * library; `failed` means the IPC itself rejected, which must not be presented as "gone".
+ */
+type MediaEntry =
+    | { status: 'available'; record: MediaRecord }
+    | { status: 'missing' }
+    | { status: 'failed' }
+
+/** What a row needs to render, all derived from the cached record - no extra IPC per row. */
+interface DerivedRow {
+    item: HistoryItem
+    checked: boolean
+    /** The record was confirmed deleted from the library (as opposed to the lookup failing). */
+    removed: boolean
+    nextEpisode: Episode | null
+    playedAt: string
+    episodeLabel: string
+}
+
+/** Everything needed to start playback, including which versions to offer. */
+interface PlaybackPlan {
+    title: string
+    history: PlayHistoryDraft
+    files: VideoFile[]
+    /** The file this entry was played from last time, when it is still in the library. */
+    preferredPath?: string
+}
+
+/** One lookup per media record, however many history rows point at it. */
+const mediaKeyOf = (mediaType: MediaType, mediaId: number) => `${mediaType}:${mediaId}`
+
+/** Inverse of mediaKeyOf, for keys produced by it. */
+const parseMediaKey = (key: string): { mediaType: MediaType; mediaId: number } => {
+    const separator = key.indexOf(':')
+    return {
+        mediaType: key.slice(0, separator) === 'tv' ? 'tv' : 'movie',
+        mediaId: Number(key.slice(separator + 1))
+    }
+}
+
+/**
+ * Searching the library re-filters the history on every keystroke, so lookups are debounced;
+ * the cache below means a settled lookup is never repeated anyway.
+ */
+const LOOKUP_DEBOUNCE_MS = 250
+/** Round-trips are independent, but firing one per row at once stalls the main process. */
+const LOOKUP_CONCURRENCY = 6
+
+const errorMessage = (error: unknown, fallback: string) =>
+    error instanceof Error && error.message ? error.message : fallback
+
+const isTVShow = (record: MediaRecord): record is TVShow => 'seasons' in record
+
+async function requestMedia(mediaType: MediaType, mediaId: number): Promise<MediaRecord | null> {
+    const record = mediaType === 'movie'
+        ? await window.electron.ipcRenderer.invoke('get-movie', mediaId)
+        : await window.electron.ipcRenderer.invoke('get-tv-show', mediaId)
+    return record ?? null
+}
+
+function episodeOf(record: MediaRecord, item: HistoryItem): Episode | null {
+    if (!isTVShow(record) || item.seasonNumber === undefined || item.episodeNumber === undefined) return null
+    const season = record.seasons.find(entry => entry.seasonNumber === item.seasonNumber)
+    return season?.episodes.find(entry => entry.episodeNumber === item.episodeNumber) ?? null
+}
+
+function nextEpisodeOf(record: MediaRecord, item: HistoryItem): Episode | null {
+    if (!isTVShow(record) || item.seasonNumber === undefined || item.episodeNumber === undefined) return null
+    const season = record.seasons.find(entry => entry.seasonNumber === item.seasonNumber)
+    return season?.episodes.find(entry =>
+        entry.episodeNumber === item.episodeNumber! + 1 && entry.videoFiles.length > 0
+    ) ?? null
+}
+
+function planForItem(record: MediaRecord, item: HistoryItem): PlaybackPlan | null {
+    if (isTVShow(record)) {
+        const episode = episodeOf(record, item)
+        if (!episode || episode.videoFiles.length === 0) return null
+        return {
+            title: formatTvPlayTitle(record.name, episode.seasonNumber, episode.episodeNumber, episode.name),
+            history: {
+                mediaId: record.id,
+                mediaType: 'tv',
+                title: record.name,
+                posterPath: record.posterPath,
+                filePath: episode.videoFiles[0].filePath,
+                seasonNumber: episode.seasonNumber,
+                episodeNumber: episode.episodeNumber,
+                episodeName: episode.name
+            },
+            files: episode.videoFiles,
+            preferredPath: item.filePath
+        }
+    }
+
+    if (record.videoFiles.length === 0) return null
+    return {
+        title: formatMoviePlayTitle(record.title),
+        history: {
+            mediaId: record.id,
+            mediaType: 'movie',
+            title: record.title,
+            posterPath: record.posterPath,
+            filePath: record.videoFiles[0].filePath
+        },
+        files: record.videoFiles,
+        preferredPath: item.filePath
+    }
+}
+
+function planForEpisode(record: TVShow, episode: Episode): PlaybackPlan {
+    return {
+        title: formatTvPlayTitle(record.name, episode.seasonNumber, episode.episodeNumber, episode.name),
+        history: {
+            mediaId: record.id,
+            mediaType: 'tv',
+            title: record.name,
+            posterPath: record.posterPath,
+            filePath: episode.videoFiles[0].filePath,
+            seasonNumber: episode.seasonNumber,
+            episodeNumber: episode.episodeNumber,
+            episodeName: episode.name
+        },
+        files: episode.videoFiles
+    }
+}
+
+/**
+ * Keeps lookups off the keystroke path. The joined signature is the debounce identity, so a
+ * re-render whose content is unchanged never cancels a pending batch.
+ */
+function useDebouncedKeys(keys: string[], delay: number): string[] {
+    const signature = useMemo(() => keys.join('|'), [keys])
+    const [debouncedSignature, setDebouncedSignature] = useState(signature)
+
+    useEffect(() => {
+        if (signature === debouncedSignature) return
+
+        const timer = setTimeout(() => setDebouncedSignature(signature), delay)
+        return () => clearTimeout(timer)
+    }, [signature, debouncedSignature, delay])
+
+    return useMemo(
+        () => (debouncedSignature ? debouncedSignature.split('|') : []),
+        [debouncedSignature]
+    )
+}
+
 export const HistoryList: React.FC<HistoryListProps> = ({ items, onDelete, emptyMessage }) => {
     const navigate = useNavigate()
-    const [playingId, setPlayingId] = useState<string | null>(null)
-    const [error, setError] = useState<string | null>(null)
-    const [fileSelector, setFileSelector] = useState<{ episode: any, show: any, isNext: boolean } | null>(null)
-    const errorTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
+    const { t } = useTranslation(['grid', 'common'])
+    const { showToast } = useToast()
 
-    const showError = (message: string, duration = 3000) => {
-        if (errorTimeoutRef.current) {
-            clearTimeout(errorTimeoutRef.current)
+    const [playingId, setPlayingIdState] = useState<string | null>(null)
+    const [fileSelector, setFileSelectorState] = useState<PlaybackPlan | null>(null)
+
+    /**
+     * Resolved at most once per media record for as long as this view is mounted. The ref is the
+     * synchronous source the actions read; the state is an immutable snapshot of it that lets the
+     * derived rows recompute.
+     */
+    const cacheRef = useRef(new Map<string, MediaEntry>())
+    const [cachedEntries, setCachedEntries] = useState<ReadonlyMap<string, MediaEntry>>(() => new Map())
+    const inFlightRef = useRef(new Set<string>())
+    const isActiveRef = useRef(true)
+
+    useEffect(() => {
+        isActiveRef.current = true
+        return () => {
+            isActiveRef.current = false
         }
-        
-        setError(message)
-        errorTimeoutRef.current = setTimeout(() => {
-            setError(null)
-            errorTimeoutRef.current = null
-        }, duration)
-    }
+    }, [])
 
-    const getHistoryItemPlayTitle = (item: HistoryItem): string => {
-        if (item.mediaType === 'tv' && item.seasonNumber !== undefined && item.episodeNumber !== undefined) {
-            return formatTvPlayTitle(item.title, item.seasonNumber, item.episodeNumber, item.episodeName)
+    const setPlaying = useCallback((id: string | null) => {
+        if (isActiveRef.current) setPlayingIdState(id)
+    }, [])
+
+    const setSelector = useCallback((plan: PlaybackPlan | null) => {
+        if (isActiveRef.current) setFileSelectorState(plan)
+    }, [])
+
+    const publishCache = useCallback(() => {
+        if (isActiveRef.current) setCachedEntries(new Map(cacheRef.current))
+    }, [])
+
+    const storeEntry = useCallback((key: string, entry: MediaEntry) => {
+        cacheRef.current.set(key, entry)
+        publishCache()
+    }, [publishCache])
+
+    /** Cache-first lookup used by the row actions, so clicking Play does not re-fetch a show. */
+    const loadMedia = useCallback(async (mediaType: MediaType, mediaId: number): Promise<MediaRecord | null> => {
+        const key = mediaKeyOf(mediaType, mediaId)
+        const cached = cacheRef.current.get(key)
+        if (cached && cached.status !== 'failed') {
+            return cached.status === 'available' ? cached.record : null
         }
-        return formatMoviePlayTitle(item.title)
-    }
 
-    const handleNavigateToDetail = async (item: HistoryItem) => {
-        try {
-            if (item.mediaType === 'movie') {
-                const movie = await window.electron.ipcRenderer.invoke('get-movie', item.mediaId)
-                if (!movie) {
-                    showError('This movie is no longer in your library')
-                    return
-                }
-            } else {
-                const show = await window.electron.ipcRenderer.invoke('get-tv-show', item.mediaId)
-                if (!show) {
-                    showError('This TV show is no longer in your library')
-                    return
-                }
-            }
-            
-            navigate(item.mediaType === 'movie' ? `/movie/${item.mediaId}` : `/tv/${item.mediaId}`)
-        } catch (err: any) {
-            showError(err?.message || 'Failed to load media details')
+        const record = await requestMedia(mediaType, mediaId)
+        storeEntry(key, record ? { status: 'available', record } : { status: 'missing' })
+        return record
+    }, [storeEntry])
+
+    const pendingKeys = useMemo(() => {
+        const unresolved = new Set<string>()
+        for (const item of items) {
+            const key = mediaKeyOf(item.mediaType, item.mediaId)
+            if (!cachedEntries.has(key) && !inFlightRef.current.has(key)) unresolved.add(key)
         }
-    }
+        return Array.from(unresolved).sort()
+    }, [items, cachedEntries])
 
-    const handlePlay = async (item: HistoryItem) => {
-        setPlayingId(item.id)
-        setError(null)
-        
-        try {
-            let videoFile = null
-            
-            if (item.mediaType === 'movie') {
-                const movie = await window.electron.ipcRenderer.invoke('get-movie', item.mediaId)
-                if (movie && movie.videoFiles) {
-                    if (movie.videoFiles.length > 1) {
-                        const fakeEpisode = {
-                            videoFiles: movie.videoFiles,
-                            seasonNumber: 0,
-                            episodeNumber: 0,
-                            name: movie.title
-                        }
-                        const fakeShow = {
-                            id: movie.id,
-                            name: movie.title,
-                            posterPath: movie.posterPath
-                        }
-                        setFileSelector({ episode: fakeEpisode, show: fakeShow, isNext: false })
-                        setPlayingId(null)
-                        return
+    const debouncedKeys = useDebouncedKeys(pendingKeys, LOOKUP_DEBOUNCE_MS)
+
+    // Resolve the media behind the visible rows in bounded-parallel batches, once each.
+    useEffect(() => {
+        if (debouncedKeys.length === 0) return
+
+        const run = async () => {
+            let failures = 0
+
+            for (let index = 0; index < debouncedKeys.length; index += LOOKUP_CONCURRENCY) {
+                await Promise.all(debouncedKeys.slice(index, index + LOOKUP_CONCURRENCY).map(async key => {
+                    if (inFlightRef.current.has(key) || cacheRef.current.has(key)) return
+                    inFlightRef.current.add(key)
+
+                    const { mediaType, mediaId } = parseMediaKey(key)
+                    try {
+                        const record = await requestMedia(mediaType, mediaId)
+                        storeEntry(key, record ? { status: 'available', record } : { status: 'missing' })
+                    } catch (error) {
+                        // A rejected lookup is a transport problem, not a deleted record: keep it
+                        // retryable and say so instead of hiding the row's actions.
+                        console.error(`Failed to check "${key}" against the library:`, error)
+                        failures += 1
+                        storeEntry(key, { status: 'failed' })
+                    } finally {
+                        inFlightRef.current.delete(key)
                     }
-                    
-                    videoFile = movie.videoFiles.find((f: any) => f.filePath === item.filePath)
-                    if (!videoFile && movie.videoFiles.length > 0) {
-                        videoFile = movie.videoFiles[0]
-                    }
-                }
-            } else {
-                const show = await window.electron.ipcRenderer.invoke('get-tv-show', item.mediaId)
-                if (show && show.seasons) {
-                    for (const season of show.seasons) {
-                        if (season.seasonNumber === item.seasonNumber) {
-                            const episode = season.episodes.find((ep: any) => ep.episodeNumber === item.episodeNumber)
-                            if (episode && episode.videoFiles) {
-                                if (episode.videoFiles.length > 1) {
-                                    setFileSelector({ episode, show, isNext: false })
-                                    setPlayingId(null)
-                                    return
-                                }
-                                
-                                videoFile = episode.videoFiles.find((f: any) => f.filePath === item.filePath)
-                                if (!videoFile && episode.videoFiles.length > 0) {
-                                    videoFile = episode.videoFiles[0]
-                                }
-                            }
-                            break
-                        }
-                    }
-                }
+                }))
             }
-            
-            if (!videoFile) {
-                throw new Error('Video file not found')
-            }
-            
-            // Play the video
-            await window.electron.ipcRenderer.invoke('play-video', {
-                url: videoFile.webdavUrl,
-                title: getHistoryItemPlayTitle(item),
-                history: {
-                    mediaId: item.mediaId,
-                    mediaType: item.mediaType,
-                    title: item.title,
-                    posterPath: item.posterPath,
-                    filePath: videoFile.filePath,
-                    seasonNumber: item.seasonNumber,
-                    episodeNumber: item.episodeNumber,
-                    episodeName: item.episodeName
-                }
-            })
-        } catch (err: any) {
-            showError(err?.message || 'Failed to play video')
-        } finally {
-            setPlayingId(null)
-        }
-    }
 
-    const handlePlayNext = async (item: HistoryItem) => {
-        if (item.mediaType !== 'tv' || !item.seasonNumber || item.episodeNumber === undefined) return
-        
-        setPlayingId(`${item.id}-next`)
-        setError(null)
-        
+            if (failures > 0) {
+                showToast(t('grid:libraryCheckFailures', { count: failures }), 'error')
+            }
+        }
+
+        run().catch(error => {
+            console.error('Failed to refresh play history:', error)
+            showToast(t('grid:couldNotCheckHistoryItems'), 'error')
+        })
+    }, [debouncedKeys, showToast, storeEntry, t])
+
+    const rows = useMemo<DerivedRow[]>(() => items.map(item => {
+        const entry = cachedEntries.get(mediaKeyOf(item.mediaType, item.mediaId))
+        const record = entry?.status === 'available' ? entry.record : null
+        const hasEpisode = item.seasonNumber !== undefined && item.episodeNumber !== undefined
+
+        return {
+            item,
+            checked: entry !== undefined,
+            // A record known to be gone loses its Play button; a failed lookup keeps it so the
+            // click can retry and report the real error.
+            removed: entry?.status === 'missing',
+            nextEpisode: record ? nextEpisodeOf(record, item) : null,
+            playedAt: new Date(item.timestamp).toLocaleString(),
+            episodeLabel: hasEpisode ? t('grid:episodeCode', { season: item.seasonNumber, episode: item.episodeNumber }) : ''
+        }
+    }), [items, cachedEntries, t])
+
+    const listRef = useRef<HTMLUListElement>(null)
+    const { start, end, paddingTop, paddingBottom } = useListVirtualizer(listRef, rows.length, HISTORY_ROW_PITCH)
+
+    const isChecking = rows.some(row => !row.checked)
+
+    const playFile = useCallback(async (file: VideoFile, plan: PlaybackPlan) => {
+        await window.electron.ipcRenderer.invoke('play-video', {
+            url: file.webdavUrl,
+            title: plan.title,
+            history: { ...plan.history, filePath: file.filePath }
+        })
+    }, [])
+
+    /** A single version plays straight away; several open the version picker. */
+    const launch = useCallback(async (plan: PlaybackPlan) => {
+        if (plan.files.length > 1) {
+            setSelector(plan)
+            return
+        }
+
+        const preferred = plan.files.find(file => file.filePath === plan.preferredPath) || plan.files[0]
+        await playFile(preferred, plan)
+    }, [playFile, setSelector])
+
+    const handleNavigateToDetail = useCallback(async (item: HistoryItem) => {
         try {
-            const show = await window.electron.ipcRenderer.invoke('get-tv-show', item.mediaId)
-            if (!show || !show.seasons) {
-                throw new Error('TV show not found')
-            }
-            
-            const currentSeason = show.seasons.find((s: any) => s.seasonNumber === item.seasonNumber)
-            if (!currentSeason) {
-                throw new Error('Season not found')
-            }
-            
-            const nextEpisode = currentSeason.episodes.find((ep: any) => ep.episodeNumber === item.episodeNumber! + 1)
-            if (!nextEpisode || !nextEpisode.videoFiles || nextEpisode.videoFiles.length === 0) {
-                throw new Error('Next episode not found')
-            }
-            
-            if (nextEpisode.videoFiles.length > 1) {
-                setFileSelector({ episode: nextEpisode, show, isNext: true })
-                setPlayingId(null)
+            const record = await loadMedia(item.mediaType, item.mediaId)
+            if (!record) {
+                showToast(
+                    item.mediaType === 'movie'
+                        ? t('grid:movieNoLongerInLibrary')
+                        : t('grid:tvShowNoLongerInLibrary'),
+                    'error'
+                )
                 return
             }
-            
-            const videoFile = nextEpisode.videoFiles[0]
-            
-            await window.electron.ipcRenderer.invoke('play-video', {
-                url: videoFile.webdavUrl,
-                title: formatTvPlayTitle(item.title, nextEpisode.seasonNumber, nextEpisode.episodeNumber, nextEpisode.name),
-                history: {
-                    mediaId: item.mediaId,
-                    mediaType: 'tv',
-                    title: item.title,
-                    posterPath: item.posterPath,
-                    filePath: videoFile.filePath,
-                    seasonNumber: nextEpisode.seasonNumber,
-                    episodeNumber: nextEpisode.episodeNumber,
-                    episodeName: nextEpisode.name
-                }
-            })
-        } catch (err: any) {
-            showError(err?.message || 'Failed to play next episode')
-        } finally {
-            setPlayingId(null)
+            navigate(item.mediaType === 'movie' ? `/movie/${item.mediaId}` : `/tv/${item.mediaId}`)
+        } catch (error) {
+            console.error('Failed to load media details:', error)
+            showToast(errorMessage(error, t('grid:failedToLoadMediaDetails')), 'error')
         }
-    }
+    }, [loadMedia, navigate, showToast, t])
 
-    const hasNextEpisode = async (item: HistoryItem): Promise<boolean> => {
-        if (item.mediaType !== 'tv' || !item.seasonNumber || item.episodeNumber === undefined) return false
-        
+    const handlePlay = useCallback(async (item: HistoryItem) => {
+        setPlaying(item.id)
         try {
-            const show = await window.electron.ipcRenderer.invoke('get-tv-show', item.mediaId)
-            if (!show || !show.seasons) return false
-            
-            const currentSeason = show.seasons.find((s: any) => s.seasonNumber === item.seasonNumber)
-            if (!currentSeason) return false
-            
-            const nextEpisode = currentSeason.episodes.find((ep: any) => ep.episodeNumber === item.episodeNumber! + 1)
-            return !!(nextEpisode && nextEpisode.videoFiles && nextEpisode.videoFiles.length > 0)
-        } catch {
-            return false
-        }
-    }
-
-    // Check which items are still in library and which have next episodes
-    const [itemsWithNext, setItemsWithNext] = React.useState<Set<string>>(new Set())
-    const [itemsInLibrary, setItemsInLibrary] = React.useState<Set<string>>(new Set())
-    
-    React.useEffect(() => {
-        const checkItems = async () => {
-            const nextResults = new Set<string>()
-            const libraryResults = new Set<string>()
-            for (const item of items) {
-                try {
-                    if (item.mediaType === 'movie') {
-                        const movie = await window.electron.ipcRenderer.invoke('get-movie', item.mediaId)
-                        if (movie) {
-                            libraryResults.add(item.id)
-                        }
-                    } else {
-                        const show = await window.electron.ipcRenderer.invoke('get-tv-show', item.mediaId)
-                        if (show) {
-                            libraryResults.add(item.id)
-                            if (await hasNextEpisode(item)) {
-                                nextResults.add(item.id)
-                            }
-                        }
-                    }
-                } catch {
-                    // item not in library
-                }
+            const record = await loadMedia(item.mediaType, item.mediaId)
+            if (!record) {
+                showToast(
+                    item.mediaType === 'movie'
+                        ? t('grid:movieNoLongerInLibrary')
+                        : t('grid:tvShowNoLongerInLibrary'),
+                    'error'
+                )
+                return
             }
-            setItemsInLibrary(libraryResults)
-            setItemsWithNext(nextResults)
-        }
-        checkItems()
-    }, [items])
 
-    if (items.length === 0) {
-        return (
-            <div className="text-center text-gray-400 mt-20">
-                {emptyMessage || <p>No history found</p>}
-            </div>
-        )
-    }
+            const plan = planForItem(record, item)
+            if (!plan) {
+                showToast(t('grid:noPlayableFileFound'), 'error')
+                return
+            }
+
+            await launch(plan)
+        } catch (error) {
+            console.error('Failed to play history item:', error)
+            showToast(errorMessage(error, t('grid:failedToPlayVideo')), 'error')
+        } finally {
+            setPlaying(null)
+        }
+    }, [launch, loadMedia, setPlaying, showToast, t])
+
+    const handlePlayNext = useCallback(async (item: HistoryItem) => {
+        setPlaying(`${item.id}-next`)
+        try {
+            const record = await loadMedia('tv', item.mediaId)
+            if (!record || !isTVShow(record)) {
+                showToast(t('grid:tvShowNoLongerInLibrary'), 'error')
+                return
+            }
+
+            const next = nextEpisodeOf(record, item)
+            if (!next) {
+                showToast(t('grid:nextEpisodeNotInLibrary'), 'error')
+                return
+            }
+
+            await launch(planForEpisode(record, next))
+        } catch (error) {
+            console.error('Failed to play the next episode:', error)
+            showToast(errorMessage(error, t('grid:failedToPlayNextEpisode')), 'error')
+        } finally {
+            setPlaying(null)
+        }
+    }, [launch, loadMedia, setPlaying, showToast, t])
+
+    const handleSelectFile = useCallback(async (file: VideoFile, plan: PlaybackPlan) => {
+        setSelector(null)
+        setPlaying(`file-${file.id}`)
+        try {
+            await playFile(file, plan)
+        } catch (error) {
+            console.error('Failed to play the selected version:', error)
+            showToast(errorMessage(error, t('grid:failedToPlayVideo')), 'error')
+        } finally {
+            setPlaying(null)
+        }
+    }, [playFile, setPlaying, setSelector, showToast, t])
+
+    const emptyState = (
+        <div className="text-center text-gray-400 mt-20">
+            {emptyMessage || <p>{t('grid:noHistoryFound')}</p>}
+        </div>
+    )
 
     return (
         <>
-            {/* Error Message */}
-            {error && (
-                <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50 bg-red-500/50 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-3 ring-[0.8px] ring-white/30">
-                    <span>{error}</span>
-                </div>
-            )}
-            
-            {/* File Selector Modal */}
-            {fileSelector && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white/50 backdrop-blur-md rounded-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-auto">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-2xl font-bold text-gray-900">Select Version</h2>
-                            <button
-                                onClick={() => setFileSelector(null)}
-                                className="p-2 hover:bg-black/10 rounded-full transition-colors text-gray-900"
-                            >
-                                <X className="w-6 h-6" />
-                            </button>
-                        </div>
-                        <div className="space-y-3">
-                            {fileSelector.episode.videoFiles.map((file: any) => (
-                                <button
-                                    key={file.id}
-                                    onClick={async () => {
-                                        setFileSelector(null)
-                                        setPlayingId(fileSelector.isNext ? `next-${file.id}` : file.id)
-                                        try {
-                                            // Determine if this is a movie or TV show based on seasonNumber
-                                            const isMovie = fileSelector.episode.seasonNumber === 0
-                                            
-                                            await window.electron.ipcRenderer.invoke('play-video', {
-                                                url: file.webdavUrl,
-                                                title: isMovie 
-                                                    ? formatMoviePlayTitle(fileSelector.show.name)
-                                                    : formatTvPlayTitle(
-                                                        fileSelector.show.name,
-                                                        fileSelector.episode.seasonNumber,
-                                                        fileSelector.episode.episodeNumber,
-                                                        fileSelector.episode.name
-                                                    ),
-                                                history: {
-                                                    mediaId: fileSelector.show.id,
-                                                    mediaType: isMovie ? 'movie' : 'tv',
-                                                    title: fileSelector.show.name,
-                                                    posterPath: fileSelector.show.posterPath,
-                                                    filePath: file.filePath,
-                                                    ...(isMovie ? {} : {
-                                                        seasonNumber: fileSelector.episode.seasonNumber,
-                                                        episodeNumber: fileSelector.episode.episodeNumber,
-                                                        episodeName: fileSelector.episode.name
-                                                    })
-                                                }
-                                            })
-                                        } catch (err: any) {
-                                            showError(err?.message || 'Failed to play video')
-                                        } finally {
-                                            setPlayingId(null)
-                                        }
-                                    }}
-                                    className="w-full text-left p-4 bg-white/30 hover:bg-white/50 rounded-lg transition-colors flex items-center gap-3"
-                                >
-                                    <Play className="w-5 h-5 text-gray-900" />
-                                    <div className="flex-1">
-                                        <p className="font-medium text-gray-900">{file.name}</p>
-                                        <p className="text-sm text-gray-700">{file.filePath}</p>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
-            
-            <div className="space-y-2">
-            {items.map(item => (
-                <div
-                    key={item.id}
-                    className="group bg-neutral-800 rounded-xl overflow-hidden hover:bg-neutral-700 transition-colors"
+            {/* Search filters this list as the user types, so the count is announced politely. */}
+            <div className="sr-only" role="status" aria-live="polite">
+                {items.length === 0
+                    ? t('grid:noHistoryEntries')
+                    : t('grid:showingHistory', { count: items.length })}
+            </div>
+
+            {items.length === 0 ? emptyState : (
+                <ul
+                    ref={listRef}
+                    style={{ paddingTop, paddingBottom }}
+                    className="space-y-2"
+                    aria-busy={isChecking}
                 >
-                    <div className="flex items-center gap-4 p-3">
-                        {/* Poster */}
-                        <div
-                            className="flex-shrink-0 w-16 h-24 rounded-lg overflow-hidden cursor-pointer bg-neutral-700"
-                            onClick={() => handleNavigateToDetail(item)}
+                    {rows.slice(start, end).map(({ item, removed, nextEpisode, playedAt, episodeLabel }) => (
+                        <li
+                            key={item.id}
+                            className="group bg-neutral-800 rounded-xl overflow-hidden hover:bg-neutral-700 transition-colors"
                         >
-                            {item.posterPath ? (
-                                <img
-                                    src={`https://image.tmdb.org/t/p/w200${item.posterPath}`}
-                                    alt={item.title}
-                                    className="w-full h-full object-cover"
-                                />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center text-neutral-500 text-xs">
-                                    No Poster
+                            <div className="flex items-center gap-4 p-3">
+                                {/* Poster: mouse affordance only; the title button carries the tab stop. */}
+                                <button
+                                    type="button"
+                                    tabIndex={-1}
+                                    onClick={() => void handleNavigateToDetail(item)}
+                                    aria-label={t('grid:openDetailsAriaLabel', { title: item.title })}
+                                    className="flex-shrink-0 w-16 h-24 rounded-lg overflow-hidden bg-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                                >
+                                    {item.posterPath ? (
+                                        <img
+                                            src={`https://image.tmdb.org/t/p/w200${item.posterPath}`}
+                                            alt=""
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        <span className="w-full h-full flex items-center justify-center text-neutral-500 text-xs">
+                                            {t('grid:noPoster')}
+                                        </span>
+                                    )}
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => void handleNavigateToDetail(item)}
+                                    className="flex-1 min-w-0 text-left rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                                >
+                                    <span className="block font-semibold text-white text-base truncate">{item.title}</span>
+                                    {episodeLabel && (
+                                        <span className="flex items-center gap-2 mt-1 text-sm text-gray-400">
+                                            <span>{episodeLabel}</span>
+                                            {item.episodeName && (
+                                                <>
+                                                    <span aria-hidden="true">·</span>
+                                                    <span className="truncate">{item.episodeName}</span>
+                                                </>
+                                            )}
+                                        </span>
+                                    )}
+                                    <span className="block text-xs text-gray-500 mt-1">{playedAt}</span>
+                                </button>
+
+                                <div className="flex items-center gap-2">
+                                    {nextEpisode && (
+                                        <button
+                                            type="button"
+                                            onClick={(event) => {
+                                                event.stopPropagation()
+                                                void handlePlayNext(item)
+                                            }}
+                                            disabled={playingId === `${item.id}-next`}
+                                            aria-label={t('grid:playNextAriaLabel', { season: nextEpisode.seasonNumber, episode: nextEpisode.episodeNumber, title: item.title })}
+                                            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/20 text-white hover:bg-white hover:text-black transition-colors opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 disabled:opacity-50 text-sm font-medium"
+                                        >
+                                            {playingId === `${item.id}-next` ? (
+                                                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                                            ) : (
+                                                <SkipForward className="w-4 h-4" aria-hidden="true" />
+                                            )}
+                                            <span>{t('grid:playNextLabel', { season: nextEpisode.seasonNumber, episode: nextEpisode.episodeNumber })}</span>
+                                        </button>
+                                    )}
+                                    {removed ? (
+                                        <span className="flex-shrink-0 px-3 py-1.5 text-xs text-gray-500 whitespace-nowrap">
+                                            {t('grid:removedFromLibrary')}
+                                        </span>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={(event) => {
+                                                event.stopPropagation()
+                                                void handlePlay(item)
+                                            }}
+                                            disabled={playingId === item.id}
+                                            aria-label={episodeLabel
+                                                ? t('grid:playWithEpisodeAriaLabel', { title: item.title, episode: episodeLabel })
+                                                : t('grid:playNamed', { name: item.title })}
+                                            className="flex-shrink-0 p-2 rounded-full bg-white/20 text-white hover:bg-white hover:text-black transition-colors opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 disabled:opacity-50"
+                                        >
+                                            {playingId === item.id ? (
+                                                <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
+                                            ) : (
+                                                <Play className="w-5 h-5" aria-hidden="true" />
+                                            )}
+                                        </button>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={(event) => {
+                                            event.stopPropagation()
+                                            onDelete(item.id)
+                                        }}
+                                        aria-label={t('grid:removeFromHistoryAriaLabel', { title: item.title })}
+                                        className="flex-shrink-0 p-2 mr-2 rounded-full bg-white/20 text-gray-300 hover:bg-red-500 hover:text-white transition-colors opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                                    >
+                                        <Trash2 className="w-5 h-5" aria-hidden="true" />
+                                    </button>
                                 </div>
-                            )}
-                        </div>
-
-                        {/* Info */}
-                        <div
-                            className="flex-1 min-w-0 cursor-pointer"
-                            onClick={() => handleNavigateToDetail(item)}
-                        >
-                            <h3 className="font-semibold text-white text-base truncate">{item.title}</h3>
-                            <div className="flex items-center gap-2 mt-1 text-sm text-gray-400">
-                                {item.mediaType === 'tv' && item.seasonNumber && item.episodeNumber && (
-                                    <>
-                                        <span>S{item.seasonNumber}E{item.episodeNumber}</span>
-                                        {item.episodeName && (
-                                            <>
-                                                <span>·</span>
-                                                <span className="truncate">{item.episodeName}</span>
-                                            </>
-                                        )}
-                                    </>
-                                )}
                             </div>
-                            <p className="text-xs text-gray-500 mt-1">
-                                {new Date(item.timestamp).toLocaleString()}
-                            </p>
-                        </div>
+                        </li>
+                    ))}
+                </ul>
+            )}
 
-                        {/* Action buttons */}
-                        <div className="flex items-center gap-2">
-                            {itemsWithNext.has(item.id) && (
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation()
-                                        handlePlayNext(item)
-                                    }}
-                                    disabled={playingId === `${item.id}-next`}
-                                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/20 text-white hover:bg-white hover:text-black transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50 text-sm font-medium"
-                                >
-                                    {playingId === `${item.id}-next` ? (
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                    ) : (
-                                        <SkipForward className="w-4 h-4" />
-                                    )}
-                                    <span>Play Next: S{item.seasonNumber}E{item.episodeNumber! + 1}</span>
-                                </button>
-                            )}
-                            {itemsInLibrary.has(item.id) && (
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation()
-                                        handlePlay(item)
-                                    }}
-                                    disabled={playingId === item.id}
-                                    className="flex-shrink-0 p-2 rounded-full bg-white/20 text-white hover:bg-white hover:text-black transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50"
-                                >
-                                    {playingId === item.id ? (
-                                        <Loader2 className="w-5 h-5 animate-spin" />
-                                    ) : (
-                                        <Play className="w-5 h-5" />
-                                    )}
-                                </button>
-                            )}
+            {fileSelector && (
+                <Modal
+                    title={t('grid:selectVersion')}
+                    description={fileSelector.title}
+                    onClose={() => setSelector(null)}
+                >
+                    <div className="space-y-3">
+                        {fileSelector.files.map(file => (
                             <button
-                                onClick={(e) => {
-                                    e.stopPropagation()
-                                    onDelete(item.id)
-                                }}
-                                className="flex-shrink-0 p-2 mr-2 rounded-full bg-white/20 text-gray-300 hover:bg-red-500 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+                                key={file.id}
+                                type="button"
+                                onClick={() => void handleSelectFile(file, fileSelector)}
+                                className="w-full text-left p-4 bg-white/30 hover:bg-white/50 rounded-lg transition-colors flex items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                             >
-                                <Trash2 className="w-5 h-5" />
+                                <Play className="w-5 h-5 text-gray-900 flex-shrink-0" aria-hidden="true" />
+                                <span className="flex-1 min-w-0">
+                                    <span className="block font-medium text-gray-900 truncate">{file.name}</span>
+                                </span>
                             </button>
-                        </div>
+                        ))}
                     </div>
-                </div>
-            ))}
-        </div>
+                </Modal>
+            )}
         </>
     )
 }

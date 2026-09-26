@@ -1,65 +1,77 @@
 import SMB2 from '@marsaud/smb2'
-import { DataSource } from './store'
+import { createHash } from 'node:crypto'
+import type { DataSource } from './store'
 
-export const getSMBClient = (config: DataSource['config']) => {
+/**
+ * One session per share instead of connect/list/disconnect per directory: a deep tree
+ * used to open a new SMB2 session for every folder it walked.
+ */
+const clientPool = new Map<string, SMB2>()
+
+const poolKey = (share: string, config: DataSource['config']) => {
+    const fingerprint = createHash('sha256')
+        .update(`${config.domain || ''}|${config.username || ''}|${config.password || ''}`)
+        .digest('hex')
+        .slice(0, 12)
+    return `${share}|${fingerprint}`
+}
+
+const getClient = (config: DataSource['config']): SMB2 | null => {
     if (!config.share) return null
 
-    let sharePath = config.share.replace(/\//g, '\\')
+    const sharePath = config.share.replace(/\//g, '\\')
+    const key = poolKey(sharePath, config)
 
-    const smbConfig: any = {
+    const cached = clientPool.get(key)
+    if (cached) return cached
+
+    const client = new SMB2({
         share: sharePath,
         domain: config.domain || 'WORKGROUP',
         username: config.username || 'guest',
-        password: config.password || ''
-    }
+        password: config.password || '',
+        autoCloseTimeout: 30000
+    })
+    clientPool.set(key, client)
+    return client
+}
 
-    return new SMB2(smbConfig)
+const evictClient = (config: DataSource['config']) => {
+    if (!config.share) return
+    const key = poolKey(config.share.replace(/\//g, '\\'), config)
+    const client = clientPool.get(key)
+    if (!client) return
+    clientPool.delete(key)
+    try {
+        client.disconnect()
+    } catch (error) {
+        console.error('SMB: Error disconnecting:', error)
+    }
 }
 
 export const testConnection = async (config: DataSource['config']): Promise<boolean> => {
-    try {
-        const client = getSMBClient(config)
-        if (!client) {
-            console.error('SMB: Failed to create client')
-            return false
-        }
-
-        return new Promise((resolve) => {
-            const timeout = setTimeout(() => {
-                console.error('SMB: Connection timeout')
-                try {
-                    client.disconnect()
-                } catch (e) {
-                    console.error('SMB: Error disconnecting:', e)
-                }
-                resolve(false)
-            }, 10000)
-
-            try {
-                client.readdir('', (err?: Error) => {
-                    clearTimeout(timeout)
-                    if (err) {
-                        console.error('SMB Connection failed:', err.message)
-                        resolve(false)
-                    } else {
-                        resolve(true)
-                    }
-                    try {
-                        client.disconnect()
-                    } catch (e) {
-                        console.error('SMB: Error disconnecting:', e)
-                    }
-                })
-            } catch (e: any) {
-                clearTimeout(timeout)
-                console.error('SMB: Exception during readdir:', e.message)
-                resolve(false)
-            }
-        })
-    } catch (e: any) {
-        console.error('SMB: Exception in testConnection:', e.message)
+    const client = getClient(config)
+    if (!client) {
+        console.error('SMB: Failed to create client')
         return false
     }
+
+    return new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+            console.error('SMB: Connection timeout')
+            evictClient(config)
+            resolve(false)
+        }, 10000)
+
+        client.readdir('', (err?: Error) => {
+            clearTimeout(timeout)
+            if (err) {
+                console.error('SMB Connection failed:', err.message)
+                evictClient(config)
+            }
+            resolve(!err)
+        })
+    })
 }
 
 export interface SMBFileStat {
@@ -69,53 +81,52 @@ export interface SMBFileStat {
     lastModified: Date
 }
 
+/**
+ * A readdir entry with `stats: true`. The members are optional because the bundled
+ * @marsaud/smb2 declarations describe only part of them, so every access stays guarded.
+ */
+interface SmbStatEntry {
+    name: string
+    size?: number
+    mtime?: unknown
+    isDirectory?: () => boolean
+}
+
+/** readdir reports bare names when it cannot stat an entry. */
+type SmbReadEntry = SmbStatEntry | string
+
+const toSmbFileStat = (entry: SmbReadEntry): SMBFileStat => {
+    if (typeof entry === 'string') {
+        return { name: entry, type: 'file', size: 0, lastModified: new Date() }
+    }
+
+    const isDirectory = typeof entry.isDirectory === 'function' && entry.isDirectory()
+    return {
+        name: entry?.name,
+        type: isDirectory ? 'directory' : 'file',
+        size: Number(entry?.size || 0),
+        lastModified: entry?.mtime instanceof Date ? entry.mtime : new Date()
+    }
+}
+
 export const listDirectory = async (config: DataSource['config'], path: string = ''): Promise<SMBFileStat[]> => {
-    const client = getSMBClient(config)
+    const client = getClient(config)
     if (!client) throw new Error('SMB not configured')
 
-    let smbPath = path === '/' ? '' : path.replace(/^\//, '')
+    const smbPath = path === '/' ? '' : path.replace(/^\//, '')
 
     return new Promise((resolve, reject) => {
-        client.readdir(smbPath, (err?: Error, files?: any[]) => {
+        // `stats: true` reports the real entry type; guessing from a dot in the name
+        // made every folder such as "Season 1.5" invisible to the scanner.
+        client.readdir(smbPath, { stats: true }, (err?: Error, files?: SmbReadEntry[]) => {
             if (err) {
-                console.error(`SMB Error listing ${smbPath}:`, err)
-                client.disconnect()
+                console.error(`SMB Error listing ${smbPath}:`, err.message)
+                evictClient(config)
                 reject(err)
                 return
             }
 
-            const stats: SMBFileStat[] = (files || []).map((filename: string) => {
-                const isDirectory = !filename.includes('.')
-
-                return {
-                    name: filename,
-                    type: isDirectory ? 'directory' : 'file',
-                    size: 0,
-                    lastModified: new Date()
-                }
-            })
-
-            client.disconnect()
-            resolve(stats)
-        })
-    })
-}
-
-export const streamFile = (config: DataSource['config'], path: string): Promise<Buffer> => {
-    const client = getSMBClient(config)
-    if (!client) throw new Error('SMB not configured')
-
-    return new Promise((resolve, reject) => {
-        client.readFile(path, (err?: Error, data?: Buffer) => {
-            if (err || !data) {
-                console.error(`SMB Error reading ${path}:`, err)
-                client.disconnect()
-                reject(err || new Error('No data received'))
-                return
-            }
-
-            client.disconnect()
-            resolve(data)
+            resolve((files || []).map(toSmbFileStat))
         })
     })
 }

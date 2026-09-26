@@ -19,6 +19,10 @@
 
 1.  **Clone the repository**
 
+    ```bash
+    git clone https://github.com/wes383/vishel.git
+    ```
+
 2.  **Install dependencies**
     ```bash
     npm install

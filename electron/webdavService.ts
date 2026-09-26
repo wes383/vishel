@@ -1,5 +1,5 @@
 import { createClient, FileStat } from 'webdav'
-import { DataSource } from './store'
+import type { DataSource } from './store'
 
 export const getWebDAVClient = (config: DataSource['config']) => {
     if (!config.url) return null
@@ -30,7 +30,7 @@ const withRetry = async <T>(
     delay: number = 1000,
     operationName: string = 'Operation'
 ): Promise<T> => {
-    let lastError: any
+    let lastError: unknown = undefined
 
     for (let i = 0; i < retries; i++) {
         try {

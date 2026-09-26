@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process'
-import store, { type DataSource } from './store'
+import { getSources, type DataSource } from './store'
+import { maskUrl, maskArgs } from './redact'
 
 interface ProbePayload {
     url: string
@@ -48,8 +49,19 @@ export interface VideoProbeMetadata {
     audioChannels: number | null
 }
 
+const PROBE_CACHE_LIMIT = 300
 const probeCache = new Map<string, VideoProbeMetadata | null>()
 const pendingProbes = new Map<string, Promise<VideoProbeMetadata | null>>()
+
+/** Bounded so probed entries cannot pin memory for the lifetime of the process. */
+const cacheProbe = (key: string, value: VideoProbeMetadata | null) => {
+    probeCache.set(key, value)
+    while (probeCache.size > PROBE_CACHE_LIMIT) {
+        const oldest = probeCache.keys().next()
+        if (oldest.done) break
+        probeCache.delete(oldest.value)
+    }
+}
 
 const parseBitDepth = (stream: FfprobeStream): number | null => {
     if (stream.bits_per_raw_sample) {
@@ -116,7 +128,7 @@ const parseFrameRate = (frameRateStr?: string): number | null => {
 }
 
 const getAuthUrl = (url: string, sourceId?: string): string => {
-    const sources = (store.get('sources') as DataSource[]) || []
+    const sources = getSources()
     let matchedSource: DataSource | undefined
     if (sourceId) {
         matchedSource = sources.find((source) => source.id === sourceId)
@@ -144,12 +156,12 @@ const getAuthUrl = (url: string, sourceId?: string): string => {
 const runFfprobe = (target: string): Promise<FfprobeOutput> => {
     return new Promise((resolve, reject) => {
         const args = ['-v', 'error', '-show_streams', '-show_format', '-of', 'json', target]
-        console.log(`[probeVideoMetadata] Running ffprobe command: ffprobe ${args.join(' ')}`)
+        console.log(`[probeVideoMetadata] Running ffprobe command: ffprobe ${maskArgs(args).join(' ')}`)
         const child = spawn('ffprobe', args, { windowsHide: true })
         let stdout = ''
         let stderr = ''
         const timer = setTimeout(() => {
-            console.warn(`[probeVideoMetadata] ffprobe timeout for: ${target}`)
+            console.warn(`[probeVideoMetadata] ffprobe timeout for: ${maskUrl(target)}`)
             child.kill()
             reject(new Error('ffprobe timeout'))
         }, 8000)
@@ -168,7 +180,7 @@ const runFfprobe = (target: string): Promise<FfprobeOutput> => {
         child.on('close', (code) => {
             clearTimeout(timer)
             if (code !== 0) {
-                console.warn(`[probeVideoMetadata] ffprobe exit code ${code}, stderr: ${stderr}`)
+                console.warn(`[probeVideoMetadata] ffprobe exit code ${code}, stderr: ${maskUrl(stderr)}`)
                 reject(new Error(stderr || `ffprobe exit code ${code}`))
                 return
             }
@@ -184,7 +196,8 @@ const runFfprobe = (target: string): Promise<FfprobeOutput> => {
 
 export const probeVideoMetadata = async ({ url, sourceId }: ProbePayload): Promise<VideoProbeMetadata | null> => {
     const authUrl = getAuthUrl(url, sourceId)
-    const cacheKey = `${sourceId || 'none'}|${authUrl}`
+    // Credentials must never become part of a cache key: they would outlive any rotation.
+    const cacheKey = `${sourceId || 'none'}|${url}`
     if (probeCache.has(cacheKey)) {
         console.log(`[probeVideoMetadata] Cache hit for: ${url}`)
         return probeCache.get(cacheKey) || null
@@ -196,14 +209,13 @@ export const probeVideoMetadata = async ({ url, sourceId }: ProbePayload): Promi
     const doProbe = async (): Promise<VideoProbeMetadata | null> => {
         try {
             console.log(`[probeVideoMetadata] Probing URL: ${url}`)
-            console.log(`[probeVideoMetadata] Auth URL: ${authUrl}`)
             let result: FfprobeOutput
             try {
-                console.log(`[probeVideoMetadata] Running ffprobe with auth URL...`)
+                console.log(`[probeVideoMetadata] Running ffprobe with authenticated URL...`)
                 result = await runFfprobe(authUrl)
-                console.log(`[probeVideoMetadata] ffprobe succeeded with auth URL`)
+                console.log(`[probeVideoMetadata] ffprobe succeeded with authenticated URL`)
             } catch (error) {
-                console.warn(`[probeVideoMetadata] ffprobe failed with auth URL: ${(error as Error).message}`)
+                console.warn(`[probeVideoMetadata] ffprobe failed with authenticated URL: ${(error as Error).message}`)
                 if (authUrl !== url) {
                     console.log(`[probeVideoMetadata] Retrying with original URL...`)
                     result = await runFfprobe(url)
@@ -214,7 +226,7 @@ export const probeVideoMetadata = async ({ url, sourceId }: ProbePayload): Promi
             const videoStream = (result.streams || []).find((stream) => stream.codec_type === 'video')
             if (!videoStream) {
                 console.warn(`[probeVideoMetadata] No video stream found for: ${url}`)
-                probeCache.set(cacheKey, null)
+                cacheProbe(cacheKey, null)
                 return null
             }
 
@@ -236,11 +248,11 @@ export const probeVideoMetadata = async ({ url, sourceId }: ProbePayload): Promi
                 audioChannels: audioStream?.channels || null
             }
             console.log(`[probeVideoMetadata] Success for ${url}:`, metadata)
-            probeCache.set(cacheKey, metadata)
+            cacheProbe(cacheKey, metadata)
             return metadata
         } catch (error) {
             console.error(`[probeVideoMetadata] Failed for ${url}: ${(error as Error).message}`)
-            probeCache.set(cacheKey, null)
+            cacheProbe(cacheKey, null)
             return null
         } finally {
             pendingProbes.delete(cacheKey)

@@ -1,52 +1,48 @@
-import { getDb, saveMovie, saveTVShow, addUnscannedFile, clearUnscannedFiles, getAllMovies, getAllTVShows, deleteEmptyMovies, deleteEmptyTVShows, Movie, TVShow, VideoFile, syncHistoryPosters } from './db'
-import { searchMovie, getMovieDetails, searchTVShow, getTVShowDetails, getSeasonDetails } from './tmdbService'
+import {
+    getDb,
+    saveMovie,
+    saveTVShow,
+    addUnscannedFile,
+    deleteUnscannedFilesForSources,
+    getAllMovies,
+    getAllTVShows,
+    deleteEmptyMovies,
+    deleteEmptyTVShows,
+    Movie,
+    TVShow,
+    VideoFile,
+    syncHistoryPosters
+} from './db'
+import {
+    searchMovie,
+    getMovieDetails,
+    searchTVShow,
+    getTVShowDetails,
+    getSeasonDetails,
+    isTransientTmdbError,
+    isAuthTmdbError,
+    TmdbError,
+    TmdbSearchResult,
+    TmdbSeasonDetails
+} from './tmdbService'
+import {
+    cleanFilename,
+    isVideoFile,
+    parseEpisodeInfo,
+    pickMovieMatch,
+    pickShowMatch,
+    type EpisodeInfo
+} from './mediaNaming'
 import { listDirectory } from './webdavService'
 import { listLocalDirectory } from './localFileService'
 import { listDirectory as listSMBDirectory } from './smbService'
-import store, { DataSource } from './store'
+import { DataSource, getSources } from './store'
 import path from 'node:path'
 
-const cleanFilename = (filename: string): { name: string, year?: number } => {
-    let name = path.parse(filename).name
-    name = name.replace(/[\.\-_]/g, ' ')
-
-    let year: number | undefined
-    const yearMatch = name.match(/\b(19|20)\d{2}\b/)
-    if (yearMatch && yearMatch.index && yearMatch.index > 0) {
-        year = parseInt(yearMatch[0])
-        name = name.substring(0, yearMatch.index)
-    }
-
-    name = name.replace(/\b(1080p|720p|4k|2160p|bluray|webdl|x264|x265|hevc|aac|ac3|dts|truehd)\b/gi, '')
-    name = name.replace(/[\[\(\{].*?[\]\}\)]/g, '')
-
-    return { name: name.trim(), year }
-}
-
-const isVideoFile = (filename: string): boolean => {
-    const videoExtensions = ['.mp4', '.mkv', '.avi', '.mov', '.wmv']
-    return videoExtensions.some(ext => filename.toLowerCase().endsWith(ext))
-}
-
-interface EpisodeInfo {
-    name: string
-    season: number
-    episode: number
-}
-
-const parseEpisodeInfo = (filename: string): EpisodeInfo | null => {
-    const name = path.parse(filename).name
-    const regex = /(.*)[ ._-]+[sS](\d+)[eE](\d+)|(.*)[ ._-]+(\d+)x(\d+)/
-    const match = name.match(regex)
-
-    if (match) {
-        const showName = (match[1] || match[4]).replace(/[\.\-_]/g, ' ').trim()
-        const season = parseInt(match[2] || match[5])
-        const episode = parseInt(match[3] || match[6])
-        return { name: showName, season, episode }
-    }
-    return null
-}
+/** Cap parallel per-file work: a 2000 file directory must not enqueue 2000 tasks. */
+const FILE_CONCURRENCY = 8
+/** Progress events are throttled so a long scan does not flood the renderer. */
+const PROGRESS_INTERVAL_MS = 250
 
 const createVideoFile = (source: DataSource, filename: string): VideoFile => {
     let webdavUrl = ''
@@ -69,355 +65,735 @@ const createVideoFile = (source: DataSource, filename: string): VideoFile => {
     }
 }
 
+/** File identity is per source: two sources may expose the same relative path. */
+const fileKey = (sourceId: string | undefined, filePath: string) => `${sourceId ?? ''}|${filePath}`
+
+export type ScanPhase = 'preparing' | 'refresh' | 'scanning' | 'saving' | 'complete' | 'partial' | 'cancelled' | 'failed'
+
+export interface ScanProgress {
+    phase: ScanPhase
+    /** English prose for logs and devtools only; the UI renders `phase`, so this is never displayed. */
+    status?: string
+    processed?: number
+    sourceName?: string
+    file?: string
+    failedSources?: ScanFailure[]
+    error?: string
+    done?: boolean
+}
+
+export interface ScanFailure {
+    id: string
+    name: string
+    error: string
+}
+
+/** 'skipped' is an outcome, not a phase: a second scan request is refused before any phase runs. */
+export type ScanOutcome = ScanPhase | 'skipped'
+
+export interface ScanResult {
+    status: Extract<ScanOutcome, 'complete' | 'partial' | 'cancelled' | 'failed' | 'skipped'>
+    newMovies: number
+    newTVShows: number
+    prunedFiles: number
+    unscannedFiles: number
+    failedSources: ScanFailure[]
+    tmdbErrors?: number
+    error?: string
+}
+
+type ScanEntry =
+    | { type: 'movie', object: Movie, file: VideoFile }
+    | { type: 'episode', object: TVShow, file: VideoFile }
+
 interface ScanState {
     newMovies: Map<number, Movie>
     currentMovies: Movie[]
     newTVShows: Map<number, TVShow>
     currentTVShows: TVShow[]
-    seasonDetailsCache: Map<string, any>
+    seasonDetailsCache: Map<string, TmdbSeasonDetails>
     pendingMovies: Map<number, Promise<void>>
     pendingTVShows: Map<number, Promise<void>>
     pendingSeasons: Map<string, Promise<void>>
     unscannedFiles: VideoFile[]
 
-    foundFilePaths: Set<string>
-    fileMap: Map<string, { type: 'movie', object: Movie, file: VideoFile } | { type: 'episode', object: TVShow, file: VideoFile }>
-    dirtyIds: Set<number> // IDs of movies/shows that need saving
-    forceRefresh: boolean // Force re-fetch metadata from TMDB
+    foundKeys: Set<string>
+    fileMap: Map<string, ScanEntry>
+    dirtyMovieIds: Set<number>
+    dirtyTvIds: Set<number>
+    forceRefresh: boolean
+
+    configuredSourceIds: Set<string>
+    successfulSourceIds: Set<string>
+    failedSources: Map<string, ScanFailure>
+
+    processedFiles: number
+    tmdbErrors: number
+    fatalError: Error | null
+}
+
+class Semaphore {
+    private active = 0
+    private readonly waiters: (() => void)[] = []
+
+    constructor(private readonly max: number) { }
+
+    async run<T>(fn: () => Promise<T>): Promise<T> {
+        if (this.active >= this.max) {
+            await new Promise<void>(resolve => this.waiters.push(resolve))
+        }
+        this.active++
+        try {
+            return await fn()
+        } finally {
+            this.active--
+            this.waiters.shift()?.()
+        }
+    }
+}
+
+const fileSlots = new Semaphore(FILE_CONCURRENCY)
+
+class ScanAbortError extends Error {
+    constructor() {
+        super('Scan cancelled')
+        this.name = 'ScanAbortError'
+    }
+}
+
+const throwIfAborted = (signal?: AbortSignal) => {
+    if (signal?.aborted) throw new ScanAbortError()
+}
+
+const markSourceFailed = (state: ScanState, source: DataSource, error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error)
+    console.error(`Source ${source.name} scan incomplete:`, error)
+    state.failedSources.set(source.id, { id: source.id, name: source.name, error: message })
+}
+
+/** The entry shape every source listing (WebDAV, local, SMB) provides to the walk. */
+interface DirectoryEntry {
+    filename: string
+    type: 'file' | 'directory'
+    size: number
 }
 
 const scanDirectoryRecursive = async (
     source: DataSource,
     dirPath: string,
-    state: ScanState
+    state: ScanState,
+    signal?: AbortSignal
 ) => {
-    console.log(`Scanning directory: ${dirPath} in source ${source.name}`)
-    try {
-        let items: any[] = []
-        if (source.type === 'webdav') {
-            items = await listDirectory(source.config, dirPath)
-        } else if (source.type === 'local') {
-            items = await listLocalDirectory(source.config, dirPath)
-        } else if (source.type === 'smb') {
-            const smbItems = await listSMBDirectory(source.config, dirPath)
-            items = smbItems.map(item => ({
-                filename: path.posix.join(dirPath, item.name),
-                type: item.type,
-                size: item.size
-            }))
+    let items: DirectoryEntry[] = []
+    if (source.type === 'webdav') {
+        items = await listDirectory(source.config, dirPath)
+    } else if (source.type === 'local') {
+        items = await listLocalDirectory(source.config, dirPath)
+    } else if (source.type === 'smb') {
+        const smbItems = await listSMBDirectory(source.config, dirPath)
+        items = smbItems.map(item => ({
+            filename: path.posix.join(dirPath, item.name),
+            type: item.type,
+            size: item.size
+        }))
+    } else {
+        return
+    }
+
+    const tasks = items.map(async (item) => {
+        throwIfAborted(signal)
+        const targetPath = item.filename
+
+        if (item.type === 'directory') {
+            try {
+                await scanDirectoryRecursive(source, targetPath, state, signal)
+            } catch (err) {
+                if (err instanceof ScanAbortError) throw err
+                if (source.type === 'webdav' || source.type === 'smb') {
+                    try {
+                        const decodedPath = decodeURIComponent(targetPath)
+                        if (decodedPath !== targetPath) {
+                            await scanDirectoryRecursive(source, decodedPath, state, signal)
+                            return
+                        }
+                    } catch (retryErr) {
+                        if (retryErr instanceof ScanAbortError) throw retryErr
+                    }
+                }
+                // A subdirectory we cannot read makes the whole source untrustworthy for pruning.
+                markSourceFailed(state, source, err)
+            }
+            return
         }
 
-        const tasks = items.map(async (item) => {
-            let targetPath = item.filename
+        if (item.type !== 'file' || !isVideoFile(item.filename)) return
 
-            if (item.type === 'directory') {
+        try {
+            await fileSlots.run(() => processFile(source, item.filename, state, signal))
+        } catch (error) {
+            if (error instanceof ScanAbortError) throw error
+            // A single unreadable file must not abort the source walk; only a rejected
+            // API key stops the scan, because otherwise everything would look unmatched.
+            if (error instanceof TmdbError && !isTransientTmdbError(error)) {
+                state.fatalError = error
+                throw error
+            }
+            console.error(`Skipped ${item.filename}: ${(error as Error).message}`)
+        }
+    })
+
+    await Promise.all(tasks)
+}
+
+const processFile = async (
+    source: DataSource,
+    filePath: string,
+    state: ScanState,
+    signal?: AbortSignal
+) => {
+    throwIfAborted(signal)
+
+    const key = fileKey(source.id, filePath)
+    state.foundKeys.add(key)
+    state.processedFiles++
+
+    const existing = state.fileMap.get(key)
+    if (existing) {
+        const newFile = createVideoFile(source, filePath)
+        if (existing.file.webdavUrl !== newFile.webdavUrl) {
+            existing.file.webdavUrl = newFile.webdavUrl
+            if (existing.type === 'movie') state.dirtyMovieIds.add(existing.object.id)
+            else state.dirtyTvIds.add(existing.object.id)
+        }
+        return
+    }
+
+    const episodeInfo = parseEpisodeInfo(filePath)
+
+    if (episodeInfo) {
+        await processEpisodeFile(source, filePath, episodeInfo, state, signal)
+    } else {
+        await processMovieFile(source, filePath, state, signal)
+    }
+}
+
+const getOrCreateTVShow = async (
+    source: DataSource,
+    tvId: number,
+    state: ScanState
+): Promise<TVShow | undefined> => {
+    const known = state.currentTVShows.find(s => s.id === tvId) || state.newTVShows.get(tvId)
+    if (known) return known
+
+    if (state.pendingTVShows.has(tvId)) {
+        await state.pendingTVShows.get(tvId)
+        return state.newTVShows.get(tvId)
+    }
+
+    const processPromise = (async () => {
+        const details = await getTVShowDetails(tvId)
+        if (!details) return
+
+        const cast = details.credits?.cast?.slice(0, 10).map(c => ({
+            name: c.name,
+            character: c.character ?? '',
+            profilePath: c.profile_path ?? ''
+        }))
+        const createdBy = details.created_by?.map(c => ({
+            name: c.name,
+            profilePath: c.profile_path ?? ''
+        }))
+        const logoPath = details.images?.logos?.find(l => l.iso_639_1 === 'en')?.file_path
+
+        state.newTVShows.set(tvId, {
+            id: details.id,
+            name: details.name,
+            logoPath: logoPath ?? '',
+            posterPath: details.poster_path ?? '',
+            backdropPath: details.backdrop_path ?? '',
+            overview: details.overview,
+            firstAirDate: details.first_air_date ?? '',
+            sourceId: source.id,
+            genres: details.genres?.map(g => g.name),
+            voteAverage: details.vote_average,
+            popularity: details.popularity,
+            status: details.status,
+            cast,
+            createdBy,
+            seasons: [],
+            externalIds: details.external_ids
+        })
+    })()
+
+    state.pendingTVShows.set(tvId, processPromise)
+    try {
+        await processPromise
+    } finally {
+        state.pendingTVShows.delete(tvId)
+    }
+
+    return state.newTVShows.get(tvId)
+}
+
+const getSeasonDetailsCached = async (tvId: number, seasonNumber: number, state: ScanState) => {
+    const cacheKey = `${tvId}:${seasonNumber}`
+    if (state.seasonDetailsCache.has(cacheKey)) return state.seasonDetailsCache.get(cacheKey)
+
+    if (state.pendingSeasons.has(cacheKey)) {
+        await state.pendingSeasons.get(cacheKey)
+        return state.seasonDetailsCache.get(cacheKey)
+    }
+
+    const seasonPromise = (async () => {
+        try {
+            const details = await getSeasonDetails(tvId, seasonNumber)
+            if (details) state.seasonDetailsCache.set(cacheKey, details)
+        } catch (e) {
+            if (isTransientTmdbError(e)) {
+                state.tmdbErrors++
+                if (isAuthTmdbError(e)) state.fatalError = e as Error
+            }
+            console.warn(`Failed to fetch season details for ${tvId} S${seasonNumber}:`, (e as Error).message)
+        }
+    })()
+
+    state.pendingSeasons.set(cacheKey, seasonPromise)
+    try {
+        await seasonPromise
+    } finally {
+        state.pendingSeasons.delete(cacheKey)
+    }
+
+    return state.seasonDetailsCache.get(cacheKey)
+}
+
+const processEpisodeFile = async (
+    source: DataSource,
+    filePath: string,
+    episodeInfo: EpisodeInfo,
+    state: ScanState,
+    signal?: AbortSignal
+) => {
+    const { year } = cleanFilename(filePath)
+    console.log(`Processing TV Show: ${filePath} -> ${episodeInfo.name} S${episodeInfo.season}E${episodeInfo.episode} (${year || 'no year'})`)
+
+    let searchResults: TmdbSearchResult[]
+    try {
+        const searchData = await searchTVShow(episodeInfo.name, episodeInfo.season === 1 ? year : undefined)
+        searchResults = searchData.results
+    } catch (error) {
+        state.tmdbErrors++
+        if (isAuthTmdbError(error)) state.fatalError = error as Error
+        console.error(`TMDB lookup failed for ${filePath}:`, (error as Error).message)
+        // Keep the file out of the manual review queue when TMDB was unreachable.
+        throw error
+    }
+
+    throwIfAborted(signal)
+
+    if (searchResults.length === 0) {
+        console.warn(`No TV show match found for: ${filePath}`)
+        state.unscannedFiles.push(createVideoFile(source, filePath))
+        return
+    }
+
+    const bestMatch = pickShowMatch(searchResults, year)
+    if (!bestMatch) {
+        state.unscannedFiles.push(createVideoFile(source, filePath))
+        return
+    }
+
+    const tvShow = await getOrCreateTVShow(source, bestMatch.id, state)
+    if (!tvShow) {
+        state.unscannedFiles.push(createVideoFile(source, filePath))
+        return
+    }
+
+    let season = tvShow.seasons.find(s => s.seasonNumber === episodeInfo.season)
+    const seasonDetails = await getSeasonDetailsCached(bestMatch.id, episodeInfo.season, state)
+
+    if (!season) {
+        season = tvShow.seasons.find(s => s.seasonNumber === episodeInfo.season)
+    }
+
+    if (!season) {
+        const newSeason = {
+            seasonNumber: episodeInfo.season,
+            name: seasonDetails?.name || `Season ${episodeInfo.season}`,
+            posterPath: seasonDetails?.poster_path || '',
+            episodes: []
+        }
+        tvShow.seasons.push(newSeason)
+        season = newSeason
+    }
+
+    const episodeMeta = seasonDetails?.episodes?.find(e => e.episode_number === episodeInfo.episode)
+
+    let episode = season.episodes.find(e => e.episodeNumber === episodeInfo.episode)
+    if (!episode) {
+        episode = {
+            id: episodeMeta?.id || 0,
+            episodeNumber: episodeInfo.episode,
+            seasonNumber: episodeInfo.season,
+            name: episodeMeta?.name || `Episode ${episodeInfo.episode}`,
+            overview: episodeMeta?.overview || '',
+            stillPath: episodeMeta?.still_path || '',
+            videoFiles: []
+        }
+        season.episodes.push(episode)
+    } else if (episodeMeta && (!episode.name || episode.name.startsWith('Episode '))) {
+        episode.id = episodeMeta.id || episode.id
+        episode.name = episodeMeta.name || episode.name
+        episode.overview = episodeMeta.overview || episode.overview
+        episode.stillPath = episodeMeta.still_path || episode.stillPath
+    }
+
+    const newFile = createVideoFile(source, filePath)
+    episode.videoFiles.push(newFile)
+    state.dirtyTvIds.add(tvShow.id)
+    state.fileMap.set(fileKey(source.id, filePath), { type: 'episode', object: tvShow, file: newFile })
+}
+
+const getOrCreateMovie = async (source: DataSource, movieId: number, state: ScanState): Promise<Movie | undefined> => {
+    const known = state.currentMovies.find(m => m.id === movieId) || state.newMovies.get(movieId)
+    if (known) return known
+
+    if (state.pendingMovies.has(movieId)) {
+        await state.pendingMovies.get(movieId)
+        return state.newMovies.get(movieId)
+    }
+
+    const processPromise = (async () => {
+        const details = await getMovieDetails(movieId)
+        if (!details) return
+
+        const cast = details.credits?.cast?.slice(0, 10).map(c => ({
+            name: c.name,
+            character: c.character ?? '',
+            profilePath: c.profile_path ?? ''
+        }))
+        const directors = details.credits?.crew?.filter(c => c.job === 'Director')
+        const directorObj = directors?.map(d => ({
+            name: d.name,
+            profilePath: d.profile_path || null
+        }))
+        const logoPath = details.images?.logos?.find(l => l.iso_639_1 === 'en')?.file_path
+
+        state.newMovies.set(movieId, {
+            id: details.id,
+            title: details.title,
+            logoPath: logoPath ?? '',
+            overview: details.overview,
+            posterPath: details.poster_path ?? '',
+            backdropPath: details.backdrop_path ?? '',
+            releaseDate: details.release_date ?? '',
+            runtime: details.runtime ?? undefined,
+            voteAverage: details.vote_average,
+            popularity: details.popularity,
+            genres: details.genres?.map(g => g.name),
+            sourceId: source.id,
+            status: details.status,
+            cast,
+            director: directorObj,
+            videoFiles: [],
+            externalIds: details.external_ids
+        })
+    })()
+
+    state.pendingMovies.set(movieId, processPromise)
+    try {
+        await processPromise
+    } finally {
+        state.pendingMovies.delete(movieId)
+    }
+
+    return state.newMovies.get(movieId)
+}
+
+const processMovieFile = async (
+    source: DataSource,
+    filePath: string,
+    state: ScanState,
+    signal?: AbortSignal
+) => {
+    const { name: query, year } = cleanFilename(filePath)
+    console.log(`Processing movie: ${filePath} -> ${query} (${year || 'no year'})`)
+
+    let searchResults: TmdbSearchResult[]
+    try {
+        const searchData = await searchMovie(query, year)
+        searchResults = searchData.results
+    } catch (error) {
+        state.tmdbErrors++
+        if (isAuthTmdbError(error)) state.fatalError = error as Error
+        console.error(`TMDB lookup failed for ${filePath}:`, (error as Error).message)
+        throw error
+    }
+
+    throwIfAborted(signal)
+
+    if (searchResults.length === 0) {
+        console.warn(`No movie match found for: ${filePath}`)
+        state.unscannedFiles.push(createVideoFile(source, filePath))
+        return
+    }
+
+    const bestMatch = pickMovieMatch(searchResults, year)
+    if (!bestMatch) {
+        console.warn(`Year ${year} does not match any TMDB candidate for: ${filePath}`)
+        state.unscannedFiles.push(createVideoFile(source, filePath))
+        return
+    }
+
+    const movie = await getOrCreateMovie(source, bestMatch.id, state)
+    if (!movie) {
+        state.unscannedFiles.push(createVideoFile(source, filePath))
+        return
+    }
+
+    const newFile = createVideoFile(source, filePath)
+    movie.videoFiles.push(newFile)
+    state.dirtyMovieIds.add(movie.id)
+    state.fileMap.set(fileKey(source.id, filePath), { type: 'movie', object: movie, file: newFile })
+}
+
+const refreshExistingMetadata = async (
+    state: ScanState,
+    signal: AbortSignal | undefined,
+    emit: (progress: ScanProgress) => void
+) => {
+    emit({ phase: 'refresh', status: 'Refreshing metadata for existing items...' })
+    console.log('Refreshing metadata for existing items...')
+
+    for (const movie of state.currentMovies) {
+        throwIfAborted(signal)
+        try {
+            const details = await getMovieDetails(movie.id)
+            if (details) {
+                const logoPath = details.images?.logos?.find(l => l.iso_639_1 === 'en')?.file_path
+
+                const directors = details.credits?.crew?.filter(c => c.job === 'Director')
+                const directorObj = directors?.map(d => ({
+                    name: d.name,
+                    profilePath: d.profile_path || null
+                }))
+
+                movie.title = details.title
+                movie.releaseDate = details.release_date ?? ''
+                movie.runtime = details.runtime ?? undefined
+                movie.genres = details.genres?.map(g => g.name)
+                movie.cast = details.credits?.cast?.slice(0, 10).map(c => ({
+                    name: c.name,
+                    character: c.character ?? '',
+                    profilePath: c.profile_path ?? ''
+                }))
+                movie.director = directorObj
+                movie.externalIds = details.external_ids
+
+                movie.posterPath = details.poster_path ?? ''
+                movie.backdropPath = details.backdrop_path ?? ''
+                movie.overview = details.overview
+                movie.logoPath = logoPath || movie.logoPath
+                movie.voteAverage = details.vote_average
+                movie.status = details.status
+
+                state.dirtyMovieIds.add(movie.id)
+            }
+        } catch (e) {
+            if (e instanceof ScanAbortError) throw e
+            if (isTransientTmdbError(e)) state.tmdbErrors++
+            if (isAuthTmdbError(e)) state.fatalError = e as Error
+            console.error(`Failed to refresh metadata for movie ${movie.title}:`, (e as Error).message)
+        }
+    }
+
+    for (const show of state.currentTVShows) {
+        throwIfAborted(signal)
+        try {
+            const details = await getTVShowDetails(show.id)
+            if (details) {
+                const logoPath = details.images?.logos?.find(l => l.iso_639_1 === 'en')?.file_path
+
+                const createdBy = details.created_by?.map(c => ({
+                    name: c.name,
+                    profilePath: c.profile_path ?? ''
+                }))
+
+                show.name = details.name
+                show.firstAirDate = details.first_air_date ?? ''
+                show.genres = details.genres?.map(g => g.name)
+                show.cast = details.credits?.cast?.slice(0, 10).map(c => ({
+                    name: c.name,
+                    character: c.character ?? '',
+                    profilePath: c.profile_path ?? ''
+                }))
+                show.createdBy = createdBy
+                show.externalIds = details.external_ids
+
+                show.posterPath = details.poster_path ?? ''
+                show.backdropPath = details.backdrop_path ?? ''
+                show.overview = details.overview
+                show.logoPath = logoPath || show.logoPath
+                show.voteAverage = details.vote_average
+                show.status = details.status
+
+                state.dirtyTvIds.add(show.id)
+            }
+
+            for (const season of show.seasons) {
+                throwIfAborted(signal)
                 try {
-                    await scanDirectoryRecursive(source, targetPath, state)
-                } catch (err) {
-                    if (source.type === 'webdav' || source.type === 'smb') {
-                        console.warn(`Failed to scan subdirectory ${targetPath} with raw path. Retrying with decoded path...`)
-                        try {
-                            const decodedPath = decodeURIComponent(item.filename)
-                            if (decodedPath !== item.filename) {
-                                await scanDirectoryRecursive(source, decodedPath, state)
-                            } else {
-                                throw err
-                            }
-                        } catch (retryErr) {
-                            console.error(`Failed to scan subdirectory ${targetPath}:`, retryErr)
+                    const seasonCacheKey = `${show.id}:${season.seasonNumber}`
+                    const seasonDetails = await getSeasonDetails(show.id, season.seasonNumber)
+
+                    if (seasonDetails) {
+                        state.seasonDetailsCache.set(seasonCacheKey, seasonDetails)
+
+                        season.name = seasonDetails.name || season.name
+                        if (seasonDetails.poster_path) {
+                            season.posterPath = seasonDetails.poster_path
                         }
-                    } else {
-                        console.error(`Failed to scan subdirectory ${targetPath}:`, err)
-                    }
-                }
-            } else if (item.type === 'file' && isVideoFile(item.filename)) {
-                state.foundFilePaths.add(item.filename)
 
-                const existing = state.fileMap.get(item.filename)
-                if (existing) {
-                    const newFile = createVideoFile(source, item.filename)
-                    if (existing.file.webdavUrl !== newFile.webdavUrl) {
-                        existing.file.webdavUrl = newFile.webdavUrl
-                        state.dirtyIds.add(existing.object.id)
-                    }
-                    return
-                }
-
-                const episodeInfo = parseEpisodeInfo(item.filename)
-
-                const findBestMatch = (results: any[], fileYear?: number): any => {
-                    if (!results || results.length === 0) return null
-                    if (!fileYear) return results[0]
-                    const validResults = results.filter((show: any) => {
-                        if (!show.first_air_date) return true
-                        const showYear = parseInt(show.first_air_date.split('-')[0])
-                        return showYear <= fileYear
-                    })
-                    if (validResults.length === 0) return results[0]
-
-                    return validResults[0]
-                }
-
-                if (episodeInfo) {
-                    // Handle TV Show
-                    const { year } = cleanFilename(item.filename)
-                    console.log(`Processing TV Show: ${item.filename} -> ${episodeInfo.name} S${episodeInfo.season}E${episodeInfo.episode} (${year || 'no year'})`)
-
-                    try {
-                        const searchYear = episodeInfo.season === 1 ? year : undefined
-                        const searchData = await searchTVShow(episodeInfo.name, searchYear)
-                        const searchResults = searchData.results
-
-                        if (searchResults && searchResults.length > 0) {
-                            const bestMatch = findBestMatch(searchResults, year)
-                            const tvId = bestMatch.id
-
-                            // Check if show exists in current or new
-                            let tvShow = state.currentTVShows.find(s => s.id === tvId) || state.newTVShows.get(tvId)
-
-                            if (!tvShow) {
-                                if (state.pendingTVShows.has(tvId)) {
-                                    await state.pendingTVShows.get(tvId)
-                                    tvShow = state.newTVShows.get(tvId)
-                                } else {
-                                    const processPromise = (async () => {
-                                        const details = await getTVShowDetails(tvId)
-                                        if (details) {
-                                            const cast = details.credits?.cast?.slice(0, 10).map((c: any) => ({
-                                                name: c.name,
-                                                character: c.character,
-                                                profilePath: c.profile_path
-                                            }))
-                                            const createdBy = details.created_by?.map((c: any) => ({
-                                                name: c.name,
-                                                profilePath: c.profile_path
-                                            }))
-
-                                            const logoPath = details.images?.logos?.find((l: any) => l.iso_639_1 === 'en')?.file_path
-
-                                            const newShow: TVShow = {
-                                                id: details.id,
-                                                name: details.name,
-                                                logoPath: logoPath || '',
-                                                posterPath: details.poster_path,
-                                                backdropPath: details.backdrop_path,
-                                                overview: details.overview,
-                                                firstAirDate: details.first_air_date,
-                                                sourceId: source.id,
-                                                genres: details.genres?.map((g: any) => g.name),
-                                                voteAverage: details.vote_average,
-                                                popularity: details.popularity,
-                                                status: details.status,
-                                                cast,
-                                                createdBy,
-                                                seasons: [],
-                                                externalIds: details.external_ids
-                                            }
-                                            state.newTVShows.set(tvId, newShow)
-                                        }
-                                    })()
-                                    state.pendingTVShows.set(tvId, processPromise)
-                                    await processPromise
-                                    state.pendingTVShows.delete(tvId)
-                                    tvShow = state.newTVShows.get(tvId)
-                                }
+                        for (const episode of season.episodes) {
+                            const episodeMeta = seasonDetails.episodes?.find(e => e.episode_number === episode.episodeNumber)
+                            if (episodeMeta) {
+                                episode.id = episodeMeta.id || episode.id
+                                episode.name = episodeMeta.name || episode.name
+                                episode.overview = episodeMeta.overview || episode.overview
+                                episode.stillPath = episodeMeta.still_path || episode.stillPath
+                                state.dirtyTvIds.add(show.id)
                             }
-
-                            if (tvShow) {
-                                const seasonCacheKey = `${tvId}:${episodeInfo.season}`
-                                let season = tvShow.seasons.find(s => s.seasonNumber === episodeInfo.season)
-
-                                if (!state.seasonDetailsCache.has(seasonCacheKey)) {
-                                    if (state.pendingSeasons.has(seasonCacheKey)) {
-                                        await state.pendingSeasons.get(seasonCacheKey)
-                                    } else {
-                                        const seasonPromise = (async () => {
-                                            try {
-                                                const details = await getSeasonDetails(tvId, episodeInfo.season)
-                                                if (details) {
-                                                    state.seasonDetailsCache.set(seasonCacheKey, details)
-                                                }
-                                            } catch (e) {
-                                                console.warn(`Failed to fetch season details for ${tvId} S${episodeInfo.season}`)
-                                            }
-                                        })()
-                                        state.pendingSeasons.set(seasonCacheKey, seasonPromise)
-                                        await seasonPromise
-                                        state.pendingSeasons.delete(seasonCacheKey)
-                                    }
-                                }
-
-                                if (!season) {
-                                    season = tvShow.seasons.find(s => s.seasonNumber === episodeInfo.season)
-                                }
-
-                                if (!season) {
-                                    const seasonDetails = state.seasonDetailsCache.get(seasonCacheKey)
-                                    const newSeason = {
-                                        seasonNumber: episodeInfo.season,
-                                        name: seasonDetails?.name || `Season ${episodeInfo.season}`,
-                                        posterPath: seasonDetails?.poster_path || '',
-                                        episodes: []
-                                    }
-                                    tvShow!.seasons.push(newSeason)
-                                    season = newSeason
-                                }
-
-                                if (season) {
-                                    const seasonDetails = state.seasonDetailsCache.get(seasonCacheKey)
-                                    const episodeMeta = seasonDetails?.episodes?.find((e: any) => e.episode_number === episodeInfo.episode)
-
-                                    let episode = season.episodes.find(e => e.episodeNumber === episodeInfo.episode)
-                                    if (!episode) {
-                                        episode = {
-                                            id: episodeMeta?.id || 0,
-                                            episodeNumber: episodeInfo.episode,
-                                            seasonNumber: episodeInfo.season,
-                                            name: episodeMeta?.name || `Episode ${episodeInfo.episode}`,
-                                            overview: episodeMeta?.overview || '',
-                                            stillPath: episodeMeta?.still_path || '',
-                                            videoFiles: []
-                                        }
-                                        season.episodes.push(episode)
-                                    } else if (episodeMeta && (!episode.name || episode.name.startsWith('Episode '))) {
-                                        episode.id = episodeMeta.id || episode.id
-                                        episode.name = episodeMeta.name || episode.name
-                                        episode.overview = episodeMeta.overview || episode.overview
-                                        episode.stillPath = episodeMeta.still_path || episode.stillPath
-                                        state.dirtyIds.add(tvShow.id)
-                                    }
-
-                                    const newFile = createVideoFile(source, item.filename)
-                                    episode.videoFiles.push(newFile)
-
-                                    state.dirtyIds.add(tvShow.id)
-
-                                    state.fileMap.set(item.filename, { type: 'episode', object: tvShow, file: newFile })
-                                }
-                            }
-                        } else {
-                            console.warn(`No TV show match found for: ${item.filename}`)
-                            state.unscannedFiles.push(createVideoFile(source, item.filename))
                         }
-                    } catch (error) {
-                        console.error(`Failed to process TV show ${item.filename}:`, error)
-                        state.unscannedFiles.push(createVideoFile(source, item.filename))
                     }
-                } else {
-                    // Handle Movie
-                    try {
-                        const { name: query, year } = cleanFilename(item.filename)
-                        console.log(`Processing movie: ${item.filename} -> ${query} (${year || 'no year'})`)
-
-                        const searchData = await searchMovie(query, year)
-                        const searchResults = searchData.results
-                        if (searchResults && searchResults.length > 0) {
-                            const bestMatch = searchResults[0]
-                            const movieId = bestMatch.id
-
-                            let movie = state.currentMovies.find(m => m.id === movieId) || state.newMovies.get(movieId)
-
-                            if (!movie) {
-                                if (state.pendingMovies.has(movieId)) {
-                                    await state.pendingMovies.get(movieId)
-                                    movie = state.newMovies.get(movieId)
-                                } else {
-                                    const processPromise = (async () => {
-                                        const details = await getMovieDetails(movieId)
-                                        if (details) {
-                                            const cast = details.credits?.cast?.slice(0, 10).map((c: any) => ({
-                                                name: c.name,
-                                                character: c.character,
-                                                profilePath: c.profile_path
-                                            }))
-
-                                            const directors = details.credits?.crew?.filter((c: any) => c.job === 'Director')
-                                            const directorObj = directors?.map((d: any) => ({
-                                                name: d.name,
-                                                profilePath: d.profile_path || null
-                                            }))
-
-                                            const logoPath = details.images?.logos?.find((l: any) => l.iso_639_1 === 'en')?.file_path
-
-                                            const newMovie: Movie = {
-                                                id: details.id,
-                                                title: details.title,
-                                                logoPath: logoPath || '',
-                                                overview: details.overview,
-                                                posterPath: details.poster_path,
-                                                backdropPath: details.backdrop_path,
-                                                releaseDate: details.release_date,
-                                                runtime: details.runtime,
-                                                voteAverage: details.vote_average,
-                                                popularity: details.popularity,
-                                                genres: details.genres?.map((g: any) => g.name),
-                                                sourceId: source.id,
-                                                status: details.status,
-                                                cast,
-                                                director: directorObj,
-                                                videoFiles: [],
-                                                externalIds: details.external_ids
-                                            }
-                                            state.newMovies.set(movieId, newMovie)
-                                        }
-                                    })()
-                                    state.pendingMovies.set(movieId, processPromise)
-                                    await processPromise
-                                    state.pendingMovies.delete(movieId)
-                                    movie = state.newMovies.get(movieId)
-                                }
-                            }
-
-                            if (movie) {
-                                const newFile = createVideoFile(source, item.filename)
-                                movie.videoFiles.push(newFile)
-                                state.dirtyIds.add(movie.id)
-                                state.fileMap.set(item.filename, { type: 'movie', object: movie, file: newFile })
-                            }
-                        } else {
-                            console.warn(`No movie match found for: ${item.filename}`)
-                            state.unscannedFiles.push(createVideoFile(source, item.filename))
-                        }
-                    } catch (error) {
-                        console.error(`Failed to process movie ${item.filename}:`, error)
-                        state.unscannedFiles.push(createVideoFile(source, item.filename))
-                    }
+                } catch (e) {
+                    if (e instanceof ScanAbortError) throw e
+                    if (isTransientTmdbError(e)) state.tmdbErrors++
+                    if (isAuthTmdbError(e)) state.fatalError = e as Error
+                    console.error(`Failed to refresh season ${season.seasonNumber} metadata for TV show ${show.name}:`, (e as Error).message)
                 }
             }
-        })
-
-        await Promise.all(tasks)
-
-    } catch (error) {
-        console.error(`Error scanning ${dirPath}:`, error)
+        } catch (e) {
+            if (e instanceof ScanAbortError) throw e
+            if (isTransientTmdbError(e)) state.tmdbErrors++
+            if (isAuthTmdbError(e)) state.fatalError = e as Error
+            console.error(`Failed to refresh metadata for TV show ${show.name}:`, (e as Error).message)
+        }
     }
+}
+
+const pruneMissingFiles = (state: ScanState) => {
+    // Only entries of sources that were traversed completely may be removed. A source that is
+    // configured but disappeared from settings counts as removed by the user, so it is prunable too.
+    const prunable = (sourceId: string | undefined) =>
+        state.successfulSourceIds.has(sourceId ?? '') || !state.configuredSourceIds.has(sourceId ?? '')
+
+    let prunedCount = 0
+
+    for (const movie of state.currentMovies) {
+        const originalCount = movie.videoFiles.length
+        const missing = movie.videoFiles.filter(f =>
+            prunable(f.sourceId || movie.sourceId) && !state.foundKeys.has(fileKey(f.sourceId || movie.sourceId, f.filePath))
+        )
+
+        if (missing.length > 0) {
+            console.log(`[Prune] Movie "${movie.title}" (ID: ${movie.id}) has ${missing.length} missing files:`)
+            missing.forEach(f => console.log(`  - Missing: ${f.filePath}`))
+        }
+
+        movie.videoFiles = movie.videoFiles.filter(f =>
+            !missing.includes(f)
+        )
+
+        if (movie.videoFiles.length !== originalCount) {
+            state.dirtyMovieIds.add(movie.id)
+            prunedCount += originalCount - movie.videoFiles.length
+        }
+    }
+
+    for (const show of state.currentTVShows) {
+        let showChanged = false
+        for (const season of show.seasons) {
+            for (const episode of season.episodes) {
+                const originalCount = episode.videoFiles.length
+                const missing = episode.videoFiles.filter(f => {
+                    const ownerSourceId = f.sourceId || show.sourceId
+                    return prunable(ownerSourceId) && !state.foundKeys.has(fileKey(ownerSourceId, f.filePath))
+                })
+
+                if (missing.length > 0) {
+                    console.log(`[Prune] Show "${show.name}" S${season.seasonNumber}E${episode.episodeNumber} has ${missing.length} missing files:`)
+                    missing.forEach(f => console.log(`  - Missing: ${f.filePath}`))
+                }
+
+                episode.videoFiles = episode.videoFiles.filter(f => !missing.includes(f))
+
+                if (episode.videoFiles.length !== originalCount) {
+                    showChanged = true
+                    prunedCount += originalCount - episode.videoFiles.length
+                }
+            }
+        }
+        if (showChanged) {
+            state.dirtyTvIds.add(show.id)
+        }
+    }
+
+    console.log(`Pruned ${prunedCount} missing files`)
+    return prunedCount
 }
 
 export let isScanning = false
 
 export const getScanStatus = () => isScanning
 
-export const scanMovies = async (onProgress?: (data: any) => void, forceRefresh: boolean = false) => {
+const emptyResult = (status: ScanResult['status'] = 'cancelled'): ScanResult => ({
+    status,
+    newMovies: 0,
+    newTVShows: 0,
+    prunedFiles: 0,
+    unscannedFiles: 0,
+    failedSources: []
+})
+
+export const scanMovies = async (
+    onProgress?: (data: ScanProgress) => void,
+    forceRefresh: boolean = false,
+    signal?: AbortSignal
+): Promise<ScanResult> => {
     if (isScanning) {
         console.log('Scan already in progress, skipping...')
-        return
+        return emptyResult()
     }
 
     isScanning = true
     console.log('Starting media scan...')
 
-    try {
-        clearUnscannedFiles()
+    let stateRef: ScanState | undefined
 
-        const sources = store.get('sources') as DataSource[]
+    let lastEmit = 0
+    const emit = (progress: ScanProgress) => {
+        if (!onProgress) return
+        const now = Date.now()
+        const isTerminal = progress.done || progress.phase !== 'scanning'
+        if (isTerminal || now - lastEmit >= PROGRESS_INTERVAL_MS) {
+            lastEmit = now
+            onProgress(progress)
+        }
+    }
+
+    try {
+        const sources = getSources()
+        const configuredSourceIds = new Set(sources.map(s => s.id))
+
+        emit({ phase: 'preparing', status: 'Loading library...' })
         const currentMovies = getAllMovies()
         const currentTVShows = getAllTVShows()
 
-        const fileMap = new Map<string, { type: 'movie', object: Movie, file: VideoFile } | { type: 'episode', object: TVShow, file: VideoFile }>()
+        const fileMap = new Map<string, ScanEntry>()
 
         currentMovies.forEach(m => {
             m.videoFiles.forEach(f => {
-                fileMap.set(f.filePath, { type: 'movie', object: m, file: f })
+                fileMap.set(fileKey(f.sourceId || m.sourceId, f.filePath), { type: 'movie', object: m, file: f })
             })
         })
 
@@ -425,7 +801,7 @@ export const scanMovies = async (onProgress?: (data: any) => void, forceRefresh:
             s.seasons.forEach(season => {
                 season.episodes.forEach(ep => {
                     ep.videoFiles.forEach(f => {
-                        fileMap.set(f.filePath, { type: 'episode', object: s, file: f })
+                        fileMap.set(fileKey(f.sourceId || s.sourceId, f.filePath), { type: 'episode', object: s, file: f })
                     })
                 })
             })
@@ -441,184 +817,60 @@ export const scanMovies = async (onProgress?: (data: any) => void, forceRefresh:
             pendingTVShows: new Map(),
             pendingSeasons: new Map(),
             unscannedFiles: [],
-            foundFilePaths: new Set(),
+            foundKeys: new Set(),
             fileMap,
-            dirtyIds: new Set(),
-            forceRefresh
+            dirtyMovieIds: new Set(),
+            dirtyTvIds: new Set(),
+            forceRefresh,
+            configuredSourceIds,
+            successfulSourceIds: new Set(),
+            failedSources: new Map(),
+            processedFiles: 0,
+            tmdbErrors: 0,
+            fatalError: null
         }
+        stateRef = state
 
         console.log(`Scan mode: ${forceRefresh ? 'Full Rescan (Force Refresh)' : 'Quick Scan (Incremental)'}`)
 
         if (forceRefresh) {
-            onProgress?.({ status: 'Refreshing metadata for existing items...' })
-            console.log('Refreshing metadata for existing items...')
-
-            for (const movie of state.currentMovies) {
-                try {
-                    const details = await getMovieDetails(movie.id)
-                    if (details) {
-                        const logoPath = details.images?.logos?.find((l: any) => l.iso_639_1 === 'en')?.file_path
-
-                        const directors = details.credits?.crew?.filter((c: any) => c.job === 'Director')
-                        const directorObj = directors?.map((d: any) => ({
-                            name: d.name,
-                            profilePath: d.profile_path || null
-                        }))
-
-                        movie.title = details.title
-                        movie.releaseDate = details.release_date
-                        movie.runtime = details.runtime
-                        movie.genres = details.genres?.map((g: any) => g.name)
-                        movie.cast = details.credits?.cast?.slice(0, 10).map((c: any) => ({
-                            name: c.name,
-                            character: c.character,
-                            profilePath: c.profile_path
-                        }))
-                        movie.director = directorObj
-                        movie.externalIds = details.external_ids
-
-                        movie.posterPath = details.poster_path
-                        movie.backdropPath = details.backdrop_path
-                        movie.overview = details.overview
-                        movie.logoPath = logoPath || movie.logoPath
-                        movie.voteAverage = details.vote_average
-                        movie.status = details.status
-
-                        state.dirtyIds.add(movie.id)
-                    }
-                } catch (e) {
-                    console.error(`Failed to refresh metadata for movie ${movie.title}:`, e)
-                }
-            }
-
-            for (const show of state.currentTVShows) {
-                try {
-                    const details = await getTVShowDetails(show.id)
-                    if (details) {
-                        const logoPath = details.images?.logos?.find((l: any) => l.iso_639_1 === 'en')?.file_path
-
-                        const createdBy = details.created_by?.map((c: any) => ({
-                            name: c.name,
-                            profilePath: c.profile_path
-                        }))
-
-                        show.name = details.name
-                        show.firstAirDate = details.first_air_date
-                        show.genres = details.genres?.map((g: any) => g.name)
-                        show.cast = details.credits?.cast?.slice(0, 10).map((c: any) => ({
-                            name: c.name,
-                            character: c.character,
-                            profilePath: c.profile_path
-                        }))
-                        show.createdBy = createdBy
-                        show.externalIds = details.external_ids
-
-                        show.posterPath = details.poster_path
-                        show.backdropPath = details.backdrop_path
-                        show.overview = details.overview
-                        show.logoPath = logoPath || show.logoPath
-                        show.voteAverage = details.vote_average
-                        show.status = details.status
-
-                        state.dirtyIds.add(show.id)
-                    }
-
-                    for (const season of show.seasons) {
-                        try {
-                            const seasonCacheKey = `${show.id}:${season.seasonNumber}`
-                            const seasonDetails = await getSeasonDetails(show.id, season.seasonNumber)
-
-                            if (seasonDetails) {
-                                state.seasonDetailsCache.set(seasonCacheKey, seasonDetails)
-
-                                season.name = seasonDetails.name || season.name
-                                if (seasonDetails.poster_path) {
-                                    season.posterPath = seasonDetails.poster_path
-                                }
-
-                                for (const episode of season.episodes) {
-                                    const episodeMeta = seasonDetails.episodes?.find((e: any) => e.episode_number === episode.episodeNumber)
-                                    if (episodeMeta) {
-                                        episode.id = episodeMeta.id || episode.id
-                                        episode.name = episodeMeta.name || episode.name
-                                        episode.overview = episodeMeta.overview || episode.overview
-                                        episode.stillPath = episodeMeta.still_path || episode.stillPath
-                                        state.dirtyIds.add(show.id)
-                                    }
-                                }
-                            }
-                        } catch (e) {
-                            console.error(`Failed to refresh season ${season.seasonNumber} metadata for TV show ${show.name}:`, e)
-                        }
-                    }
-                } catch (e) {
-                    console.error(`Failed to refresh metadata for TV show ${show.name}:`, e)
-                }
-            }
+            await refreshExistingMetadata(state, signal, emit)
+            if (state.fatalError) throw state.fatalError
         }
 
         for (const source of sources) {
+            throwIfAborted(signal)
             console.log(`Scanning source: ${source.name} (${source.type})`)
-            onProgress?.({ status: `Scanning ${source.name}...` })
+            emit({ phase: 'scanning', status: `Scanning ${source.name}...`, sourceName: source.name, processed: state.processedFiles })
 
-            for (const scanPath of source.paths) {
+            let sourceOk = true
+            for (const scanPath of source.paths || []) {
                 try {
-                    console.log(`Scanning path: ${scanPath} from source ${source.name}`)
-                    await scanDirectoryRecursive(source, scanPath, state)
+                    await scanDirectoryRecursive(source, scanPath, state, signal)
                 } catch (error) {
-                    console.error(`Error scanning path ${scanPath}:`, error)
-                }
-            }
-        }
-
-        onProgress?.({ status: 'Processing changes...' })
-
-        console.log(`Total found files in scan: ${state.foundFilePaths.size}`)
-        let prunedCount = 0
-
-        for (const movie of state.currentMovies) {
-            const originalCount = movie.videoFiles.length
-            const missingFiles = movie.videoFiles.filter(f => !state.foundFilePaths.has(f.filePath))
-
-            if (missingFiles.length > 0) {
-                console.log(`[Prune] Movie "${movie.title}" (ID: ${movie.id}) has ${missingFiles.length} missing files:`)
-                missingFiles.forEach(f => console.log(`  - Missing: ${f.filePath}`))
-            }
-
-            movie.videoFiles = movie.videoFiles.filter(f => state.foundFilePaths.has(f.filePath))
-            if (movie.videoFiles.length !== originalCount) {
-                state.dirtyIds.add(movie.id)
-                prunedCount += (originalCount - movie.videoFiles.length)
-            }
-        }
-
-        for (const show of state.currentTVShows) {
-            let showChanged = false
-            for (const season of show.seasons) {
-                for (const episode of season.episodes) {
-                    const originalCount = episode.videoFiles.length
-                    const missingFiles = episode.videoFiles.filter(f => !state.foundFilePaths.has(f.filePath))
-
-                    if (missingFiles.length > 0) {
-                        console.log(`[Prune] Show "${show.name}" S${season.seasonNumber}E${episode.episodeNumber} has ${missingFiles.length} missing files:`)
-                        missingFiles.forEach(f => console.log(`  - Missing: ${f.filePath}`))
+                    if (error instanceof ScanAbortError) throw error
+                    if (error instanceof TmdbError && !isTransientTmdbError(error)) {
+                        state.fatalError = error
+                        throw error
                     }
-
-                    episode.videoFiles = episode.videoFiles.filter(f => state.foundFilePaths.has(f.filePath))
-                    if (episode.videoFiles.length !== originalCount) {
-                        showChanged = true
-                        prunedCount += (originalCount - episode.videoFiles.length)
-                    }
+                    sourceOk = false
+                    markSourceFailed(state, source, error)
                 }
+                if (state.fatalError) throw state.fatalError
             }
-            if (showChanged) {
-                state.dirtyIds.add(show.id)
+
+            if (sourceOk) {
+                state.successfulSourceIds.add(source.id)
             }
         }
 
-        console.log(`Pruned ${prunedCount} missing files`)
+        throwIfAborted(signal)
 
-        onProgress?.({ status: 'Saving metadata...' })
+        emit({ phase: 'scanning', status: 'Processing changes...', processed: state.processedFiles })
+        console.log(`Total found files in scan: ${state.foundKeys.size}`)
+        const prunedFiles = pruneMissingFiles(state)
+
+        emit({ phase: 'saving', status: 'Saving metadata...' })
 
         const db = getDb()
 
@@ -643,18 +895,21 @@ export const scanMovies = async (onProgress?: (data: any) => void, forceRefresh:
                 saveTVShow(show)
             }
 
-            for (const id of state.dirtyIds) {
+            for (const id of state.dirtyMovieIds) {
                 const movie = state.currentMovies.find(m => m.id === id)
-                if (movie) {
-                    saveMovie(movie)
-                } else {
-                    const show = state.currentTVShows.find(s => s.id === id)
-                    if (show) {
-                        saveTVShow(show)
-                    }
-                }
+                if (movie) saveMovie(movie)
             }
 
+            for (const id of state.dirtyTvIds) {
+                const show = state.currentTVShows.find(s => s.id === id)
+                if (show) saveTVShow(show)
+            }
+
+            // Rebuild the review queue atomically and only for sources we fully traversed.
+            deleteUnscannedFilesForSources([
+                ...Array.from(state.successfulSourceIds),
+                ...Array.from(state.configuredSourceIds).filter(id => !state.failedSources.has(id))
+            ])
             for (const file of state.unscannedFiles) {
                 addUnscannedFile(file)
             }
@@ -667,15 +922,63 @@ export const scanMovies = async (onProgress?: (data: any) => void, forceRefresh:
 
         // Sync history posters during full rescan
         if (forceRefresh) {
-            onProgress?.({ status: 'Syncing history...' })
+            emit({ phase: 'saving', status: 'Syncing history...' })
             syncHistoryPosters()
         }
 
+        const failedSources = Array.from(state.failedSources.values())
         console.log(`Scan complete: Added ${state.newMovies.size} movies and ${state.newTVShows.size} TV shows`)
-        onProgress?.({ status: 'Scan complete!', done: true })
+
+        if (failedSources.length > 0) {
+            console.warn(`Scan finished with warnings: ${failedSources.map(f => f.name).join(', ')}`)
+        }
+
+        emit({
+            phase: failedSources.length > 0 || state.tmdbErrors > 0 ? 'partial' : 'complete',
+            status: failedSources.length > 0
+                ? `Scan finished with warnings (${failedSources.length} source(s) incomplete)`
+                : state.tmdbErrors > 0
+                    ? `Scan complete, but ${state.tmdbErrors} TMDB request(s) failed - unmatched items may need a re-scan`
+                    : 'Scan complete!',
+            processed: state.processedFiles,
+            failedSources,
+            done: true
+        })
+
+        return {
+            status: failedSources.length > 0 ? 'partial' : 'complete',
+            newMovies: state.newMovies.size,
+            newTVShows: state.newTVShows.size,
+            prunedFiles,
+            unscannedFiles: state.unscannedFiles.length,
+            failedSources,
+            tmdbErrors: state.tmdbErrors
+        }
     } catch (error) {
-        console.error('Scan failed:', error)
-        onProgress?.({ status: 'Scan failed!', error })
+        if (error instanceof ScanAbortError || signal?.aborted) {
+            console.warn('Scan cancelled')
+            emit({ phase: 'cancelled', status: 'Scan cancelled', done: true })
+            return emptyResult('cancelled')
+        }
+
+        const message = error instanceof Error ? error.message : String(error)
+        console.error('Scan failed:', message)
+
+        if (isAuthTmdbError(error)) {
+            emit({ phase: 'failed', status: 'Scan failed: TMDB API key rejected. Update it in Settings.', error: message, done: true })
+        } else {
+            emit({ phase: 'failed', status: `Scan failed: ${message}`, error: message, done: true })
+        }
+
+        return {
+            status: 'failed',
+            newMovies: 0,
+            newTVShows: 0,
+            prunedFiles: 0,
+            unscannedFiles: 0,
+            failedSources: Array.from(stateRef?.failedSources.values() ?? []),
+            error: message
+        }
     } finally {
         isScanning = false
     }

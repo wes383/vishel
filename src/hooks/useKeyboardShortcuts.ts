@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 
 interface KeyboardShortcutsOptions {
@@ -19,6 +19,12 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions = {}) {
     const navigate = useNavigate()
     const location = useLocation()
 
+    // Held in a ref so an inline callback from the caller does not re-subscribe on every render.
+    const handlers = useRef(options)
+    useEffect(() => {
+        handlers.current = options
+    })
+
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
         const target = e.target as HTMLElement
         const isInputField = target.tagName === 'INPUT' ||
@@ -27,8 +33,8 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions = {}) {
 
         // Escape key
         if (e.key === 'Escape') {
-            if (options.onEscape) {
-                options.onEscape()
+            if (handlers.current.onEscape) {
+                handlers.current.onEscape()
                 e.preventDefault()
                 return
             }
@@ -53,46 +59,17 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions = {}) {
 
         // Ctrl/Cmd + F - Focus search
         if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-            if (options.onSearch) {
-                options.onSearch()
+            if (handlers.current.onSearch) {
+                handlers.current.onSearch()
                 e.preventDefault()
                 return
             }
         }
 
-    }, [navigate, location, options])
+    }, [navigate, location])
 
     useEffect(() => {
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
     }, [handleKeyDown])
-}
-
-// Simpler hook for pages that just need basic navigation shortcuts
-export function useGlobalShortcuts() {
-    const navigate = useNavigate()
-    const location = useLocation()
-
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            const target = e.target as HTMLElement
-            const isInputField = target.tagName === 'INPUT' ||
-                target.tagName === 'TEXTAREA' ||
-                target.isContentEditable
-
-            // Escape - go back from detail/settings pages, scroll to top on homepage
-            if (e.key === 'Escape' && !isInputField) {
-                if (location.pathname === '/') {
-                    scrollHomeToTop()
-                } else {
-                    navigate('/')
-                }
-                e.preventDefault()
-            }
-
-        }
-
-        window.addEventListener('keydown', handleKeyDown)
-        return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [navigate, location])
 }

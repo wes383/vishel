@@ -1,8 +1,8 @@
-import { app, BrowserWindow, Tray, Menu, nativeImage } from 'electron'
+import { app, BrowserWindow, Tray, Menu, nativeImage, session } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { setupIpcHandlers } from './ipcHandlers'
-import store from './store'
+import store, { migrateStoredSecrets } from './store'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -62,9 +62,50 @@ if (!gotTheLock) {
   })
 
   app.whenReady().then(() => {
+    migrateStoredSecrets()
+    setupContentSecurityPolicy()
     setupIpcHandlers()
     createTray()
     createWindow()
+  })
+}
+
+/**
+ * The renderer shows remote poster/backdrop images and has no network needs of its own,
+ * so everything is pinned to the local origin plus TMDB image and Google font hosts.
+ */
+function setupContentSecurityPolicy() {
+  const isDev = Boolean(VITE_DEV_SERVER_URL)
+
+  const scriptSrc = isDev
+    ? "script-src 'self' 'unsafe-inline'"
+    : "script-src 'self'"
+
+  const connectSrc = isDev
+    ? "connect-src 'self' ws://localhost:5173 http://localhost:5173"
+    : "connect-src 'self'"
+
+  const csp = [
+    "default-src 'self'",
+    scriptSrc,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' data: https://fonts.gstatic.com",
+    "img-src 'self' data: blob: https://image.tmdb.org",
+    connectSrc,
+    "worker-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'none'",
+    "form-action 'none'",
+    "frame-ancestors 'none'"
+  ].join('; ')
+
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [csp]
+      }
+    })
   })
 }
 
@@ -73,6 +114,13 @@ function createTray() {
 
   const iconPath = path.join(process.env.VITE_PUBLIC, 'icon.png')
   const icon = nativeImage.createFromPath(iconPath)
+
+  if (icon.isEmpty()) {
+    // A missing or unreadable icon produced an invisible tray with a dead click handler.
+    console.error(`Tray icon unavailable at ${iconPath}, skipping tray creation`)
+    return
+  }
+
   const isMac = process.platform === 'darwin'
   const traySize = isMac ? 22 : 64
   tray = new Tray(icon.resize({ width: traySize, height: traySize }))
@@ -164,15 +212,34 @@ function createWindow() {
     },
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      webviewTag: false,
+      // The renderer reaches Node only through the allow-listed channels in preload.
+      sandbox: false,
     },
   })
 
   // Remove the default menu bar
   win.setMenu(null)
 
-  // Test active push message to Renderer-process.
-  win.webContents.on('did-finish-load', () => {
-    win?.webContents.send('main-process-message', (new Date).toLocaleString())
+  win.on('page-title-updated', (event) => event.preventDefault())
+
+  // Keep the window on the local app shell: no popups, no navigation to remote origins,
+  // and no permission grants.
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+
+  win.webContents.on('will-navigate', (event, url) => {
+    const isLocal = url.startsWith('file://') || (Boolean(VITE_DEV_SERVER_URL) && url.startsWith(VITE_DEV_SERVER_URL as string))
+    if (!isLocal) {
+      console.warn(`Blocked navigation to ${url}`)
+      event.preventDefault()
+    }
+  })
+
+  win.webContents.session.setPermissionRequestHandler((_contents, permission, callback) => {
+    console.warn(`Blocked permission request: ${permission}`)
+    callback(false)
   })
 
   // Handle Close Event

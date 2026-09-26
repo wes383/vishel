@@ -1,4 +1,5 @@
 import Store from 'electron-store'
+import { safeStorage } from 'electron'
 
 export interface DataSource {
     id: string
@@ -20,7 +21,7 @@ export interface ExternalLinkConfig {
     template: string
 }
 
-interface Settings {
+export interface Settings {
     tmdbApiKey: string
     playerPath: string
     customPlayerPath: string
@@ -103,8 +104,11 @@ const schema = {
                     type: 'object',
                     properties: {
                         url: { type: 'string' },
+                        path: { type: 'string' },
+                        share: { type: 'string' },
                         username: { type: 'string' },
-                        password: { type: 'string' }
+                        password: { type: 'string' },
+                        domain: { type: 'string' }
                     }
                 },
                 paths: {
@@ -120,3 +124,75 @@ const schema = {
 const store = new Store<Settings>({ schema })
 
 export default store
+
+/**
+ * Data source passwords live in %APPDATA%/vishel/config.json. When the OS keystore is
+ * available they are written encrypted through safeStorage; the prefix marks which
+ * entries still predate that.
+ */
+const SECRET_PREFIX = 'enc:v1:'
+
+const canEncrypt = (): boolean => {
+    try {
+        return safeStorage.isEncryptionAvailable()
+    } catch {
+        return false
+    }
+}
+
+const encryptSecret = (plain: string): string => {
+    if (!plain || plain.startsWith(SECRET_PREFIX)) return plain
+    if (!canEncrypt()) {
+        console.warn('[store] OS keystore unavailable, saving data source password without at-rest encryption')
+        return plain
+    }
+    return SECRET_PREFIX + safeStorage.encryptString(plain).toString('base64')
+}
+
+const decryptSecret = (stored?: string): string => {
+    if (!stored) return ''
+    if (!stored.startsWith(SECRET_PREFIX)) return stored
+    try {
+        return safeStorage.decryptString(Buffer.from(stored.slice(SECRET_PREFIX.length), 'base64'))
+    } catch (error) {
+        console.error('[store] Failed to decrypt data source password, re-save the source:', error)
+        return ''
+    }
+}
+
+const mapSourceSecret = (source: DataSource, fn: (value: string) => string): DataSource => ({
+    ...source,
+    config: { ...source?.config, password: fn(source?.config?.password || '') }
+})
+
+/** Plaintext credentials for main-process use only - never expose these to the renderer. */
+export const getSources = (): DataSource[] => {
+    const raw = (store.get('sources') as DataSource[]) || []
+    return raw.map(source => mapSourceSecret(source, decryptSecret))
+}
+
+export const setSources = (sources: DataSource[]) => {
+    store.set('sources', (sources || []).map(source => mapSourceSecret(source, encryptSecret)))
+}
+
+/** One-off upgrade of passwords that were previously written in clear text. */
+export const migrateStoredSecrets = () => {
+    if (!canEncrypt()) return
+
+    const raw = (store.get('sources') as DataSource[]) || []
+    let changed = false
+
+    const next = raw.map(source => {
+        const password = source?.config?.password
+        if (password && !password.startsWith(SECRET_PREFIX)) {
+            changed = true
+            return mapSourceSecret(source, encryptSecret)
+        }
+        return source
+    })
+
+    if (changed) {
+        store.set('sources', next)
+        console.log('[store] Encrypted previously plain-text data source passwords')
+    }
+}

@@ -1,197 +1,134 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
+import { usePersistedState } from '../hooks/usePersistedState'
 import { LibraryTabs } from '../components/library/LibraryTabs'
 import { LibraryActions, SortOption, FilterOption } from '../components/library/LibraryActions'
 import { SearchInput } from '../components/library/SearchInput'
 import { MediaGrid } from '../components/library/MediaGrid'
 import { HistoryList } from '../components/library/HistoryList'
 import { UnscannedFiles } from '../components/library/UnscannedFiles'
-import { Movie, TVShow, UnscannedFile, HistoryItem, CombinedItem, FavoriteItem } from '../types/library'
+import ScanProgressBar from '../components/library/ScanProgressBar'
+import { UnscannedFile, HistoryItem, GridItem } from '../types/library'
+import type { Movie as MovieRecord, TVShow as TVShowRecord } from '../../electron/db'
+import { matchesCastSearch, matchesNameListSearch, matchesSearch, normalizeGenres } from '../utils/searchMatch'
+import { useSettings } from '../contexts/SettingsContext'
+import { useMediaStatus, mediaKey } from '../contexts/MediaStatusContext'
+import { useScan } from '../contexts/ScanContext'
+import type { LibraryTab } from '../types/ipc'
 
-const GENRE_MERGE_MAP: Record<string, string> = {
-    'Action & Adventure': 'Action',
-    'Sci-Fi & Fantasy': 'Science Fiction',
-    'War & Politics': 'War',
-    'TV Movie': 'Other',
-    'Kids': 'Other',
-    'News': 'Other',
-    'Reality': 'Other',
-    'Soap': 'Other',
-    'Talk': 'Other',
+const TABS: LibraryTab[] = ['all', 'movies', 'tv', 'history']
+
+const isTab = (value: string | null): value is LibraryTab =>
+    value !== null && (TABS as string[]).includes(value)
+
+/** What the grid needs to order an entry, kept separate so the sort is memo-friendly. */
+interface Sortable {
+    type: 'movie' | 'tv'
+    id: number
+    sortKey: string
+    sortDate: string
+    popularity?: number
+    createdAt?: number
+    posterPath: string
+    name: string
 }
 
-const CORE_GENRES = new Set([
-    'Action',
-    'Adventure',
-    'Animation',
-    'Comedy',
-    'Crime',
-    'Drama',
-    'Family',
-    'Fantasy',
-    'Documentary',
-    'History',
-    'Horror',
-    'Music',
-    'Mystery',
-    'Romance',
-    'Science Fiction',
-    'Thriller',
-    'War',
-    'Western',
-])
-
-const normalizeGenres = (genres?: string[]) => {
-    if (!genres || genres.length === 0) return []
-    const normalized = genres.map(genre => GENRE_MERGE_MAP[genre] || genre)
-    return Array.from(new Set(normalized.map(genre => CORE_GENRES.has(genre) ? genre : 'Other')))
+const SORT_MIGRATION: Record<string, SortOption> = {
+    'rating-desc': 'popularity-desc',
+    'added-desc': 'recently-added'
 }
-
-const normalizeSearchText = (text: string) =>
-    text
-        .toLowerCase()
-        .normalize('NFKD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9\u4e00-\u9fa5\s]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim()
-
-const isSubsequence = (needle: string, haystack: string) => {
-    if (!needle) return true
-    let j = 0
-    for (let i = 0; i < haystack.length && j < needle.length; i++) {
-        if (haystack[i] === needle[j]) j++
-    }
-    return j === needle.length
-}
-
-const matchesSearch = (value: string, query: string) => {
-    const normalizedValue = normalizeSearchText(value)
-    const normalizedQuery = normalizeSearchText(query)
-
-    if (!normalizedQuery) return true
-    if (normalizedValue.includes(normalizedQuery)) return true
-
-    const queryTokens = normalizedQuery.split(' ').filter(Boolean)
-    const valueTokens = normalizedValue.split(' ').filter(Boolean)
-
-    if (queryTokens.every(token => normalizedValue.includes(token))) return true
-
-    if (queryTokens.every(token => valueTokens.some(word => isSubsequence(token, word)))) return true
-
-    return isSubsequence(queryTokens.join(''), normalizedValue.replace(/\s+/g, ''))
-}
-
-const matchesCastSearch = (
-    cast: Array<{ name?: string }> | undefined,
-    query: string
-) => {
-    const normalizedQuery = normalizeSearchText(query)
-    if (!normalizedQuery) return true
-
-    const normalizedNames = (cast || [])
-        .map(actor => normalizeSearchText(actor?.name || ''))
-        .filter(Boolean)
-
-    if (normalizedNames.length === 0) return false
-
-    // Strict actor matching to avoid false positives from title-style fuzzy logic
-    if (normalizedNames.some(name => name.includes(normalizedQuery))) return true
-
-    const queryTokens = normalizedQuery.split(' ').filter(Boolean)
-    if (queryTokens.length > 1) {
-        return normalizedNames.some(name => queryTokens.every(token => name.includes(token)))
-    }
-
-    // Single-token fallback: match on word prefix (e.g. "tom" -> "tom hanks")
-    return normalizedNames.some(name => name.split(' ').some(part => part.startsWith(normalizedQuery)))
-}
-
-const matchesNameListSearch = (
-    people: Array<{ name?: string }> | undefined,
-    query: string
-) => matchesCastSearch(people, query)
 
 export default function LibraryPage() {
-    const [movies, setMovies] = useState<Movie[]>([])
-    const [tvShows, setTvShows] = useState<TVShow[]>([])
+    const { t } = useTranslation(['library', 'common'])
+    const [searchParams, setSearchParams] = useSearchParams()
+    const { settings } = useSettings()
+    const { favorites, watchStatus, statusTimestamp } = useMediaStatus()
+    const { scanning, addFinishListener } = useScan()
+
+    const [movies, setMovies] = useState<MovieRecord[]>([])
+    const [tvShows, setTvShows] = useState<TVShowRecord[]>([])
     const [unscannedFiles, setUnscannedFiles] = useState<UnscannedFile[]>([])
     const [history, setHistory] = useState<HistoryItem[]>([])
-    const [favorites, setFavorites] = useState<FavoriteItem[]>([])
-    const [filteredMovies, setFilteredMovies] = useState<Movie[]>([])
-    const [filteredTvShows, setFilteredTvShows] = useState<TVShow[]>([])
-    const [watchStatusMap, setWatchStatusMap] = useState<{ [key: string]: { watched: boolean, timestamp: number } }>({})
-    const [favoritesMap, setFavoritesMap] = useState<{ [key: string]: number }>({})
-    const [searchExpanded, setSearchExpanded] = useState(() => {
-        return sessionStorage.getItem('library_search_expanded') === 'true'
-    })
-    const [searchQuery, setSearchQuery] = useState(() => {
-        return sessionStorage.getItem('library_search_query') || ''
-    })
-    const [sortBy, setSortBy] = useState<SortOption>(() => {
-        return (localStorage.getItem('library_sort_by') as SortOption) || 'name-asc'
-    })
-    const [filterBy, setFilterBy] = useState<FilterOption>(() => {
-        return (localStorage.getItem('library_filter_by') as FilterOption) || 'all'
-    })
-    const [genreFilter, setGenreFilter] = useState<string>(() => {
-        return localStorage.getItem('library_genre_filter') || 'all'
-    })
-    const [activeTab, setActiveTab] = useState<'all' | 'movies' | 'tv' | 'history'>(() => {
-        return (sessionStorage.getItem('library_active_tab') as 'all' | 'movies' | 'tv' | 'history') || 'all'
-    })
-    const [loading, setLoading] = useState(false)
-    const [posterTitleMode, setPosterTitleMode] = useState<'hover' | 'below' | 'hidden'>('hover')
-    const [posterSize, setPosterSize] = useState<'small' | 'medium' | 'large'>('medium')
-    const scrollRef = useRef<HTMLDivElement>(null)
+    const [loadError, setLoadError] = useState<string | null>(null)
+    const [loading, setLoading] = useState(true)
 
-    // Keyboard shortcuts
+    const [sortBy, setSortBy] = usePersistedState<SortOption>('local', 'library_sort_by', 'name-asc')
+    const [filterBy, setFilterBy] = usePersistedState<FilterOption>('local', 'library_filter_by', 'all')
+    const [genreFilter, setGenreFilter] = usePersistedState<string>('local', 'library_genre_filter', 'all')
+    const [searchExpanded, setSearchExpanded] = usePersistedState<boolean>('session', 'library_search_expanded', false)
+    const [searchQuery, setSearchQuery] = usePersistedState<string>('session', 'library_search_query', '')
+
+    const scrollRef = useRef<HTMLDivElement>(null)
+    const restoredScroll = useRef(false)
+
+    const activeTab: LibraryTab = isTab(searchParams.get('tab')) ? searchParams.get('tab') as LibraryTab : 'all'
+
+    const setActiveTab = useCallback((tab: LibraryTab) => {
+        setSearchParams(tab === 'all' ? {} : { tab }, { replace: true })
+    }, [setSearchParams])
+
+    // A persisted legacy value must not leave the library unsorted.
+    useEffect(() => {
+        const migrated = SORT_MIGRATION[sortBy]
+        if (migrated) setSortBy(migrated)
+    }, [sortBy, setSortBy])
+
     const handleSearchShortcut = useCallback(() => {
         setSearchExpanded(true)
-    }, [])
+    }, [setSearchExpanded])
 
     const handleEscapeShortcut = useCallback(() => {
         if (searchExpanded) {
             setSearchExpanded(false)
             setSearchQuery('')
-        } else {
-            const container = scrollRef.current
-            if (container) {
-                container.scrollTo({ top: 0, behavior: 'smooth' })
-            } else {
-                window.scrollTo({ top: 0, behavior: 'smooth' })
-            }
+            return
         }
-    }, [searchExpanded])
+        scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+    }, [searchExpanded, setSearchExpanded, setSearchQuery])
 
     useKeyboardShortcuts({
         onSearch: handleSearchShortcut,
         onEscape: handleEscapeShortcut
     })
 
+    const fetchData = useCallback(async () => {
+        try {
+            const [moviesData, tvData, unscannedData, historyData] = await Promise.all([
+                window.electron.ipcRenderer.invoke('get-movies'),
+                window.electron.ipcRenderer.invoke('get-tv-shows'),
+                window.electron.ipcRenderer.invoke('get-unscanned-files'),
+                window.electron.ipcRenderer.invoke('get-history')
+            ])
+
+            setMovies(moviesData || [])
+            setTvShows(tvData || [])
+            setUnscannedFiles(unscannedData || [])
+            setHistory(historyData || [])
+            setLoadError(null)
+        } catch (error) {
+            // An IPC failure used to render as an empty library, hiding the real problem.
+            console.error('Failed to fetch library data:', error)
+            setLoadError(error instanceof Error ? error.message : t('library:loadLibraryFailed'))
+        } finally {
+            setLoading(false)
+        }
+    }, [t])
+
     useEffect(() => {
-        sessionStorage.setItem('library_active_tab', activeTab)
+        void fetchData()
+    }, [fetchData])
+
+    useEffect(() => addFinishListener(() => void fetchData()), [addFinishListener, fetchData])
+
+    useEffect(() => {
+        if (activeTab === 'history') {
+            window.electron.ipcRenderer.invoke('get-history')
+                .then(historyData => setHistory(historyData || []))
+                .catch(error => console.error('Failed to refresh history:', error))
+        }
     }, [activeTab])
-
-    useEffect(() => {
-        localStorage.setItem('library_sort_by', sortBy)
-    }, [sortBy])
-
-    useEffect(() => {
-        localStorage.setItem('library_filter_by', filterBy)
-    }, [filterBy])
-
-    useEffect(() => {
-        sessionStorage.setItem('library_search_query', searchQuery)
-    }, [searchQuery])
-
-    useEffect(() => {
-        sessionStorage.setItem('library_search_expanded', String(searchExpanded))
-    }, [searchExpanded])
-
-    useEffect(() => {
-        localStorage.setItem('library_genre_filter', genreFilter)
-    }, [genreFilter])
 
     useEffect(() => {
         if (document.activeElement instanceof HTMLElement) {
@@ -199,274 +136,145 @@ export default function LibraryPage() {
         }
     }, [])
 
-    const fetchData = async () => {
-        setLoading(true)
-        try {
-            const [
-                moviesData,
-                tvData,
-                unscannedData,
-                historyData,
-                favoritesData,
-                watchStatusData
-            ] = await Promise.all([
-                window.electron.ipcRenderer.invoke('get-movies'),
-                window.electron.ipcRenderer.invoke('get-tv-shows'),
-                window.electron.ipcRenderer.invoke('get-unscanned-files'),
-                window.electron.ipcRenderer.invoke('get-history'),
-                window.electron.ipcRenderer.invoke('get-favorites'),
-                window.electron.ipcRenderer.invoke('get-all-watch-status')
-            ])
+    // Search matching is the expensive part; the deferred value keeps typing responsive
+    // while the grid still reflects the query a frame later.
+    const deferredQuery = useDeferredValue(searchQuery)
 
-            setMovies(moviesData || [])
-            setTvShows(tvData || [])
-            setUnscannedFiles(unscannedData || [])
-            setHistory(historyData || [])
-            setFavorites(favoritesData || [])
+    const matchedMovies = useMemo(() => {
+        if (!deferredQuery) return movies
+        return movies.filter(movie =>
+            matchesSearch(movie?.title || '', deferredQuery) ||
+            matchesCastSearch(movie.cast, deferredQuery) ||
+            matchesNameListSearch(movie.director, deferredQuery)
+        )
+    }, [movies, deferredQuery])
 
-            const favMap: { [key: string]: number } = {}
-            favoritesData.forEach((f: any) => {
-                favMap[`${f.mediaType}-${f.mediaId}`] = f.timestamp
-            })
-            setFavoritesMap(favMap)
+    const matchedTvShows = useMemo(() => {
+        if (!deferredQuery) return tvShows
+        return tvShows.filter(show =>
+            matchesSearch(show?.name || '', deferredQuery) ||
+            matchesCastSearch(show.cast, deferredQuery) ||
+            matchesNameListSearch(show.createdBy, deferredQuery)
+        )
+    }, [tvShows, deferredQuery])
 
-            const statusMap: { [key: string]: { watched: boolean, timestamp: number } } = {}
-            watchStatusData.forEach((s: any) => {
-                statusMap[`${s.mediaType}-${s.mediaId}`] = { watched: s.watched, timestamp: s.timestamp }
-            })
-            setWatchStatusMap(statusMap)
-        } catch (error) {
-            console.error('Failed to fetch library data:', error)
-            // Set empty arrays to prevent rendering errors
-            setMovies([])
-            setTvShows([])
-            setUnscannedFiles([])
-            setHistory([])
-            setFavorites([])
-            setWatchStatusMap({})
-        } finally {
-            setLoading(false)
+    const statusFilteredMovies = useMemo(() => {
+        if (filterBy === 'favorites') {
+            return matchedMovies.filter(movie => favorites.some(f => mediaKey('movie', movie.id) === mediaKey(f.mediaType, f.mediaId)))
         }
-    }
-
-    const fetchFavorites = async () => {
-        try {
-            const favoritesData = await window.electron.ipcRenderer.invoke('get-favorites')
-            setFavorites(favoritesData || [])
-            const favMap: { [key: string]: number } = {}
-            favoritesData.forEach((f: any) => {
-                favMap[`${f.mediaType}-${f.mediaId}`] = f.timestamp
-            })
-            setFavoritesMap(favMap)
-        } catch (error) {
-            console.error('Failed to fetch favorites:', error)
+        if (filterBy === 'watched') {
+            return matchedMovies.filter(movie => watchStatus[mediaKey('movie', movie.id)]?.watched)
         }
-    }
-
-    const fetchWatchStatus = async () => {
-        try {
-            const watchStatusData = await window.electron.ipcRenderer.invoke('get-all-watch-status')
-            const statusMap: { [key: string]: { watched: boolean, timestamp: number } } = {}
-            watchStatusData.forEach((s: any) => {
-                statusMap[`${s.mediaType}-${s.mediaId}`] = { watched: s.watched, timestamp: s.timestamp }
-            })
-            setWatchStatusMap(statusMap)
-        } catch (error) {
-            console.error('Failed to fetch watch status:', error)
+        if (filterBy === 'unwatched') {
+            return matchedMovies.filter(movie => !watchStatus[mediaKey('movie', movie.id)]?.watched)
         }
-    }
+        return matchedMovies
+    }, [matchedMovies, filterBy, favorites, watchStatus])
 
-    useEffect(() => {
-        fetchData()
-
-        window.electron.ipcRenderer.invoke('get-settings').then((data: any) => {
-            setPosterTitleMode(data.posterTitleMode || (data.showTitlesOnPosters ? 'below' : 'hover'))
-            setPosterSize(data.posterSize || 'medium')
-        })
-
-        // Listen for tab navigation from tray menu
-        const handleNavigateToTab = (_event: any, tab: 'all' | 'movies' | 'tv' | 'history') => {
-            setActiveTab(tab)
-            sessionStorage.setItem('library_active_tab', tab)
+    const statusFilteredTvShows = useMemo(() => {
+        if (filterBy === 'favorites') {
+            return matchedTvShows.filter(show => favorites.some(f => mediaKey('tv', show.id) === mediaKey(f.mediaType, f.mediaId)))
         }
-
-        window.electron.ipcRenderer.on('navigate-to-tab', handleNavigateToTab)
-
-        return () => {
-            window.electron.ipcRenderer.off('navigate-to-tab', handleNavigateToTab)
+        if (filterBy === 'watched') {
+            return matchedTvShows.filter(show => watchStatus[mediaKey('tv', show.id)]?.watched)
         }
-    }, [])
-
-    // Refresh history when switching to history tab
-    useEffect(() => {
-        if (activeTab === 'history') {
-            window.electron.ipcRenderer.invoke('get-history').then((historyData: any) => {
-                setHistory(historyData || [])
-            })
+        if (filterBy === 'unwatched') {
+            return matchedTvShows.filter(show => !watchStatus[mediaKey('tv', show.id)]?.watched)
         }
-    }, [activeTab])
+        return matchedTvShows
+    }, [matchedTvShows, filterBy, favorites, watchStatus])
 
-    // Apply filters
-    useEffect(() => {
-        const applyFilters = () => {
-            let filteredM = searchQuery
-                ? movies.filter(movie =>
-                    matchesSearch(movie?.title || '', searchQuery) ||
-                    matchesCastSearch(movie.cast, searchQuery) ||
-                    matchesNameListSearch(movie.director, searchQuery)
-                )
-                : movies
+    const genreFilteredMovies = useMemo(
+        () => statusFilteredMovies.filter(movie => genreFilter === 'all' || normalizeGenres(movie.genres).includes(genreFilter)),
+        [statusFilteredMovies, genreFilter]
+    )
 
-            let filteredT = searchQuery
-                ? tvShows.filter(show =>
-                    matchesSearch(show?.name || '', searchQuery) ||
-                    matchesCastSearch(show.cast, searchQuery) ||
-                    matchesNameListSearch(show.createdBy, searchQuery)
-                )
-                : tvShows
+    const genreFilteredTvShows = useMemo(
+        () => statusFilteredTvShows.filter(show => genreFilter === 'all' || normalizeGenres(show.genres).includes(genreFilter)),
+        [statusFilteredTvShows, genreFilter]
+    )
 
-            if (filterBy === 'favorites') {
-                const favoriteIds = new Set(favorites.map(f => `${f.mediaType}-${f.mediaId}`))
-                filteredM = filteredM.filter(m => favoriteIds.has(`movie-${m.id}`))
-                filteredT = filteredT.filter(t => favoriteIds.has(`tv-${t.id}`))
-            } else if (filterBy === 'watched') {
-                filteredM = filteredM.filter(m => watchStatusMap[`movie-${m.id}`]?.watched)
-                filteredT = filteredT.filter(t => watchStatusMap[`tv-${t.id}`]?.watched)
-            } else if (filterBy === 'unwatched') {
-                filteredM = filteredM.filter(m => !watchStatusMap[`movie-${m.id}`]?.watched)
-                filteredT = filteredT.filter(t => !watchStatusMap[`tv-${t.id}`]?.watched)
-            }
-
-            setFilteredMovies(filteredM)
-            setFilteredTvShows(filteredT)
-        }
-
-        applyFilters()
-    }, [searchQuery, filterBy, movies, tvShows, favorites, watchStatusMap])
-
-    useEffect(() => {
-        const container = scrollRef.current
-        if (!container) return
-        const handleScroll = () => {
-            sessionStorage.setItem('library_scroll', container.scrollTop.toString())
-        }
-        container.addEventListener('scroll', handleScroll)
-        return () => container.removeEventListener('scroll', handleScroll)
-    }, [])
-
-    useEffect(() => {
-        if (loading) return
-        const container = scrollRef.current
-        if (!container) return
-        const savedScroll = sessionStorage.getItem('library_scroll')
-        if (!savedScroll) return
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                container.scrollTop = parseInt(savedScroll, 10)
-            })
-        })
-    }, [loading, filteredMovies, filteredTvShows])
-
-    const filteredHistory = searchQuery
-        ? history.filter(item => matchesSearch(item?.title || '', searchQuery))
-        : history
-
-    const sortedMovies = [...filteredMovies].sort((a, b) => {
-        if (!a || !b) return 0
-        switch (sortBy) {
-            case 'name-asc':
-                return (a.title || '').localeCompare(b.title || '')
-            case 'name-desc':
-                return (b.title || '').localeCompare(a.title || '')
-            case 'date-desc':
-                return (b.releaseDate || '').localeCompare(a.releaseDate || '')
-            case 'date-asc':
-                return (a.releaseDate || '').localeCompare(b.releaseDate || '')
-            case 'rating-desc':
-                return (b.popularity || 0) - (a.popularity || 0)
-            case 'recently-added':
-                if (filterBy === 'watched') {
-                    return (watchStatusMap[`movie-${b.id}`]?.timestamp || 0) - (watchStatusMap[`movie-${a.id}`]?.timestamp || 0)
-                }
-                if (filterBy === 'favorites') {
-                    return (favoritesMap[`movie-${b.id}`] || 0) - (favoritesMap[`movie-${a.id}`] || 0)
-                }
-                return (b.createdAt || 0) - (a.createdAt || 0)
-            default:
-                return 0
-        }
-    })
-
-    const sortedTvShows = [...filteredTvShows].sort((a, b) => {
-        if (!a || !b) return 0
-        switch (sortBy) {
-            case 'name-asc':
-                return (a.name || '').localeCompare(b.name || '')
-            case 'name-desc':
-                return (b.name || '').localeCompare(a.name || '')
-            case 'date-desc':
-                return (b.firstAirDate || '').localeCompare(a.firstAirDate || '')
-            case 'date-asc':
-                return (a.firstAirDate || '').localeCompare(b.firstAirDate || '')
-            case 'rating-desc':
-                return (b.popularity || 0) - (a.popularity || 0)
-            case 'recently-added':
-                if (filterBy === 'watched') {
-                    return (watchStatusMap[`tv-${b.id}`]?.timestamp || 0) - (watchStatusMap[`tv-${a.id}`]?.timestamp || 0)
-                }
-                if (filterBy === 'favorites') {
-                    return (favoritesMap[`tv-${b.id}`] || 0) - (favoritesMap[`tv-${a.id}`] || 0)
-                }
-                return (b.createdAt || 0) - (a.createdAt || 0)
-            default:
-                return 0
-        }
-    })
-
-    const combinedItems: CombinedItem[] = [
-        ...sortedMovies.filter(m => m && (genreFilter === 'all' || normalizeGenres(m.genres).includes(genreFilter))).map(m => ({ ...m, type: 'movie' as const, sortKey: m.title || '', sortDate: m.releaseDate || '', popularity: m.popularity, createdAt: m.createdAt })),
-        ...sortedTvShows.filter(s => s && (genreFilter === 'all' || normalizeGenres(s.genres).includes(genreFilter))).map(s => ({ ...s, type: 'tv' as const, sortKey: s.name || '', sortDate: s.firstAirDate || '', popularity: s.popularity, createdAt: s.createdAt }))
-    ].sort((a, b) => {
-        if (!a || !b) return 0
+    const compare = useCallback((a: Sortable, b: Sortable) => {
         switch (sortBy) {
             case 'name-asc':
                 return a.sortKey.localeCompare(b.sortKey)
             case 'name-desc':
                 return b.sortKey.localeCompare(a.sortKey)
             case 'date-desc':
-                return (b.sortDate || '').localeCompare(a.sortDate || '')
+                return b.sortDate.localeCompare(a.sortDate)
             case 'date-asc':
-                return (a.sortDate || '').localeCompare(b.sortDate || '')
-            case 'rating-desc':
-                // Apply weight to balance movie vs TV show popularity
-                const aPopularity = (a.popularity || 0) * (a.type === 'movie' ? 3 : 1)
-                const bPopularity = (b.popularity || 0) * (b.type === 'movie' ? 3 : 1)
-                return bPopularity - aPopularity
-            case 'recently-added':
-                if (filterBy === 'watched') {
-                    return (watchStatusMap[`${b.type}-${b.id}`]?.timestamp || 0) - (watchStatusMap[`${a.type}-${a.id}`]?.timestamp || 0)
-                }
-                if (filterBy === 'favorites') {
-                    return (favoritesMap[`${b.type}-${b.id}`] || 0) - (favoritesMap[`${a.type}-${a.id}`] || 0)
+                return a.sortDate.localeCompare(b.sortDate)
+            case 'popularity-desc': {
+                // Movie and TV popularity live on different scales; weight movies so the mixed
+                // "All" tab does not always put every movie first.
+                const aWeighted = (a.popularity || 0) * (a.type === 'movie' ? 3 : 1)
+                const bWeighted = (b.popularity || 0) * (b.type === 'movie' ? 3 : 1)
+                return bWeighted - aWeighted
+            }
+            case 'recently-added': {
+                if (filterBy === 'watched' || filterBy === 'favorites') {
+                    return statusTimestamp(b.type, b.id) - statusTimestamp(a.type, a.id)
                 }
                 return (b.createdAt || 0) - (a.createdAt || 0)
+            }
             default:
                 return 0
         }
-    })
+    }, [sortBy, filterBy, statusTimestamp])
 
-    const handleDeleteHistory = async (id: string) => {
-        await window.electron.ipcRenderer.invoke('delete-history-item', id)
-        setHistory(prev => prev.filter(h => h.id !== id))
-    }
+    const toSortable = useCallback((record: MovieRecord | TVShowRecord, type: 'movie' | 'tv'): Sortable => ({
+        type,
+        id: record.id,
+        sortKey: 'title' in record ? record.title || '' : record.name || '',
+        sortDate: 'releaseDate' in record ? record.releaseDate || '' : record.firstAirDate || '',
+        popularity: record.popularity,
+        createdAt: record.createdAt,
+        posterPath: record.posterPath,
+        name: 'title' in record ? record.title : record.name
+    }), [])
 
-    const genreFilteredMovies = sortedMovies.filter(m => genreFilter === 'all' || normalizeGenres(m.genres).includes(genreFilter))
-    const genreFilteredTvShows = sortedTvShows.filter(s => genreFilter === 'all' || normalizeGenres(s.genres).includes(genreFilter))
+    const sortedWith = useCallback(<T extends MovieRecord | TVShowRecord>(records: T[], type: 'movie' | 'tv') =>
+        [...records]
+            .map(record => ({ record, sortable: toSortable(record, type) }))
+            .sort((a, b) => compare(a.sortable, b.sortable))
+            .map(entry => ({
+                id: entry.record.id,
+                type,
+                title: entry.sortable.name,
+                posterPath: entry.sortable.posterPath
+            })),
+        [compare, toSortable])
+
+    const movieGridItems = useMemo<GridItem[]>(
+        () => sortedWith(genreFilteredMovies, 'movie'),
+        [sortedWith, genreFilteredMovies]
+    )
+
+    const tvGridItems = useMemo<GridItem[]>(
+        () => sortedWith(genreFilteredTvShows, 'tv'),
+        [sortedWith, genreFilteredTvShows]
+    )
+
+    const combinedGridItems = useMemo<GridItem[]>(() => {
+        const entries: Array<Sortable & { poster: string; title: string }> = [
+            ...genreFilteredMovies.map(movie => ({ ...toSortable(movie, 'movie'), poster: movie.posterPath, title: movie.title })),
+            ...genreFilteredTvShows.map(show => ({ ...toSortable(show, 'tv'), poster: show.posterPath, title: show.name }))
+        ]
+
+        return entries
+            .sort((a, b) => compare(a, b))
+            .map(entry => ({ id: entry.id, type: entry.type, title: entry.title, posterPath: entry.poster }))
+    }, [genreFilteredMovies, genreFilteredTvShows, toSortable, compare])
+
+    const filteredHistory = useMemo(
+        () => deferredQuery ? history.filter(item => matchesSearch(item?.title || '', deferredQuery)) : history,
+        [history, deferredQuery]
+    )
 
     const genreOptions = useMemo(() => {
         const allGenres = [
-            ...movies.flatMap(m => normalizeGenres(m.genres)),
-            ...tvShows.flatMap(s => normalizeGenres(s.genres))
+            ...movies.flatMap(movie => normalizeGenres(movie.genres)),
+            ...tvShows.flatMap(show => normalizeGenres(show.genres))
         ]
         return Array.from(new Set(allGenres)).sort((a, b) => {
             if (a === 'Other') return 1
@@ -481,7 +289,66 @@ export default function LibraryPage() {
         if (genreFilter !== 'all' && !genreOptions.includes(genreFilter)) {
             setGenreFilter('all')
         }
-    }, [loading, genreFilter, genreOptions])
+    }, [loading, genreFilter, genreOptions, setGenreFilter])
+
+    // Restore the scroll position once after the first paint of the data, not on every keystroke.
+    useEffect(() => {
+        if (loading || restoredScroll.current) return
+        restoredScroll.current = true
+
+        const container = scrollRef.current
+        const saved = sessionStorage.getItem('library_scroll')
+        if (!container || !saved) return
+
+        requestAnimationFrame(() => {
+            container.scrollTop = parseInt(saved, 10)
+        })
+    }, [loading])
+
+    useEffect(() => {
+        const container = scrollRef.current
+        if (!container) return
+
+        let frame = 0
+        const handleScroll = () => {
+            if (frame) return
+            frame = requestAnimationFrame(() => {
+                frame = 0
+                sessionStorage.setItem('library_scroll', String(container.scrollTop))
+            })
+        }
+
+        container.addEventListener('scroll', handleScroll, { passive: true })
+        return () => {
+            container.removeEventListener('scroll', handleScroll)
+            if (frame) cancelAnimationFrame(frame)
+        }
+    }, [])
+
+    const handleDeleteHistory = async (id: string) => {
+        try {
+            await window.electron.ipcRenderer.invoke('delete-history-item', id)
+            setHistory(prev => prev.filter(item => item.id !== id))
+        } catch (error) {
+            console.error('Failed to delete history item:', error)
+        }
+    }
+
+    const posterTitleMode = settings?.posterTitleMode || 'hover'
+    const posterSize = settings?.posterSize || 'medium'
+
+    const emptyMessage = (label: string, hint: React.ReactNode) => (
+        searchQuery ? (
+            <>
+                <p className="text-xl mb-2">{t('library:noResultsFound')}</p>
+                <p>{hint}</p>
+            </>
+        ) : (
+            <>
+                <p className="text-xl mb-2">{label}</p>
+            </>
+        )
+    )
 
     return (
         <div className="h-full flex flex-col">
@@ -489,7 +356,7 @@ export default function LibraryPage() {
                 <div className="fixed top-0 left-0 right-0 h-8 bg-gradient-to-b from-neutral-900/50 to-transparent z-[99] pointer-events-none" />
                 <div className="mb-8">
                     <div className="relative flex flex-wrap md:flex-nowrap items-center justify-between gap-y-4">
-                        <h2 className="text-3xl font-bold ml-[5px] font-['Montserrat'] text-white/50 order-1">Vishel</h2>
+                        <h1 className="text-3xl font-bold ml-[5px] font-['Montserrat'] text-white/50 order-1">Vishel</h1>
 
                         <div className="order-3 md:order-2 w-full md:w-auto">
                             <LibraryTabs activeTab={activeTab} onTabChange={setActiveTab} />
@@ -511,41 +378,45 @@ export default function LibraryPage() {
                     </div>
                 </div>
 
+                {scanning && <ScanProgressBar />}
+
                 <SearchInput
                     value={searchQuery}
                     onChange={setSearchQuery}
                     onClose={() => setSearchExpanded(false)}
                     visible={searchExpanded}
                     placeholder={activeTab === 'history'
-                        ? 'Search history by title...'
-                        : 'Search by title, actor, director, or creator...'}
+                        ? t('library:searchHistoryPlaceholder')
+                        : t('library:librarySearchPlaceholder')}
                 />
 
-                {loading ? (
-                    <div className="text-center text-gray-400 mt-20">Loading library...</div>
+                {loadError ? (
+                    <div className="text-center mt-20 space-y-4" role="alert">
+                        <p className="text-xl text-red-300">{t('library:couldNotLoadLibrary')}</p>
+                        <p className="text-sm text-gray-400 break-all">{loadError}</p>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setLoading(true)
+                                void fetchData()
+                            }}
+                            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium"
+                        >
+                            {t('library:tryAgain')}
+                        </button>
+                    </div>
+                ) : loading ? (
+                    <div className="text-center text-gray-400 mt-20">{t('library:loadingLibrary')}</div>
                 ) : (
                     <>
                         {activeTab === 'all' && (
                             <>
                                 <MediaGrid
-                                    items={combinedItems}
+                                    items={combinedGridItems}
                                     posterTitleMode={posterTitleMode}
                                     posterSize={posterSize}
-                                    onRematch={fetchData}
-                                    onFavoritesChange={fetchFavorites}
-                                    onWatchStatusChange={fetchWatchStatus}
-                                    emptyMessage={
-                                        searchQuery ? (
-                                            <>
-                                                <p className="text-xl mb-2">No results found</p>
-                                                <p>Try adjusting your search terms.</p>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <p className="text-xl mb-2">No content found</p>
-                                            </>
-                                        )
-                                    }
+                                    onChanged={fetchData}
+                                    emptyMessage={emptyMessage(t('library:noContentFound'), undefined)}
                                 />
                                 <UnscannedFiles files={unscannedFiles} onRefresh={fetchData} />
                             </>
@@ -553,49 +424,21 @@ export default function LibraryPage() {
 
                         {activeTab === 'movies' && (
                             <MediaGrid
-                                items={genreFilteredMovies}
+                                items={movieGridItems}
                                 posterTitleMode={posterTitleMode}
                                 posterSize={posterSize}
-                                type="movie"
-                                onRematch={fetchData}
-                                onFavoritesChange={fetchFavorites}
-                                onWatchStatusChange={fetchWatchStatus}
-                                emptyMessage={
-                                    searchQuery ? (
-                                        <>
-                                            <p className="text-xl mb-2">No movies found</p>
-                                            <p>Try adjusting your search terms.</p>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <p className="text-xl mb-2">No movies found</p>
-                                        </>
-                                    )
-                                }
+                                onChanged={fetchData}
+                                emptyMessage={emptyMessage(t('library:noMoviesFound'), t('library:tryAdjustingSearch'))}
                             />
                         )}
 
                         {activeTab === 'tv' && (
                             <MediaGrid
-                                items={genreFilteredTvShows}
+                                items={tvGridItems}
                                 posterTitleMode={posterTitleMode}
                                 posterSize={posterSize}
-                                type="tv"
-                                onRematch={fetchData}
-                                onFavoritesChange={fetchFavorites}
-                                onWatchStatusChange={fetchWatchStatus}
-                                emptyMessage={
-                                    searchQuery ? (
-                                        <>
-                                            <p className="text-xl mb-2">No TV shows found</p>
-                                            <p>Try adjusting your search terms.</p>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <p className="text-xl mb-2">No TV shows found</p>
-                                        </>
-                                    )
-                                }
+                                onChanged={fetchData}
+                                emptyMessage={emptyMessage(t('library:noTvShowsFound'), t('library:tryAdjustingSearch'))}
                             />
                         )}
 
@@ -603,19 +446,17 @@ export default function LibraryPage() {
                             <HistoryList
                                 items={filteredHistory}
                                 onDelete={handleDeleteHistory}
-                                emptyMessage={
-                                    searchQuery ? (
-                                        <>
-                                            <p className="text-xl mb-2">No history found</p>
-                                            <p>Try adjusting your search terms.</p>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <p className="text-xl mb-2">No history yet</p>
-                                            <p>Start watching movies or TV shows to see them here.</p>
-                                        </>
-                                    )
-                                }
+                                emptyMessage={searchQuery ? (
+                                    <>
+                                        <p className="text-xl mb-2">{t('library:noHistoryFound')}</p>
+                                        <p>{t('library:tryAdjustingSearch')}</p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="text-xl mb-2">{t('library:noHistoryYet')}</p>
+                                        <p>{t('library:noHistoryHint')}</p>
+                                    </>
+                                )}
                             />
                         )}
                     </>

@@ -25,6 +25,12 @@ import type { LibraryTab } from '../types/ipc'
 const isTab = (value: string | null): value is LibraryTab =>
     value !== null && (LIBRARY_TAB_IDS as readonly string[]).includes(value)
 
+/** Detail pages, settings and the Escape shortcut all return to `/` with no param. */
+const readStoredTab = (): LibraryTab => {
+    const stored = sessionStorage.getItem('library_tab')
+    return isTab(stored) ? stored : 'all'
+}
+
 /** What the grid needs to order an entry, kept separate so the sort is memo-friendly. */
 interface Sortable {
     type: 'movie' | 'tv'
@@ -65,7 +71,13 @@ export default function LibraryPage() {
     const scrollRef = useRef<HTMLDivElement>(null)
     const restoredScroll = useRef(false)
 
-    const activeTab: LibraryTab = isTab(searchParams.get('tab')) ? searchParams.get('tab') as LibraryTab : 'all'
+    // The URL stays the authority - it is what the tray menu writes - and the stored tab only
+    // speaks when the URL has nothing to say.
+    const activeTab: LibraryTab = isTab(searchParams.get('tab')) ? searchParams.get('tab') as LibraryTab : readStoredTab()
+
+    useEffect(() => {
+        sessionStorage.setItem('library_tab', activeTab)
+    }, [activeTab])
 
     const setActiveTab = useCallback((tab: LibraryTab) => {
         setSearchParams(tab === 'all' ? {} : { tab }, { replace: true })

@@ -358,26 +358,21 @@ export default function LibraryPage() {
             <div ref={scrollRef} className="library-scroll-container flex-1 overflow-auto pt-12 px-8 lg:px-[72px] pb-8">
                 <div className="titlebar-fade fixed top-0 left-0 right-0 h-8 z-[99] pointer-events-none" />
                 <div className="mb-8">
-                    <div className="relative flex flex-wrap md:flex-nowrap items-center justify-between gap-y-4">
-                        <h1 className="text-3xl font-bold tracking-tight ml-[5px] font-display text-foreground-faint order-1">Vishel</h1>
+                    <div className="flex flex-wrap items-center justify-between gap-y-4">
+                        <LibraryTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-                        <div className="order-3 md:order-2 w-full md:w-auto">
-                            <LibraryTabs activeTab={activeTab} onTabChange={setActiveTab} />
-                        </div>
-
-                        <div className="order-2 md:order-3">
-                            <LibraryActions
-                                sortBy={sortBy}
-                                onSortChange={setSortBy}
-                                onSearchToggle={() => setSearchExpanded(!searchExpanded)}
-                                activeTab={activeTab}
-                                filterBy={filterBy}
-                                onFilterChange={setFilterBy}
-                                genreFilter={genreFilter}
-                                genreOptions={genreOptions}
-                                onGenreFilterChange={setGenreFilter}
-                            />
-                        </div>
+                        <LibraryActions
+                            sortBy={sortBy}
+                            onSortChange={setSortBy}
+                            onSearchToggle={() => setSearchExpanded(!searchExpanded)}
+                            searchExpanded={searchExpanded}
+                            activeTab={activeTab}
+                            filterBy={filterBy}
+                            onFilterChange={setFilterBy}
+                            genreFilter={genreFilter}
+                            genreOptions={genreOptions}
+                            onGenreFilterChange={setGenreFilter}
+                        />
                     </div>
                 </div>
 

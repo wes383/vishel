@@ -1,7 +1,6 @@
 import React, { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { LibraryTab } from '../../types/ipc'
-import { cn } from '../ui/cn'
 import { TAB_LIST_CLASS, tabTriggerClass } from '../ui/Segmented'
 
 interface LibraryTabsProps {
@@ -25,8 +24,6 @@ const NAVIGATION_KEYS = ['ArrowRight', 'ArrowLeft', 'Home', 'End']
  * role=tab plus aria-selected and a roving tabindex: the strip is one stop in the tab order and
  * Arrow/Home/End move the selection, per the ARIA tabs pattern. aria-controls is intentionally
  * absent because the panels are rendered by the library page, outside this component.
- * Below md the strip sits in the header's third slot; at md+ it is pulled out of the flex row and
- * centred over the `relative` header, so the wrapper in Library.tsx must stay unpositioned.
  */
 export const LibraryTabs: React.FC<LibraryTabsProps> = ({ activeTab, onTabChange }) => {
     const { t } = useTranslation(['library', 'common'])
@@ -57,7 +54,7 @@ export const LibraryTabs: React.FC<LibraryTabsProps> = ({ activeTab, onTabChange
             aria-label={t('library:librarySections')}
             aria-orientation="horizontal"
             onKeyDown={handleKeyDown}
-            className={cn(TAB_LIST_CLASS, 'justify-center md:absolute md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2')}
+            className={TAB_LIST_CLASS}
         >
             {TABS.map(tab => {
                 const isActive = activeTab === tab.id

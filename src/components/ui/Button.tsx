@@ -30,15 +30,21 @@ const SIZES = {
     sm: 'h-9 px-4 text-sm',
     md: 'h-10 px-5 text-sm',
     lg: 'h-12 px-7 text-base',
-    /** Fixed square instead of the padding-sized hit boxes this replaces. */
+    /** Fixed square hit box instead of the padding-sized ones this replaces. */
     icon: 'h-9 w-9'
 } as const
+
+/**
+ * Exactly one radius is emitted per button: two `rounded-*` utilities on one element
+ * would resolve by stylesheet order, not by the order written here.
+ */
+const RADIUS = { pill: 'rounded-full', tile: 'rounded-md' } as const
 
 export type ButtonVariant = keyof typeof VARIANTS
 export type ButtonSize = keyof typeof SIZES
 
 export const BUTTON_BASE = cn(
-    'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full font-medium',
+    'inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium',
     'leading-none select-none transition-colors duration-150 ease-out active:scale-[0.97]',
     'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
     'focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50'
@@ -67,7 +73,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
             type={type}
             disabled={disabled || loading}
             aria-busy={loading || undefined}
-            className={cn(BUTTON_BASE, variantClasses(variant, tone === 'danger'), SIZES[size], fullWidth && 'w-full', className)}
+            className={cn(BUTTON_BASE, size === 'icon' ? RADIUS.tile : RADIUS.pill, variantClasses(variant, tone === 'danger'), SIZES[size], fullWidth && 'w-full', className)}
             {...rest}
         >
             {loading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}

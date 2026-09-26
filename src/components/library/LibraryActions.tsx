@@ -13,6 +13,8 @@ interface LibraryActionsProps {
     sortBy: SortOption
     onSortChange: (sort: SortOption) => void
     onSearchToggle: () => void
+    /** The search field lives in the library page, which owns this toggle's pressed state. */
+    searchExpanded: boolean
     activeTab?: 'all' | 'movies' | 'tv' | 'history'
     filterBy?: FilterOption
     onFilterChange?: (filter: FilterOption) => void
@@ -25,6 +27,7 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
     sortBy,
     onSortChange,
     onSearchToggle,
+    searchExpanded,
     activeTab,
     filterBy = 'all',
     onFilterChange,
@@ -82,11 +85,11 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
     const hasActiveFilter = filterBy !== 'all' || genreFilter !== 'all'
 
     return (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
             {activeTab !== 'history' && (
                 <div className="relative" ref={filterMenuRef}>
                     <Button
-                        size="icon"
+                        size="sm"
                         variant={hasActiveFilter ? 'subtle' : 'ghost'}
                         onClick={() => {
                             setFilterMenuOpen(!filterMenuOpen)
@@ -94,9 +97,10 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
                         }}
                         aria-haspopup="menu"
                         aria-expanded={filterMenuOpen}
-                        aria-label={hasActiveFilter ? t('library:filterAndGenreActive') : t('library:filterAndGenre')}
+                        aria-label={hasActiveFilter ? t('library:filterAndGenreActive') : undefined}
                     >
-                        <SlidersHorizontal className="w-6 h-6" />
+                        <SlidersHorizontal className="w-4 h-4" aria-hidden="true" />
+                        {t('library:filterHeading')}
                     </Button>
                     {filterMenuOpen && (
                         <Menu
@@ -164,7 +168,7 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
             {activeTab !== 'history' && (
                 <div className="relative" ref={sortMenuRef}>
                     <Button
-                        size="icon"
+                        size="sm"
                         variant="ghost"
                         onClick={() => {
                             setSortMenuOpen(!sortMenuOpen)
@@ -172,9 +176,9 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
                         }}
                         aria-haspopup="menu"
                         aria-expanded={sortMenuOpen}
-                        aria-label={t('library:sortBy')}
                     >
-                        <ArrowUpDown className="w-6 h-6" />
+                        <ArrowUpDown className="w-4 h-4" aria-hidden="true" />
+                        {t('library:sort')}
                     </Button>
                     {sortMenuOpen && (
                         <Menu
@@ -205,21 +209,17 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
                 </div>
             )}
             <Button
-                size="icon"
+                size="sm"
                 variant="ghost"
                 onClick={onSearchToggle}
-                aria-label={t('common:search')}
-                aria-pressed={false}
+                aria-pressed={searchExpanded}
             >
-                <Search className="w-6 h-6" />
+                <Search className="w-4 h-4" aria-hidden="true" />
+                {t('common:search')}
             </Button>
-            <Button
-                size="icon"
-                variant="ghost"
-                onClick={() => navigate('/settings')}
-                aria-label={t('library:openSettings')}
-            >
-                <Settings className="w-6 h-6" />
+            <Button size="sm" variant="ghost" onClick={() => navigate('/settings')}>
+                <Settings className="w-4 h-4" aria-hidden="true" />
+                {t('library:settings')}
             </Button>
         </div>
     )

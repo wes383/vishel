@@ -92,6 +92,17 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
 
     return (
         <div className="flex flex-wrap items-center justify-end gap-2">
+            {hasActiveFilter && activeTab !== 'history' && (
+                <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={onClearFilters}
+                    aria-label={t('library:clearFilters')}
+                >
+                    <X className="w-4 h-4" aria-hidden="true" />
+                    {t('common:clear')}
+                </Button>
+            )}
             {activeTab !== 'history' && (
                 <div className="relative" ref={filterMenuRef}>
                     <Button
@@ -170,12 +181,6 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
                         </Menu>
                     )}
                 </div>
-            )}
-            {hasActiveFilter && activeTab !== 'history' && (
-                <Button size="sm" variant="ghost" onClick={onClearFilters}>
-                    <X className="w-4 h-4" aria-hidden="true" />
-                    {t('library:clearFilters')}
-                </Button>
             )}
             {activeTab !== 'history' && (
                 <div className="relative" ref={sortMenuRef}>

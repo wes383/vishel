@@ -281,7 +281,7 @@ export function TmdbSearchControls({
 
     return (
         <div>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap items-center gap-3">
                 <Segmented
                     label={t('match:mediaType')}
                     value={mediaType}
@@ -301,6 +301,7 @@ export function TmdbSearchControls({
                         id={inputId}
                         data-autofocus=""
                         type="text"
+                        size="md"
                         className="pl-10"
                         value={query}
                         aria-busy={searching}

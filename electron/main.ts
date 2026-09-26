@@ -213,7 +213,13 @@ function createWindow() {
   win = new BrowserWindow({
     title: 'Vishel',
     icon: path.join(process.env.VITE_PUBLIC, 'icon.png'),
-    minWidth: 480,
+    // Was 480, which the library header outgrew as soon as its actions gained text labels: the tab
+    // strip and the toolbar each need a row to themselves, and at 480 both wrapped again inside
+    // their own row. 640 is Tailwind's `sm` step, so it is a width the stylesheet already knows.
+    // The height floor is Electron's own default window height (800x600, and no explicit size is
+    // set here), so it stops the window being crushed without changing what it opens at.
+    minWidth: 640,
+    minHeight: 600,
     titleBarStyle: 'hidden',
     titleBarOverlay: {
       color: '#00000000',

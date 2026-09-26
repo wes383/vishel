@@ -30,10 +30,10 @@ interface LibraryActionsProps {
 }
 
 /**
- * `right-0` snaps the menu's own right edge to the trigger's, so the trigger needs to sit at
- * least one menu-width from the left edge. The header wraps to a second line at the window's
- * 480px minimum, where it does not - then the menu opens left-anchored instead of being cut off.
- * Both numbers mirror the w-72 and w-56 classes on the menus below.
+ * `right-0` snaps the menu's own right edge to the trigger's, so the trigger needs one menu-width
+ * of clearance on its left. The toolbar is right-aligned and the filter trigger has four buttons to
+ * its right, so at narrow window sizes it does not have that - there the menu opens left-anchored
+ * instead of running off the left edge. Both numbers mirror the w-72 and w-56 classes below.
  */
 const MENU_WIDTH = { filter: 288, sort: 224 } as const
 const MENU_EDGE_GAP = 8

@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { AlertTriangle, CheckCircle2, Info } from 'lucide-react'
 
 export type ToastKind = 'info' | 'success' | 'error'
 
@@ -16,9 +17,22 @@ interface ToastApi {
 const ToastContext = createContext<ToastApi | null>(null)
 
 const STYLES: Record<ToastKind, string> = {
-    info: 'bg-neutral-800/90 ring-white/20',
-    success: 'bg-green-600/80 ring-green-200/40',
-    error: 'bg-red-600/80 ring-red-200/40'
+    info: 'border-border',
+    success: 'border-success-border',
+    error: 'border-danger-border'
+}
+
+/** The hairline alone is not a safe signal, so the kind also carries a glyph. */
+const ICONS: Record<ToastKind, typeof Info> = {
+    info: Info,
+    success: CheckCircle2,
+    error: AlertTriangle
+}
+
+const ICON_TONES: Record<ToastKind, string> = {
+    info: 'text-info',
+    success: 'text-success',
+    error: 'text-danger'
 }
 
 let nextId = 0
@@ -58,19 +72,23 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         <ToastContext.Provider value={api}>
             {children}
             <div
-                className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-2 pointer-events-none"
+                className="fixed bottom-8 left-1/2 -translate-x-1/2 z-toast flex flex-col items-center gap-2 pointer-events-none"
                 aria-live="polite"
                 aria-atomic="false"
             >
-                {toasts.map(toast => (
-                    <div
-                        key={toast.id}
-                        role={toast.kind === 'error' ? 'alert' : 'status'}
-                        className={`pointer-events-auto max-w-[90vw] text-white px-6 py-3 rounded-full shadow-lg ring-[0.8px] backdrop-blur-md text-sm ${STYLES[toast.kind]}`}
-                    >
-                        {toast.message}
-                    </div>
-                ))}
+                {toasts.map(toast => {
+                    const Icon = ICONS[toast.kind]
+                    return (
+                        <div
+                            key={toast.id}
+                            role={toast.kind === 'error' ? 'alert' : 'status'}
+                            className={`pointer-events-auto flex max-w-[90vw] items-center gap-3 rounded-lg border bg-surface px-4 py-3 text-sm text-foreground shadow-pop ${STYLES[toast.kind]}`}
+                        >
+                            <Icon className={`w-4 h-4 flex-shrink-0 ${ICON_TONES[toast.kind]}`} aria-hidden="true" />
+                            {toast.message}
+                        </div>
+                    )
+                })}
             </div>
         </ToastContext.Provider>
     )

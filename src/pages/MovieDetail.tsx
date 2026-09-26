@@ -8,6 +8,7 @@ import {
     PersonChips,
     VideoFileList
 } from '../components/media/MediaDetailShell'
+import { LoadingPanel } from '../components/ui/Feedback'
 import { buildExternalLinks, defaultMovieExternalLinks, normalizeExternalLinks } from '../utils/externalLinks'
 import { formatVideoInfo } from '../utils/formatMediaInfo'
 import { formatMoviePlayTitle } from '../utils/playTitle'
@@ -129,7 +130,7 @@ export default function MovieDetail() {
     }, [movie, isWatched, toggleWatched, showToast, t])
 
     if (loading) {
-        return <div className="flex items-center justify-center h-screen text-gray-400">{t('common:loading')}</div>
+        return <LoadingPanel label={t('common:loading')} className="h-screen" />
     }
 
     if (!movie) {

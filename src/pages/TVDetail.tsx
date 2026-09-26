@@ -10,6 +10,9 @@ import {
 } from '../components/media/MediaDetailShell'
 import Modal from '../components/ui/Modal'
 import ListItemButton from '../components/ui/ListItemButton'
+import Button from '../components/ui/Button'
+import Card from '../components/ui/Card'
+import { LoadingPanel } from '../components/ui/Feedback'
 import { buildExternalLinks, defaultTvExternalLinks, normalizeExternalLinks } from '../utils/externalLinks'
 import { tmdbImage } from '../utils/formatMediaInfo'
 import { formatTvPlayTitle } from '../utils/playTitle'
@@ -176,7 +179,7 @@ export default function TVDetail() {
     }
 
     if (loading) {
-        return <div className="flex items-center justify-center h-screen text-gray-400">{t('common:loading')}</div>
+        return <LoadingPanel label={t('common:loading')} className="h-screen" />
     }
 
     if (!show) {
@@ -218,19 +221,15 @@ export default function TVDetail() {
             <div className="container mx-auto px-8 -mt-12 relative z-20">
                 <div className="flex flex-wrap items-center gap-3 py-2">
                     {seasons.map(season => (
-                        <button
+                        <Button
                             key={season.seasonNumber}
-                            type="button"
+                            size="sm"
+                            variant={activeSeason === season.seasonNumber ? 'default' : 'subtle'}
                             aria-pressed={activeSeason === season.seasonNumber}
                             onClick={() => setActiveSeason(season.seasonNumber)}
-                            className={`px-6 py-2.5 rounded-full font-medium text-[15px] transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${
-                                activeSeason === season.seasonNumber
-                                    ? 'bg-white text-black scale-105'
-                                    : 'bg-neutral-700/50 text-neutral-300 hover:bg-neutral-600/50 hover:text-white'
-                            }`}
                         >
                             {season.name}
-                        </button>
+                        </Button>
                     ))}
                 </div>
 
@@ -250,11 +249,13 @@ export default function TVDetail() {
                                 })
 
                             return (
-                                <div
+                                <Card
                                     key={`${episode.seasonNumber}-${episode.episodeNumber}`}
-                                    className="bg-neutral-800/50 border border-white/5 rounded-2xl p-4 flex flex-col md:flex-row gap-6 hover:bg-neutral-800 transition-colors"
+                                    interactive
+                                    padded
+                                    className="flex flex-col md:flex-row gap-6"
                                 >
-                                    <div className="group md:w-56 flex-shrink-0 relative aspect-video rounded-xl overflow-hidden bg-neutral-900">
+                                    <div className="group md:w-56 flex-shrink-0 relative aspect-video rounded-lg overflow-hidden bg-background">
                                         {episode.stillPath ? (
                                             <img
                                                 src={tmdbImage(episode.stillPath, 'w780')}
@@ -263,14 +264,14 @@ export default function TVDetail() {
                                                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                                             />
                                         ) : (
-                                            <div className="w-full h-full flex flex-col items-center justify-center text-gray-600 gap-2" aria-hidden="true">
+                                            <div className="w-full h-full flex flex-col items-center justify-center text-foreground-faint gap-2" aria-hidden="true">
                                                 <div className="w-8 h-8 rounded-full border-2 border-current flex items-center justify-center opacity-50">
                                                     <span className="text-xs font-bold">TV</span>
                                                 </div>
                                             </div>
                                         )}
 
-                                        <div className="absolute bottom-3 left-3 px-2 py-1 bg-white/30 backdrop-blur-md rounded-md text-xs font-bold text-black shadow-sm">
+                                        <div className="absolute bottom-3 left-3 px-2 py-1 bg-black/60 rounded-md text-xs font-bold text-white">
                                             {t('detail:episodeBadge', { episodeNumber: episode.episodeNumber })}
                                         </div>
 
@@ -279,9 +280,9 @@ export default function TVDetail() {
                                             onClick={() => handlePlayClick(episode)}
                                             disabled={playingEpisodeId !== null || episode.videoFiles.length === 0}
                                             aria-label={playLabel}
-                                            className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-all duration-300 disabled:opacity-100"
+                                            className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-150 disabled:opacity-100"
                                         >
-                                            <span className="transform scale-75 group-hover:scale-100 transition-transform drop-shadow-lg">
+                                            <span className="transform scale-75 group-hover:scale-100 transition-transform">
                                                 {playingEpisodeId === episode.id ? (
                                                     <Loader2 className="w-12 h-12 text-white animate-spin" aria-hidden="true" />
                                                 ) : (
@@ -292,21 +293,21 @@ export default function TVDetail() {
                                     </div>
 
                                     <div className="flex-1 py-1 min-w-0 flex flex-col justify-center">
-                                        <h3 className="text-lg font-bold text-white mb-2 truncate pr-4">{episode.name}</h3>
+                                        <h3 className="text-lg font-bold mb-2 truncate pr-4">{episode.name}</h3>
                                         <button
                                             type="button"
                                             onClick={() => toggleSpoiler(episode.id)}
                                             disabled={!hideSpoilers}
                                             aria-expanded={revealed}
                                             aria-label={revealed ? undefined : t('detail:revealEpisodeSynopsis')}
-                                            className={`text-left text-gray-400 text-sm leading-relaxed line-clamp-3 ${
+                                            className={`text-left text-foreground-muted text-sm leading-relaxed line-clamp-3 ${
                                                 hideSpoilers && !revealed ? 'blur-sm cursor-pointer select-none hover:blur-none transition-all' : ''
                                             }`}
                                         >
                                             {episode.overview || t('detail:noEpisodeOverview')}
                                         </button>
                                     </div>
-                                </div>
+                                </Card>
                             )
                         })}
                     </div>

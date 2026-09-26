@@ -1,6 +1,11 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Calendar, Check, ChevronLeft, Clock, Heart, ImageOff, Loader2, Play, User } from 'lucide-react'
+import { Calendar, Check, ChevronLeft, Clock, Heart, ImageOff, Play, User } from 'lucide-react'
+import Button from '../ui/Button'
+import Badge from '../ui/Badge'
+import EmptyState from '../ui/EmptyState'
+import { Spinner } from '../ui/Feedback'
+import { Tooltip } from '../ui/Tooltip'
 import { getRuntimeParts, tmdbImage } from '../../utils/formatMediaInfo'
 import { formatVoteCount } from '../../utils/formatNumber'
 import { useMediaStatus } from '../../contexts/MediaStatusContext'
@@ -101,10 +106,10 @@ export function MediaDetailShell({
     }
 
     return (
-        <div className="relative min-h-screen bg-neutral-900 text-white">
+        <div className="relative min-h-screen bg-background text-foreground">
             <div className="absolute inset-0 h-[80vh] w-full overflow-hidden">
-                {!isMac && <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-neutral-900/50 to-transparent z-[99]" />}
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-neutral-900/60 to-neutral-900 z-10" />
+                {!isMac && <div className="titlebar-fade absolute top-0 left-0 right-0 h-8 z-[99]" />}
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/60 to-background z-10" />
                 {backdropPath && (
                     <>
                         <img
@@ -123,14 +128,15 @@ export function MediaDetailShell({
                 )}
             </div>
 
-            <button
-                type="button"
+            <Button
+                size="icon"
+                variant="ghost"
                 onClick={onBack}
                 aria-label={t('detail:backToLibrary')}
-                className="absolute top-12 left-8 z-40 p-2 hover:bg-white/10 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                className="absolute top-12 left-8 z-40"
             >
                 <ChevronLeft className="w-6 h-6" aria-hidden="true" />
-            </button>
+            </Button>
 
             <div className="relative z-20 container mx-auto px-8 pt-[55vh] pb-20">
                 <div className="pt-4">
@@ -148,7 +154,7 @@ export function MediaDetailShell({
                             />
                         </button>
                     ) : (
-                        <h1 className="text-5xl font-bold mb-2 leading-tight">
+                        <h1 className="font-display text-5xl font-extrabold mb-2 leading-tight tracking-tight">
                             <button
                                 type="button"
                                 onClick={() => {
@@ -161,18 +167,18 @@ export function MediaDetailShell({
                         </h1>
                     )}
 
-                    {tagline && <p className="text-xl text-gray-400 italic mb-6">{tagline}</p>}
+                    {tagline && <p className="text-xl text-foreground-muted italic mb-6">{tagline}</p>}
 
-                    <div className="flex flex-wrap items-center gap-6 text-gray-300 mb-8 text-sm md:text-base">
+                    <div className="flex flex-wrap items-center gap-6 text-foreground-muted mb-8 text-sm md:text-base">
                         {year && (
                             <div className="flex items-center gap-2">
-                                <Calendar className="w-4 h-4 text-gray-400" aria-hidden="true" />
+                                <Calendar className="w-4 h-4 text-foreground-subtle" aria-hidden="true" />
                                 <span>{year}</span>
                             </div>
                         )}
                         {runtimeParts ? (
                             <div className="flex items-center gap-2">
-                                <Clock className="w-4 h-4 text-gray-400" aria-hidden="true" />
+                                <Clock className="w-4 h-4 text-foreground-subtle" aria-hidden="true" />
                                 <span>
                                     {t('detail:runtimeHoursMinutes', {
                                         hours: runtimeParts.hours,
@@ -193,7 +199,7 @@ export function MediaDetailShell({
                         {genres && genres.length > 0 && (
                             <div className="flex gap-2 flex-wrap">
                                 {genres.map(genre => (
-                                    <span key={genre} className="bg-white/10 px-2 py-1 rounded text-xs">{genre}</span>
+                                    <Badge key={genre} tone="muted" shape="rect">{genre}</Badge>
                                 ))}
                             </div>
                         )}
@@ -205,7 +211,7 @@ export function MediaDetailShell({
                                 activeLabel={t('detail:removeFromFavorites')}
                                 inactiveLabel={t('detail:addToFavorites')}
                             >
-                                <Heart className={`w-5 h-5 ${favorited ? 'fill-red-700 text-red-700' : 'text-gray-400'}`} aria-hidden="true" />
+                                <Heart className={`w-5 h-5 ${favorited ? 'fill-danger text-danger' : 'text-foreground-muted'}`} aria-hidden="true" />
                             </StatusToggleButton>
                             <StatusToggleButton
                                 onClick={handleToggleWatched}
@@ -213,12 +219,12 @@ export function MediaDetailShell({
                                 activeLabel={t('detail:markAsUnwatched')}
                                 inactiveLabel={t('detail:markAsWatched')}
                             >
-                                <Check className={`w-5 h-5 ${watched ? 'text-green-700' : 'text-gray-400'}`} strokeWidth={3} aria-hidden="true" />
+                                <Check className={`w-5 h-5 ${watched ? 'text-success' : 'text-foreground-muted'}`} strokeWidth={3} aria-hidden="true" />
                             </StatusToggleButton>
                         </div>
                     </div>
 
-                    <p className="text-lg text-gray-300 leading-relaxed max-w-3xl mb-6">{overview}</p>
+                    <p className="text-lg text-foreground-muted leading-relaxed max-w-3xl mb-6">{overview}</p>
 
                     {externalLinks.length > 0 && (
                         <div className="flex flex-wrap gap-4 mb-10">
@@ -230,7 +236,7 @@ export function MediaDetailShell({
                                         key={`${link.label}-${index}`}
                                         type="button"
                                         onClick={() => void window.electron.ipcRenderer.invoke('open-external', link.url)}
-                                        className="text-gray-400 hover:text-white transition-colors text-sm border-b border-transparent hover:border-white"
+                                        className="text-foreground-muted hover:text-foreground transition-colors text-sm border-b border-transparent hover:border-border-strong"
                                     >
                                         {labelKey ? t(labelKey) : link.label}
                                     </button>
@@ -257,21 +263,11 @@ interface StatusToggleButtonProps {
 function StatusToggleButton({ onClick, active, activeLabel, inactiveLabel, children }: StatusToggleButtonProps) {
     const label = active ? activeLabel : inactiveLabel
     return (
-        <button
-            type="button"
-            onClick={onClick}
-            aria-label={label}
-            aria-pressed={active}
-            className="group relative p-2 rounded-full hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-        >
-            {children}
-            <span
-                aria-hidden="true"
-                className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-neutral-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
-            >
-                {label}
-            </span>
-        </button>
+        <Tooltip label={label} side="top">
+            <Button size="icon" variant="ghost" onClick={onClick} aria-label={label} aria-pressed={active}>
+                {children}
+            </Button>
+        </Tooltip>
     )
 }
 
@@ -292,21 +288,21 @@ export function RatingBadges({ voteAverage, imdbRating, loadingImdb, showImdbRat
         <div className="flex gap-3">
             {voteAverage ? (
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg">
-                    <span className="text-[#01b4e4] font-bold text-sm">TMDB</span>
+                    <span className="text-tmdb font-bold text-sm">TMDB</span>
                     <span className="font-semibold">{voteAverage.toFixed(1)}</span>
                 </div>
             ) : null}
             {imdbRating && showImdbRating ? (
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg">
-                    <span className="text-[#f5c518] font-bold text-sm">IMDb</span>
+                    <span className="text-imdb font-bold text-sm">IMDb</span>
                     <span className="font-semibold">{imdbRating.rating.toFixed(1)}</span>
-                    {imdbRating.votes ? <span className="text-xs text-gray-200">({formatVoteCount(imdbRating.votes)})</span> : null}
+                    {imdbRating.votes ? <span className="text-xs text-foreground-muted">({formatVoteCount(imdbRating.votes)})</span> : null}
                 </div>
             ) : null}
             {loadingImdb && !imdbRating && hasImdbId && showImdbRating ? (
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg">
-                    <span className="text-[#f5c518] font-bold text-sm">IMDb</span>
-                    <span className="text-gray-400 text-sm">{t('common:loading')}</span>
+                    <span className="text-imdb font-bold text-sm">IMDb</span>
+                    <span className="text-foreground-muted text-sm">{t('common:loading')}</span>
                 </div>
             ) : null}
         </div>
@@ -324,12 +320,12 @@ export function PersonChips({ label, pluralLabel, people = [] }: PersonChipsProp
 
     return (
         <div>
-            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">
+            <h3 className="text-sm font-bold text-foreground-muted uppercase tracking-wider mb-4">
                 {people.length > 1 && pluralLabel ? pluralLabel : label}
             </h3>
             <div className="flex flex-wrap gap-4">
                 {people.map((person, index) => (
-                    <div key={`${person.name}-${index}`} className="flex items-center gap-3 bg-white/5 pl-3 pr-5 py-2 rounded-full w-fit">
+                    <div key={`${person.name}-${index}`} className="flex items-center gap-3 bg-muted pl-3 pr-5 py-2 rounded-full w-fit">
                         {person.profilePath ? (
                             <img
                                 src={tmdbImage(person.profilePath, 'w185')}
@@ -338,13 +334,13 @@ export function PersonChips({ label, pluralLabel, people = [] }: PersonChipsProp
                                 className="w-10 h-10 rounded-full object-cover"
                             />
                         ) : (
-                            <div className="w-10 h-10 rounded-full bg-neutral-700 flex items-center justify-center" aria-hidden="true">
-                                <User className="w-5 h-5 text-gray-500" />
+                            <div className="w-10 h-10 rounded-full bg-surface-raised flex items-center justify-center" aria-hidden="true">
+                                <User className="w-5 h-5 text-foreground-muted" />
                             </div>
                         )}
                         <div className="overflow-hidden">
                             <p className="font-medium text-sm truncate">{person.name}</p>
-                            {person.character ? <p className="text-xs text-gray-400 truncate">{person.character}</p> : null}
+                            {person.character ? <p className="text-xs text-foreground-muted truncate">{person.character}</p> : null}
                         </div>
                     </div>
                 ))}
@@ -384,37 +380,36 @@ export function VideoFileList({ files, metadata, sourceNames, playingFileId, vid
                         aria-label={sourceName
                             ? t('detail:playFileFromSource', { name: file.name, source: sourceName })
                             : t('detail:playFile', { name: file.name })}
-                        className={`group relative overflow-hidden rounded-2xl border px-4 py-3.5 flex items-center gap-4 text-left transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${
+                        className={`flex items-center gap-4 rounded-lg border px-4 py-3.5 text-left transition-colors duration-150 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                             anyPlaying
                                 ? (isPlaying
-                                    ? 'cursor-default border-white/40 bg-white/[0.14] shadow-[0_8px_30px_rgba(255,255,255,0.08)]'
-                                    : 'cursor-not-allowed opacity-45 border-white/10 bg-white/[0.03]')
-                                : 'cursor-pointer border-white/15 bg-white/[0.04] hover:border-white/35 hover:bg-white/[0.10] hover:shadow-[0_10px_36px_rgba(0,0,0,0.35)] hover:-translate-y-0.5'
+                                    ? 'cursor-default border-border-strong bg-accent-muted'
+                                    : 'cursor-not-allowed opacity-45 border-border bg-surface')
+                                : 'cursor-pointer border-border bg-surface hover:border-border-strong hover:bg-hover-bg'
                         }`}
                     >
-                        <span className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.13),transparent_55%)]" />
-                        <span className="relative z-10 flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center">
+                        <span className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center">
                             {anyPlaying && isPlaying ? (
-                                <Loader2 className="w-5 h-5 text-white animate-spin" aria-hidden="true" />
+                                <Spinner size="md" />
                             ) : (
-                                <Play className="w-[18px] h-[18px] text-white fill-white ml-0.5" aria-hidden="true" />
+                                <Play className="w-[18px] h-[18px] text-accent fill-accent ml-0.5" aria-hidden="true" />
                             )}
                         </span>
-                        <span className="relative z-10 flex flex-col gap-1 flex-1 min-w-0 pr-2">
-                            <span className="text-white/90 font-medium text-sm break-all">{file.name}</span>
+                        <span className="flex flex-col gap-1 flex-1 min-w-0 pr-2">
+                            <span className="font-medium text-sm break-all">{file.name}</span>
                             {infoParts.length > 0 && (
                                 <span className="flex flex-wrap items-center gap-1.5">
                                     {infoParts.map((part, index) => (
-                                        <span
+                                        <Badge
                                             key={`${file.id}-${index}-${part}`}
-                                            className="inline-flex items-center rounded-full px-2 py-0.5 bg-white/5 text-gray-300/90 text-xs"
+                                            tone="muted"
                                         >
                                             {part}
-                                        </span>
+                                        </Badge>
                                     ))}
                                 </span>
                             )}
-                            <span className="text-gray-500 text-xs truncate">
+                            <span className="text-foreground-muted text-xs truncate">
                                 {sourceName || t('detail:unknownSource')}
                             </span>
                         </span>
@@ -429,16 +424,15 @@ export function NotFoundPanel({ label, onBack }: { label: string, onBack: () => 
     const { t } = useTranslation(['detail', 'common'])
 
     return (
-        <div className="flex flex-col items-center justify-center h-screen text-gray-400">
-            <p className="text-xl mb-4">{label}</p>
-            <button
-                type="button"
-                onClick={onBack}
-                aria-label={t('detail:backToLibrary')}
-                className="p-2 hover:bg-neutral-800 rounded-full transition-colors"
+        <div className="flex items-center justify-center h-screen">
+            <EmptyState
+                icon={ImageOff}
+                title={label}
             >
-                <ImageOff className="w-6 h-6" aria-hidden="true" />
-            </button>
+                <Button variant="outline" onClick={onBack}>
+                    {t('detail:backToLibrary')}
+                </Button>
+            </EmptyState>
         </div>
     )
 }

@@ -52,31 +52,31 @@ export default function SettingsPage() {
                     type="button"
                     onClick={() => navigate('/')}
                     aria-label={t('settings:closeSettingsAria')}
-                    className="p-2 hover:bg-white/10 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                    className="p-2 hover:bg-hover-bg rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                     <X className="w-6 h-6" aria-hidden="true" />
                 </button>
             </div>
 
             {!ready ? (
-                <p className="text-gray-400" role="status">{t('settings:loadingSettings')}</p>
+                <p className="text-foreground-muted" role="status">{t('settings:loadingSettings')}</p>
             ) : (
                 <div className="space-y-8">
                     <SourcesSection />
 
-                    <hr className="border-neutral-800" />
+                    <hr className="border-border" />
 
                     <PlayerSection />
 
-                    <hr className="border-neutral-800" />
+                    <hr className="border-border" />
 
                     <GeneralSection />
 
                     <LinksSection />
 
-                    <hr className="border-neutral-800" />
+                    <hr className="border-border" />
 
-                    <p className="text-xs text-gray-600 text-center -mt-2">
+                    <p className="text-xs text-foreground-muted text-center -mt-2">
                         {t('settings:shortcutsHint')}
                     </p>
 
@@ -90,7 +90,7 @@ export default function SettingsPage() {
                             >
                                 <img src={TMDBLogo} alt={t('settings:tmdbLogoAlt')} className="h-4 w-auto" />
                             </button>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-foreground-muted">
                                 {t('settings:tmdbAttribution')}
                             </p>
                         </div>

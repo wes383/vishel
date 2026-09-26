@@ -67,10 +67,10 @@ export const LazyImage: React.FC<LazyImageProps> = ({
     return (
         <div ref={imgRef} className={`relative ${placeholderClassName}`}>
             {status === 'pending' && (
-                <div className={`absolute inset-0 bg-neutral-800 ${isInView ? 'animate-pulse' : ''} ${placeholderClassName}`} />
+                <div className={`absolute inset-0 bg-surface ${isInView ? 'animate-pulse' : ''} ${placeholderClassName}`} />
             )}
             {status === 'error' && (
-                <div className={`absolute inset-0 bg-neutral-800 flex items-center justify-center text-neutral-600 ${placeholderClassName}`}>
+                <div className={`absolute inset-0 bg-surface flex items-center justify-center text-foreground-faint ${placeholderClassName}`}>
                     <ImageOff className="w-8 h-8" aria-hidden="true" />
                     <span className="sr-only">{`Poster unavailable: ${alt}`}</span>
                 </div>

@@ -9,7 +9,7 @@ import type { RendererSettingsPatch } from '../../../electron/settings'
 
 type LinksKey = 'movieExternalLinks' | 'tvExternalLinks'
 
-const INPUT_CLASSES = 'bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-white transition-colors min-w-0'
+const INPUT_CLASSES = 'bg-surface border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-border-strong transition-colors min-w-0'
 
 export default function LinksSection() {
     const { t } = useTranslation(['settings', 'common'])
@@ -82,7 +82,7 @@ export default function LinksSection() {
     return (
         <section aria-labelledby="links-heading">
             <h2 id="links-heading" className="sr-only">{t('settings:externalLinksHeading')}</h2>
-            <div className="bg-neutral-800 p-4 rounded-lg space-y-5">
+            <div className="bg-surface p-4 rounded-lg space-y-5">
                 {groups.map(group => (
                     <div key={group.key}>
                         <div className="flex items-center justify-between mb-3">
@@ -90,7 +90,7 @@ export default function LinksSection() {
                             <button
                                 type="button"
                                 onClick={() => addLink(group.key)}
-                                className="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors"
+                                className="bg-hover-bg hover:bg-hover-bg-strong text-foreground px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors"
                             >
                                 <Plus className="w-3.5 h-3.5" aria-hidden="true" />
                                 {t('common:add')}
@@ -122,7 +122,7 @@ export default function LinksSection() {
                                             onClick={() => moveLink(group.key, index, 'up')}
                                             disabled={index === 0}
                                             aria-label={t('settings:moveLinkUpAria', { title: group.title, number: index + 1 })}
-                                            className="px-2.5 py-2 rounded-lg border border-neutral-700 hover:border-white/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                            className="px-2.5 py-2 rounded-lg border border-border hover:border-border-strong disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                         >
                                             <ChevronUp className="w-4 h-4" aria-hidden="true" />
                                         </button>
@@ -131,7 +131,7 @@ export default function LinksSection() {
                                             onClick={() => moveLink(group.key, index, 'down')}
                                             disabled={index === group.links.length - 1}
                                             aria-label={t('settings:moveLinkDownAria', { title: group.title, number: index + 1 })}
-                                            className="px-2.5 py-2 rounded-lg border border-neutral-700 hover:border-white/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                            className="px-2.5 py-2 rounded-lg border border-border hover:border-border-strong disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                                         >
                                             <ChevronDown className="w-4 h-4" aria-hidden="true" />
                                         </button>
@@ -139,7 +139,7 @@ export default function LinksSection() {
                                             type="button"
                                             onClick={() => removeLink(group.key, index)}
                                             aria-label={t('settings:removeLinkAria', { title: group.title, number: index + 1 })}
-                                            className="px-2.5 py-2 rounded-lg border border-neutral-700 hover:border-red-500/60 hover:text-red-400 transition-colors"
+                                            className="px-2.5 py-2 rounded-lg border border-border hover:border-danger-border hover:text-danger transition-colors"
                                         >
                                             <X className="w-4 h-4" aria-hidden="true" />
                                         </button>
@@ -150,12 +150,12 @@ export default function LinksSection() {
                     </div>
                 ))}
             </div>
-            <div className="flex items-center gap-1.5 mt-1.5 text-xs text-gray-500">
+            <div className="flex items-center gap-1.5 mt-1.5 text-xs text-foreground-muted">
                 <p>
                     {t('settings:supportedPlaceholders')}
                 </p>
                 <span aria-hidden="true">·</span>
-                <button type="button" onClick={() => void resetToDefaults()} className="text-xs text-gray-500 hover:underline transition-colors">
+                <button type="button" onClick={() => void resetToDefaults()} className="text-xs text-foreground-muted hover:text-foreground hover:underline transition-colors">
                     {t('settings:restoreDefaults')}
                 </button>
             </div>

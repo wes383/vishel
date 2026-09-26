@@ -70,14 +70,14 @@ export default function FileBrowser({ config, type, onSelect, selectedPaths, sou
     // Owns its text color: the panel is dark on purpose, and the light modal that hosts it
     // sets `text-gray-900`, which would otherwise render these names invisible.
     return (
-        <div className="border border-neutral-700 rounded-lg overflow-hidden bg-neutral-900 text-white h-96 flex flex-col">
-            <div className="p-3 bg-neutral-800 border-b border-neutral-700 flex items-center gap-2">
+        <div className="border border-border rounded-lg overflow-hidden bg-background text-foreground h-96 flex flex-col">
+            <div className="p-3 bg-surface border-b border-border flex items-center gap-2">
                 <button
                     type="button"
                     onClick={handleUp}
                     disabled={currentPath === '/'}
                     aria-label={t('settings:parentFolderAria')}
-                    className="p-1 hover:bg-neutral-700 rounded disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                    className="p-1 hover:bg-hover-bg rounded disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                     <ChevronRight className="w-4 h-4 rotate-180" aria-hidden="true" />
                 </button>
@@ -87,17 +87,17 @@ export default function FileBrowser({ config, type, onSelect, selectedPaths, sou
             <div className="flex-1 overflow-auto p-2">
                 {loading ? (
                     <div className="flex items-center justify-center h-full">
-                        <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+                        <Loader2 className="w-6 h-6 animate-spin text-foreground-muted" />
                     </div>
                 ) : error ? (
-                    <div className="text-red-400 text-center p-4">{error}</div>
+                    <div className="text-danger text-center p-4">{error}</div>
                 ) : (
                     <div className="space-y-1">
                         {items.map((item) => {
                             const selected = selectedPaths.includes(item.filename)
 
                             return (
-                                <div key={item.filename} className="flex items-center gap-2 p-2 hover:bg-neutral-800 rounded group">
+                                <div key={item.filename} className="flex items-center gap-2 p-2 hover:bg-hover-bg rounded group">
                                     {item.type === 'directory' ? (
                                         <>
                                             <button
@@ -106,25 +106,25 @@ export default function FileBrowser({ config, type, onSelect, selectedPaths, sou
                                                 aria-checked={selected}
                                                 aria-label={t('settings:scanFolderAria', { name: item.basename })}
                                                 onClick={() => toggleSelection(item.filename)}
-                                                className={`w-4 h-4 border rounded flex items-center justify-center flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${
-                                                    selected ? 'bg-indigo-600 border-indigo-600' : 'border-neutral-600 hover:border-neutral-400'
+                                                className={`w-4 h-4 border rounded flex items-center justify-center flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                                                    selected ? 'bg-accent border-accent' : 'border-border-strong hover:border-ring'
                                                 }`}
                                             >
-                                                {selected && <span className="w-2 h-2 bg-white rounded-sm" />}
+                                                {selected && <span className="w-2 h-2 bg-accent-foreground rounded-sm" />}
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => handleNavigate(item)}
                                                 aria-label={t('settings:openFolderAria', { name: item.basename })}
-                                                className="flex-1 flex items-center gap-2 text-left rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                                                className="flex-1 flex items-center gap-2 text-left rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                             >
-                                                <Folder className="w-4 h-4 text-yellow-500" aria-hidden="true" />
+                                                <Folder className="w-4 h-4 text-foreground-muted" aria-hidden="true" />
                                                 <span className="text-sm">{item.basename}</span>
                                             </button>
                                         </>
                                     ) : (
                                         <div className="flex-1 flex items-center gap-2 opacity-50 pl-8">
-                                            <FileVideo className="w-4 h-4 text-blue-400" aria-hidden="true" />
+                                            <FileVideo className="w-4 h-4 text-foreground-subtle" aria-hidden="true" />
                                             <span className="text-sm">{item.basename}</span>
                                         </div>
                                     )}

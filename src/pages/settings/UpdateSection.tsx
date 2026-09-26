@@ -31,18 +31,18 @@ export default function UpdateSection({ version }: { version: string }) {
     }
 
     return (
-        <div className="flex items-center justify-center gap-3 text-xs text-gray-500">
+        <div className="flex items-center justify-center gap-3 text-xs text-foreground-muted">
             {version && <p>{t('settings:versionLabel', { version })}</p>}
             <button
                 type="button"
                 onClick={() => void check()}
                 disabled={checking}
-                className="text-xs text-gray-400 hover:text-white hover:underline transition-colors disabled:opacity-50"
+                className="text-xs text-foreground-muted hover:text-foreground hover:underline transition-colors disabled:opacity-50"
             >
                 {checking ? t('settings:checkingUpdates') : t('settings:checkForUpdates')}
             </button>
             {status?.state === 'downloaded' && status.version && (
-                <p className="text-green-400">{t('settings:updateInstalledOnRestart', { version: status.version })}</p>
+                <p className="text-success">{t('settings:updateInstalledOnRestart', { version: status.version })}</p>
             )}
         </div>
     )

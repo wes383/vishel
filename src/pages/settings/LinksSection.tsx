@@ -5,6 +5,7 @@ import { useSettings } from '../../contexts/SettingsContext'
 import { useToast } from '../../contexts/ToastContext'
 import Button from '../../components/ui/Button'
 import Card from '../../components/ui/Card'
+import Disclosure from '../../components/ui/Disclosure'
 import Input from '../../components/ui/Input'
 import { defaultMovieExternalLinks, defaultTvExternalLinks, normalizeExternalLinks } from '../../utils/externalLinks'
 import type { ExternalLinkConfig } from '../../../electron/store'
@@ -83,16 +84,18 @@ export default function LinksSection() {
     return (
         <section aria-labelledby="links-heading">
             <h2 id="links-heading" className="sr-only">{t('settings:externalLinksHeading')}</h2>
-            <Card padded className="space-y-5">
+            <Card padded>
                 {groups.map(group => (
-                    <div key={group.key}>
-                        <div className="flex items-center justify-between mb-3">
-                            <h3 className="font-medium">{group.title}</h3>
+                    <Disclosure
+                        key={group.key}
+                        title={group.title}
+                        actions={(
                             <Button size="sm" variant="subtle" onClick={() => addLink(group.key)}>
                                 <Plus className="w-3.5 h-3.5" aria-hidden="true" />
                                 {t('common:add')}
                             </Button>
-                        </div>
+                        )}
+                    >
                         <div className="space-y-2">
                             {group.links.map((link, index) => (
                                 <div key={`${group.key}-${index}`} className="grid grid-cols-[1fr_2fr_auto] gap-2 min-w-0 items-start">
@@ -145,7 +148,7 @@ export default function LinksSection() {
                                 </div>
                             ))}
                         </div>
-                    </div>
+                    </Disclosure>
                 ))}
             </Card>
             <div className="flex items-center gap-1.5 mt-1.5 text-xs text-foreground-muted">

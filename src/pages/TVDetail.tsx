@@ -222,7 +222,7 @@ export default function TVDetail() {
                             type="button"
                             aria-pressed={activeSeason === season.seasonNumber}
                             onClick={() => setActiveSeason(season.seasonNumber)}
-                            className={`px-6 py-2.5 rounded-full font-medium font-sans text-[15px] transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${
+                            className={`px-6 py-2.5 rounded-full font-medium text-[15px] transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${
                                 activeSeason === season.seasonNumber
                                     ? 'bg-white text-black scale-105'
                                     : 'bg-neutral-700/50 text-neutral-300 hover:bg-neutral-600/50 hover:text-white'

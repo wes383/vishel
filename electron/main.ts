@@ -72,7 +72,8 @@ if (!gotTheLock) {
 
 /**
  * The renderer shows remote poster/backdrop images and has no network needs of its own,
- * so everything is pinned to the local origin plus TMDB image and Google font hosts.
+ * so everything is pinned to the local origin plus TMDB image hosts. Fonts are bundled
+ * from src/assets/fonts, so no font CDN is allowlisted.
  */
 function setupContentSecurityPolicy() {
   const isDev = Boolean(VITE_DEV_SERVER_URL)
@@ -88,8 +89,8 @@ function setupContentSecurityPolicy() {
   const csp = [
     "default-src 'self'",
     scriptSrc,
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' data: https://fonts.gstatic.com",
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self' data:",
     "img-src 'self' data: blob: https://image.tmdb.org",
     connectSrc,
     "worker-src 'self' blob:",

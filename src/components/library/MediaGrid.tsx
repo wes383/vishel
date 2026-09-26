@@ -107,7 +107,7 @@ const PosterCard = React.memo(function PosterCard({
                         <span className={`absolute inset-0 bg-black/0 transition-all duration-100 delay-[50ms] flex items-center justify-center p-4 ${
                             isMenuOpen ? 'bg-black/60 opacity-100' : 'group-hover:bg-black/60 opacity-0 group-hover:opacity-100'
                         }`}>
-                            <span className={`font-medium text-white text-center font-['Inter'] ${
+                            <span className={`font-medium text-white text-center ${
                                 posterSize === 'small' ? 'text-base' : 'text-lg'
                             }`}>
                                 {item.title}
@@ -116,7 +116,7 @@ const PosterCard = React.memo(function PosterCard({
                     )}
                 </span>
                 {posterTitleMode === 'below' && (
-                    <span className={`block mt-2 px-1 font-medium text-white text-center font-['Inter'] ${
+                    <span className={`block mt-2 px-1 font-medium text-white text-center ${
                         posterSize === 'small' ? 'text-sm' : 'text-base'
                     }`}>
                         {item.title}

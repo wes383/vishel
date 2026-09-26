@@ -120,6 +120,34 @@
     --z-index-toast: 70;
 }
 
+/* Self-hosted, because the renderer loads over file:// and must not need the
+   network. Relative url() lets Vite fingerprint these into dist/assets/;
+   referencing them from public/ with an absolute path would 404 when packaged.
+   Latin subset only: characters outside unicode-range fall through per glyph to
+   the CJK stack in --font-sans, which renders Han titles natively instead of
+   shipping a 3 MB webfont. */
+@font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url("./assets/fonts/inter-latin-wght-normal.woff2") format("woff2-variations");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+        U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+        U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: "Manrope";
+    font-style: normal;
+    font-weight: 200 800;
+    font-display: swap;
+    src: url("./assets/fonts/manrope-latin-wght-normal.woff2") format("woff2-variations");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+        U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+        U+FEFF, U+FFFD;
+}
+
 @layer base {
     /* v4 preflight zeroes border-width but leaves the color at currentColor,
        so a bare `border` would draw a foreground-colored line. */

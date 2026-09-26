@@ -14,7 +14,10 @@
   },
   "files": [
     "dist",
-    "dist-electron"
+    "dist-electron",
+    // OFL 1.1 requires the notice to travel with Inter and Manrope, which Vite
+    // bundles into dist/assets/ but never copies the licence text for.
+    "src/assets/fonts/*-LICENSE.txt"
   ],
   "mac": {
     "target": [

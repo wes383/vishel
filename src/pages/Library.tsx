@@ -356,7 +356,7 @@ export default function LibraryPage() {
                 <div className="fixed top-0 left-0 right-0 h-8 bg-gradient-to-b from-neutral-900/50 to-transparent z-[99] pointer-events-none" />
                 <div className="mb-8">
                     <div className="relative flex flex-wrap md:flex-nowrap items-center justify-between gap-y-4">
-                        <h1 className="text-3xl font-bold ml-[5px] font-['Montserrat'] text-white/50 order-1">Vishel</h1>
+                        <h1 className="text-3xl font-bold tracking-tight ml-[5px] font-display text-white/50 order-1">Vishel</h1>
 
                         <div className="order-3 md:order-2 w-full md:w-auto">
                             <LibraryTabs activeTab={activeTab} onTabChange={setActiveTab} />

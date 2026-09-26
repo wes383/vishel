@@ -397,7 +397,7 @@ export function TmdbResultList({
         <div
             ref={scrollRef}
             aria-busy={searching}
-            className={`min-h-0 flex-1 overflow-y-auto episode-selector-scroll ${className}`}
+            className={`min-h-0 flex-1 overflow-y-auto ${className}`}
         >
             {items.length === 0 ? (
                 <div className="text-center text-gray-600 py-12">

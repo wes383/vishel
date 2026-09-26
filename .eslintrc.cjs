@@ -6,7 +6,8 @@ module.exports = {
     'plugin:@typescript-eslint/recommended',
     'plugin:react-hooks/recommended',
   ],
-  ignorePatterns: ['dist', '.eslintrc.cjs'],
+  // orkest-ui is a vendored design-reference app, not app source.
+  ignorePatterns: ['dist', '.eslintrc.cjs', 'orkest-ui'],
   parser: '@typescript-eslint/parser',
   plugins: ['react-refresh'],
   rules: {

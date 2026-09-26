@@ -4,89 +4,227 @@
 @source "./**/*.{ts,tsx}";
 @source "../index.html";
 
-:root {
-    font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-    line-height: 1.5;
-    font-weight: 400;
+/* `static` keeps every declaration in the output even where no utility uses it:
+   the scrollbar, titlebar and placeholder rules below read these from hand-written CSS. */
+@theme static {
+    /* Surfaces ------------------------------------------------------- */
+    --color-background: #101010;
+    --color-surface: #181818;
+    --color-surface-raised: #1f1f1f;
+    --color-overlay: rgb(0 0 0 / 0.65);
 
-    color-scheme: light dark;
-    color: rgba(255, 255, 255, 0.87);
-    background-color: #242424;
+    /* Text: opaque on purpose, so a label reads identically over surface,
+       surface-raised and a photograph, and /NN behaves as it looks. */
+    --color-foreground: #f5f5f5;
+    --color-foreground-muted: #a3a3a3;   /* 6.9:1 on background - secondary text */
+    --color-foreground-subtle: #737373;  /* 3.6:1 - labels and meta, never 13px body */
+    --color-foreground-faint: #6a6570;   /* 3.0:1 - decorative glyphs only */
 
-    font-synthesis: none;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+    /* Fills and lines: translucent on purpose, they composite over whichever
+       surface they land on, which is what lets one token serve all three.
+       These must never take a /NN modifier - it only ever reduces the alpha. */
+    --color-muted: rgb(255 255 255 / 0.06);
+    --color-hover-bg: rgb(255 255 255 / 0.06);
+    --color-hover-bg-strong: rgb(255 255 255 / 0.1);
+    --color-border: rgb(255 255 255 / 0.1);
+    --color-border-strong: rgb(255 255 255 / 0.25);
+    --color-ring: rgb(255 255 255 / 0.3);
+
+    /* The single monochrome accent - primary controls are light on dark */
+    --color-accent: #f5f5f5;
+    --color-accent-hover: #ffffff;
+    --color-accent-foreground: #111111;
+    --color-accent-muted: rgb(245 245 245 / 0.1);
+
+    /* Semantic triples: -soft fills, -hairline borders, -strong hover */
+    --color-danger: #fca5a5;
+    --color-danger-strong: #f87171;
+    --color-danger-soft: rgb(239 68 68 / 0.12);
+    --color-danger-border: rgb(248 113 113 / 0.45);
+    --color-success: #86efac;
+    --color-success-strong: #4ade80;
+    --color-success-soft: rgb(34 197 94 / 0.16);
+    --color-success-border: rgb(74 222 128 / 0.45);
+    --color-warning: #fde047;
+    --color-warning-strong: #facc15;
+    --color-warning-soft: rgb(234 179 8 / 0.14);
+    --color-warning-border: rgb(250 204 21 / 0.45);
+    --color-info: #93c5fd;
+    --color-info-strong: #60a5fa;
+    --color-info-soft: rgb(59 130 246 / 0.12);
+    --color-info-border: rgb(96 165 250 / 0.45);
+
+    /* Third-party wordmarks, not a brand accent - do not extend */
+    --color-tmdb: #01b4e4;
+    --color-imdb: #f5c518;
+
+    /* Type ------------------------------------------------------------
+       --text-* must be paired with its line-height or the utility keeps the
+       default ratio and lands on a fractional line box. 15px/22px is frozen
+       against useRowVirtualizer's TITLE_EXTRA_HEIGHT. */
+    --font-sans:
+        "Inter", ui-sans-serif, system-ui, "Segoe UI", Roboto,
+        "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+        "Noto Sans CJK SC", "Source Han Sans SC", "WenQuanYi Micro Hei", sans-serif;
+    --font-display:
+        "Manrope", ui-sans-serif, system-ui, "Segoe UI", Roboto,
+        "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+    --font-mono:
+        ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+        "Liberation Mono", "Courier New", monospace;
+
+    --text-xs: 12px;   --text-xs--line-height: 16px;
+    --text-sm: 13px;   --text-sm--line-height: 18px;
+    --text-base: 15px; --text-base--line-height: 22px;
+    --text-lg: 18px;   --text-lg--line-height: 26px;
+    --text-xl: 20px;   --text-xl--line-height: 28px;
+    --text-2xl: 24px;  --text-2xl--line-height: 30px;
+    --text-3xl: 28px;  --text-3xl--line-height: 34px;
+    --text-4xl: 32px;  --text-4xl--line-height: 38px;
+    --text-5xl: 40px;  --text-5xl--line-height: 44px;
+
+    --leading-tight: 1.1;
+    --leading-snug: 1.3;
+    --leading-normal: 1.5;
+    --leading-relaxed: 1.75;
+    --tracking-tight: -0.02em;
+    --tracking-wide: 0.04em;
+
+    /* Radius. `rounded-full` is a static v4 value, so no --radius-full. */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+
+    /* Elevation is reserved for floating layers; static surfaces use hairlines. */
+    --shadow-2xs: 0 1px 2px rgb(0 0 0 / 0.35);
+    --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-md: 0 4px 12px rgb(0 0 0 / 0.4);
+    --shadow-lg: 0 8px 24px rgb(0 0 0 / 0.42);
+    --shadow-pop: 0 20px 45px rgb(0 0 0 / 0.45);
+    --shadow-dialog: 0 28px 80px rgb(0 0 0 / 0.55);
+
+    /* Motion. --duration-* is not a theme namespace in v4: use bare
+       duration-150 / duration-200 utilities instead. */
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --default-transition-duration: 150ms;
+    --default-transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+
+    --z-index-sticky: 30;
+    --z-index-dropdown: 40;
+    --z-index-popover: 50;
+    --z-index-modal: 60;
+    --z-index-toast: 70;
 }
 
-body {
-    margin: 0;
-    min-width: 320px;
-    min-height: 100vh;
+@layer base {
+    /* v4 preflight zeroes border-width but leaves the color at currentColor,
+       so a bare `border` would draw a foreground-colored line. */
+    *,
+    ::before,
+    ::after {
+        border-color: var(--color-border);
+    }
+
+    html {
+        color-scheme: dark;
+    }
+
+    /* body, not :root, because Modal portals to document.body outside the app
+       shell and must still inherit the palette. */
+    body {
+        margin: 0;
+        min-width: 320px;
+        min-height: 100vh;
+        background-color: var(--color-background);
+        color: var(--color-foreground);
+        font-family: var(--font-sans);
+        font-size: var(--text-base);
+        line-height: var(--leading-normal);
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Layered so cursor utilities can actually win - unlayered declarations
+       outrank every Tailwind utility, which made `cursor-default` dead. */
+    button {
+        cursor: pointer;
+    }
+
+    button:disabled {
+        cursor: not-allowed;
+    }
+
+    /* Scrollbars. Do not add `scrollbar-width` or `scrollbar-color`: any
+       non-auto value on either makes Chromium discard this whole block and
+       fall back to native scrollbars. The 2px transparent border plus
+       content-box clipping is what turns a 10px track into a 6px pill. */
+    *::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+
+    *::-webkit-scrollbar-button {
+        display: none;
+    }
+
+    *::-webkit-scrollbar-track {
+        background: var(--color-background);
+    }
+
+    /* KEEP IN SYNC with titleBarOverlay.height in electron/main.ts and h-8 in App.tsx */
+    main::-webkit-scrollbar-track,
+    .library-scroll-container::-webkit-scrollbar-track {
+        margin-top: 32px;
+    }
+
+    *::-webkit-scrollbar-thumb {
+        background: var(--color-hover-bg-strong);
+        border-radius: 9999px;
+        border: 2px solid transparent;
+        background-clip: content-box;
+    }
+
+    *::-webkit-scrollbar-thumb:hover {
+        background-color: var(--color-foreground-faint);
+        background-clip: content-box;
+    }
+
+    .library-scroll-container {
+        scrollbar-gutter: stable both-edges;
+    }
+
+    /* The only way to move a frameless window - never drop this from App.tsx. */
+    .titlebar-drag-region {
+        -webkit-app-region: drag;
+        user-select: none;
+    }
 }
 
-button {
-    cursor: pointer;
+/* Titlebar composites, so the seven alpha stops no longer have to be mirrored
+   as inline styles in App.tsx and can follow --color-background. */
+@utility titlebar-scrim {
+    background-image: linear-gradient(
+        to bottom,
+        color-mix(in oklab, var(--color-background) 60%, transparent) 0%,
+        color-mix(in oklab, var(--color-background) 35%, transparent) 10%,
+        color-mix(in oklab, var(--color-background) 18%, transparent) 25%,
+        color-mix(in oklab, var(--color-background) 10%, transparent) 40%,
+        color-mix(in oklab, var(--color-background) 5%, transparent) 55%,
+        color-mix(in oklab, var(--color-background) 2%, transparent) 70%,
+        transparent 85%
+    );
 }
 
-button:disabled {
-    cursor: not-allowed;
-}
-
-*::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
-}
-
-*::-webkit-scrollbar-button {
-    display: none;
-}
-
-*::-webkit-scrollbar-track {
-    background: #171717;
-}
-
-main::-webkit-scrollbar-track,
-.library-scroll-container::-webkit-scrollbar-track {
-    margin-top: 32px;
-}
-
-.library-scroll-container {
-    scrollbar-gutter: stable both-edges;
-}
-
-*::-webkit-scrollbar-thumb {
-    background: #525252;
-    border-radius: 4px;
-}
-
-*::-webkit-scrollbar-thumb:hover {
-    background: #737373;
-}
-
-.episode-selector-scroll::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(8px);
-}
-
-.episode-selector-scroll::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 4px;
-}
-
-.episode-selector-scroll::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.4);
-}
-
-.titlebar-drag-region {
-    -webkit-app-region: drag;
-    user-select: none;
-}
-
-input::placeholder {
-    color: rgba(0, 0, 0, 0.3);
-}
-
-.library-search-input::placeholder {
-    color: rgba(255, 255, 255, 0.6);
+@utility titlebar-fade {
+    background-image: linear-gradient(
+        to bottom,
+        color-mix(in oklab, var(--color-background) 50%, transparent),
+        transparent
+    );
 }

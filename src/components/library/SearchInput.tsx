@@ -99,7 +99,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({
                     else onClose()
                 }}
                 placeholder={resolvedPlaceholder}
-                className="library-search-input w-full bg-neutral-800 text-white px-4 py-3 pr-10 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
+                className="w-full bg-neutral-800 text-white px-4 py-3 pr-10 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
             />
             {value && (
                 <button

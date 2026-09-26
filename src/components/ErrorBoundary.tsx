@@ -40,26 +40,26 @@ class ErrorBoundary extends Component<Props, State> {
     render() {
         if (this.state.hasError) {
             return (
-                <div className="h-screen bg-neutral-900 text-white flex items-center justify-center p-8">
+                <div className="h-screen bg-background text-foreground flex items-center justify-center p-8">
                     <div className="max-w-2xl">
-                        <h1 className="text-3xl font-bold mb-4 text-red-500">{i18n.t('common:somethingWentWrong')}</h1>
-                        <div className="bg-neutral-800 rounded-lg p-6 mb-4">
+                        <h1 className="text-3xl font-bold mb-4 text-danger">{i18n.t('common:somethingWentWrong')}</h1>
+                        <div className="bg-surface rounded-lg p-6 mb-4">
                             <h2 className="text-xl font-semibold mb-2">{i18n.t('common:errorHeading')}</h2>
-                            <pre className="text-sm text-red-400 whitespace-pre-wrap break-words">
+                            <pre className="text-sm text-danger whitespace-pre-wrap break-words">
                                 {this.state.error?.toString()}
                             </pre>
                         </div>
                         {this.state.errorInfo && (
-                            <div className="bg-neutral-800 rounded-lg p-6 mb-4">
+                            <div className="bg-surface rounded-lg p-6 mb-4">
                                 <h2 className="text-xl font-semibold mb-2">{i18n.t('common:stackTrace')}</h2>
-                                <pre className="text-xs text-gray-400 whitespace-pre-wrap break-words overflow-auto max-h-96">
+                                <pre className="text-xs text-foreground-muted whitespace-pre-wrap break-words overflow-auto max-h-96">
                                     {this.state.errorInfo.componentStack}
                                 </pre>
                             </div>
                         )}
                         <button
                             onClick={() => window.location.reload()}
-                            className="bg-white text-black px-6 py-3 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                            className="bg-accent text-accent-foreground px-6 py-3 rounded-lg font-medium hover:bg-accent-hover transition-colors"
                         >
                             {i18n.t('common:reloadApplication')}
                         </button>

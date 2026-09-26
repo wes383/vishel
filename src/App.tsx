@@ -29,8 +29,7 @@ function AppContent() {
 
   const titleBarTransparent = isWideScreen && isSettingsPage
   const isSettingsNarrow = !isWideScreen && isSettingsPage
-  const titleBarBlur = !titleBarTransparent && !isSettingsNarrow ? 'bg-gradient-to-b' : ''
-  const titleBarStyle = !titleBarTransparent && !isSettingsNarrow ? { background: 'linear-gradient(to bottom, rgba(23,23,23,0.6) 0%, rgba(23,23,23,0.35) 10%, rgba(23,23,23,0.18) 25%, rgba(23,23,23,0.1) 40%, rgba(23,23,23,0.05) 55%, rgba(23,23,23,0.02) 70%, transparent 85%)' } : isSettingsNarrow ? { background: '#171717' } : {}
+  const titleBarClass = titleBarTransparent ? '' : isSettingsNarrow ? 'bg-background' : 'titlebar-scrim'
 
   useEffect(() => {
     const handleNavigateToTab = (_event: unknown, tab: LibraryTab) => {
@@ -48,10 +47,10 @@ function AppContent() {
   // Out of flow on purpose: an in-flow 100vh shell still lets tall page content extend the
   // viewport's scrollable area, which renders a second scrollbar beside main's.
   return (
-    <div className="fixed inset-0 bg-neutral-900 text-white overflow-hidden flex flex-col">
-      <div className={`titlebar-drag-region h-8 w-full fixed top-0 left-0 z-[100] bg-transparent ${titleBarBlur}`} style={titleBarStyle} />
+    <div className="fixed inset-0 bg-background text-foreground overflow-hidden flex flex-col">
+      <div className={`titlebar-drag-region h-8 w-full fixed top-0 left-0 z-[100] ${titleBarClass}`} />
       {/* Main Content */}
-      <main className="h-full overflow-auto bg-neutral-900">
+      <main className="h-full overflow-auto bg-background">
         <Routes>
           <Route path="/" element={<LibraryPage />} />
           <Route path="/settings" element={<SettingsPage />} />

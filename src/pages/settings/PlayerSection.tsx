@@ -139,7 +139,6 @@ export default function PlayerSection() {
                         aria-label={t('settings:customPlayerPathAria')}
                         placeholder={t('settings:customPlayerPathPlaceholder')}
                         className="flex-1 min-w-0 bg-white/5 border border-neutral-600 focus:border-white rounded-xl px-3 py-2 outline-none transition-all text-sm text-white"
-                        style={{ colorScheme: 'dark' }}
                     />
                 </div>
             </div>

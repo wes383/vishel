@@ -10,7 +10,7 @@ import {
 } from '../components/media/MediaDetailShell'
 import Modal from '../components/ui/Modal'
 import ListItemButton from '../components/ui/ListItemButton'
-import Button from '../components/ui/Button'
+import Segmented from '../components/ui/Segmented'
 import Card from '../components/ui/Card'
 import { LoadingPanel } from '../components/ui/Feedback'
 import { buildExternalLinks, defaultTvExternalLinks, normalizeExternalLinks } from '../utils/externalLinks'
@@ -219,18 +219,13 @@ export default function TVDetail() {
             </MediaDetailShell>
 
             <div className="container mx-auto px-8 -mt-12 relative z-20">
-                <div className="flex flex-wrap items-center gap-3 py-2">
-                    {seasons.map(season => (
-                        <Button
-                            key={season.seasonNumber}
-                            size="sm"
-                            variant={activeSeason === season.seasonNumber ? 'default' : 'subtle'}
-                            aria-pressed={activeSeason === season.seasonNumber}
-                            onClick={() => setActiveSeason(season.seasonNumber)}
-                        >
-                            {season.name}
-                        </Button>
-                    ))}
+                <div className="py-2">
+                    <Segmented
+                        label={t('detail:seasons')}
+                        value={activeSeason}
+                        options={seasons.map(season => ({ value: season.seasonNumber, label: season.name }))}
+                        onChange={setActiveSeason}
+                    />
                 </div>
 
                 {episodes.length > 0 && (

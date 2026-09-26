@@ -28,6 +28,7 @@
     "revealEpisodeSynopsis": "Reveal episode synopsis",
     "runtimeHoursMinutes": "{{hours}}h {{minutes}}m",
     "seasonEpisode": "Season {{seasonNumber}} Episode {{episodeNumber}}",
+    "seasons": "Seasons",
     "selectVersion": "Select Version",
     "showTitleAsText": "Show the title of {{title}} as text",
     "topCast": "Top Cast",

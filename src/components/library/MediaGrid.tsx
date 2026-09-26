@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { LazyImage } from '../LazyImage'
 import Modal from '../ui/Modal'
 import ListItemButton from '../ui/ListItemButton'
+import Menu, { MenuItem, menuHeight } from '../ui/Menu'
+import EmptyState from '../ui/EmptyState'
 import { GridItem } from '../../types/library'
 import { RematchModal } from './RematchModal'
 import { useMediaStatus } from '../../contexts/MediaStatusContext'
@@ -30,8 +32,9 @@ interface ContextMenuState {
 }
 
 const MENU_WIDTH = 240
-const MENU_HEIGHT = 200
 const MENU_PADDING = 8
+/** Play, favourite, watched, refresh metadata, rematch. */
+const MENU_ITEM_COUNT = 5
 
 interface PosterCardProps {
     item: GridItem
@@ -79,14 +82,12 @@ const PosterCard = React.memo(function PosterCard({
                 aria-label={item.type === 'movie'
                     ? t('grid:posterAriaLabelMovie', { title: item.title })
                     : t('grid:posterAriaLabelTv', { title: item.title })}
-                className={`block w-full text-left rounded-xl transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${
+                className={`block w-full text-left rounded-lg transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                     shouldShift ? (isMenuOpen ? '-translate-y-1' : 'group-hover:-translate-y-1') : ''
                 }`}
             >
                 {/* The card chrome lives on the poster, so a title below it sits outside the rounded box. */}
-                <span className={`block aspect-[2/3] relative rounded-xl overflow-hidden shadow-lg ${
-                    isMenuOpen ? 'shadow-2xl' : 'group-hover:shadow-2xl'
-                } bg-neutral-800`}>
+                <span className="block aspect-[2/3] relative rounded-lg overflow-hidden bg-surface border border-border transition-colors duration-150 group-hover:border-border-strong">
                     {/* Blur wraps the image only: the hover title is a sibling, so it stays sharp. */}
                     <span className={`block w-full h-full transition-all duration-300 ${
                         isHoverMode ? (isMenuOpen ? 'blur-sm' : 'group-hover:blur-sm') : ''
@@ -99,13 +100,13 @@ const PosterCard = React.memo(function PosterCard({
                                 placeholderClassName="w-full h-full"
                             />
                         ) : (
-                            <span className="w-full h-full flex items-center justify-center bg-neutral-700 text-neutral-500">
+                            <span className="w-full h-full flex items-center justify-center bg-surface-raised text-foreground-faint">
                                 {item.type === 'movie' ? <Film className="w-12 h-12" aria-hidden="true" /> : <Tv className="w-12 h-12" aria-hidden="true" />}
                             </span>
                         )}
                     </span>
                     {isHoverMode && (
-                        <span className={`absolute inset-0 bg-black/0 transition-all duration-100 delay-[50ms] flex items-center justify-center p-4 ${
+                        <span className={`absolute inset-0 bg-black/0 transition-opacity duration-100 delay-[50ms] flex items-center justify-center p-4 ${
                             isMenuOpen ? 'bg-black/60 opacity-100' : 'group-hover:bg-black/60 opacity-0 group-hover:opacity-100'
                         }`}>
                             <span className={`font-medium text-white text-center ${
@@ -117,7 +118,7 @@ const PosterCard = React.memo(function PosterCard({
                     )}
                 </span>
                 {posterTitleMode === 'below' && (
-                    <span className={`block mt-2 px-1 font-medium text-white text-center ${
+                    <span className={`block mt-2 px-1 font-medium text-center ${
                         posterSize === 'small' ? 'text-sm' : 'text-base'
                     }`}>
                         {item.title}
@@ -178,12 +179,13 @@ export const MediaGrid: React.FC<MediaGridProps> = ({
         }
 
         let y = point ? point.y : rect.top
-        if (y + MENU_HEIGHT > viewportHeight - MENU_PADDING) {
-            y = Math.max(MENU_PADDING, (point ? point.y : rect.bottom) - MENU_HEIGHT + 8)
+        const menuHeightPx = menuHeight(MENU_ITEM_COUNT, posterTitleMode === 'hidden')
+        if (y + menuHeightPx > viewportHeight - MENU_PADDING) {
+            y = Math.max(MENU_PADDING, (point ? point.y : rect.bottom) - menuHeightPx + 8)
         }
 
         setContextMenu({ x, y, item })
-    }, [])
+    }, [posterTitleMode])
 
     const closeMenu = useCallback((restoreFocus = true) => {
         setContextMenu(null)
@@ -393,9 +395,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({
 
     if (items.length === 0) {
         return (
-            <div className="text-center text-gray-400 mt-20">
-                {emptyMessage || <p>{t('grid:noContentFound')}</p>}
-            </div>
+            <EmptyState compact className="mt-20" title={emptyMessage || t('grid:noContentFound')} />
         )
     }
     const menuIsBelowHiddenPoster = posterTitleMode === 'hidden'
@@ -421,11 +421,10 @@ export const MediaGrid: React.FC<MediaGridProps> = ({
             </div>
 
             {contextMenu && (
-                <div
+                <Menu
                     ref={menuRef}
-                    role="menu"
-                    aria-label={t('grid:actionsFor', { title: contextMenu.item.title })}
-                    tabIndex={-1}
+                    placement="fixed"
+                    label={t('grid:actionsFor', { title: contextMenu.item.title })}
                     onKeyDown={(event) => {
                         const entries = Array.from(
                             event.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]:not([disabled])')
@@ -445,12 +444,12 @@ export const MediaGrid: React.FC<MediaGridProps> = ({
                             entries[entries.length - 1]?.focus()
                         }
                     }}
-                    className="fixed bg-white/50 backdrop-blur-md rounded-xl shadow-2xl py-1 z-50 w-[240px] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                    className="w-[240px]"
                     style={{ left: contextMenu.x, top: contextMenu.y }}
                 >
                     {menuIsBelowHiddenPoster && (
-                        <div className="px-4 py-2 border-b border-black/10">
-                            <p className="text-sm text-gray-900 font-semibold truncate">{contextMenu.item.title}</p>
+                        <div className="mb-1 border-b border-border px-3 py-2">
+                            <p className="text-sm font-semibold truncate">{contextMenu.item.title}</p>
                         </div>
                     )}
                     <MenuItem onClick={() => { closeMenu(false); void openFileForItem(contextMenu.item) }} disabled={playing}>
@@ -459,14 +458,14 @@ export const MediaGrid: React.FC<MediaGridProps> = ({
                     </MenuItem>
                     <MenuItem onClick={handleToggleFavorite}>
                         <Heart
-                            className={`w-4 h-4 ${isFavorite(contextMenu.item.type, contextMenu.item.id) ? 'fill-red-700 text-red-700' : ''}`}
+                            className={`w-4 h-4 ${isFavorite(contextMenu.item.type, contextMenu.item.id) ? 'fill-danger text-danger' : ''}`}
                             aria-hidden="true"
                         />
                         {isFavorite(contextMenu.item.type, contextMenu.item.id) ? t('grid:removeFromFavorites') : t('grid:addToFavorites')}
                     </MenuItem>
                     <MenuItem onClick={handleToggleWatched}>
                         <Check
-                            className={`w-4 h-4 ${isWatched(contextMenu.item.type, contextMenu.item.id) ? 'text-green-700' : ''}`}
+                            className={`w-4 h-4 ${isWatched(contextMenu.item.type, contextMenu.item.id) ? 'text-success' : ''}`}
                             strokeWidth={3}
                             aria-hidden="true"
                         />
@@ -480,7 +479,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({
                         <Repeat className="w-4 h-4" aria-hidden="true" />
                         {t('grid:rematch')}
                     </MenuItem>
-                </div>
+                </Menu>
             )}
 
             {fileSelector && (
@@ -562,24 +561,6 @@ export const MediaGrid: React.FC<MediaGridProps> = ({
         </>
     )
 }
-
-interface MenuItemProps {
-    onClick: () => void
-    disabled?: boolean
-    children: React.ReactNode
-}
-
-const MenuItem: React.FC<MenuItemProps> = ({ onClick, disabled, children }) => (
-    <button
-        type="button"
-        role="menuitem"
-        onClick={onClick}
-        disabled={disabled}
-        className="w-full px-4 py-2 text-left hover:bg-black/10 transition-colors text-sm text-gray-900 font-medium disabled:opacity-50 flex items-center gap-2 focus:outline-none focus-visible:bg-black/10"
-    >
-        {children}
-    </button>
-)
 
 const errorMessage = (error: unknown, fallback: string) =>
     error instanceof Error && error.message ? error.message : fallback

@@ -17,21 +17,21 @@ interface EmptyStateProps {
 export default function EmptyState({ icon: Icon, title, hint, compact = false, className, children }: EmptyStateProps) {
     if (compact) {
         return (
-            <div className={cn('flex flex-col items-center justify-center text-center py-12', className)}>
+            <div className={cn('flex flex-col items-center justify-center py-12 text-center', className)}>
                 {Icon && <Icon className="h-6 w-6 mb-2 text-foreground-faint" aria-hidden="true" />}
-                <p className="text-base text-foreground-muted">{title}</p>
-                {hint && <p className="text-sm text-foreground-muted mt-1">{hint}</p>}
-                {children && <div className="flex items-center gap-2 mt-4">{children}</div>}
+                <div className="text-base text-foreground-muted">{title}</div>
+                {hint && <div className="mt-1 text-sm text-foreground-muted">{hint}</div>}
+                {children && <div className="mt-4 flex items-center gap-2">{children}</div>}
             </div>
         )
     }
 
     return (
-        <div className={cn('flex flex-col items-center justify-center text-center p-8 border border-dashed border-border rounded-lg bg-surface/60', className)}>
+        <div className={cn('flex flex-col items-center justify-center p-8 text-center border border-dashed border-border rounded-lg bg-surface/60', className)}>
             {Icon && <Icon className="h-8 w-8 text-foreground-faint mb-3" aria-hidden="true" />}
-            <p className="font-display text-lg font-semibold tracking-tight text-foreground">{title}</p>
-            {hint && <p className="text-sm text-foreground-muted mt-1">{hint}</p>}
-            {children && <div className="flex items-center gap-2 mt-4">{children}</div>}
+            <div className="font-display text-lg font-semibold tracking-tight text-foreground">{title}</div>
+            {hint && <div className="mt-1 text-sm text-foreground-muted">{hint}</div>}
+            {children && <div className="mt-4 flex items-center gap-2">{children}</div>}
         </div>
     )
 }

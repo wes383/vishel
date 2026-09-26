@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Settings, Search, ArrowUpDown, Check, SlidersHorizontal } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import Button from '../ui/Button'
+import Menu, { MenuItem, MenuLabel, MenuSeparator } from '../ui/Menu'
 
 export type SortOption = 'name-asc' | 'name-desc' | 'date-desc' | 'date-asc' | 'popularity-desc' | 'recently-added'
 
@@ -83,7 +85,9 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
         <div className="flex items-center gap-2">
             {activeTab !== 'history' && (
                 <div className="relative" ref={filterMenuRef}>
-                    <button
+                    <Button
+                        size="icon"
+                        variant={hasActiveFilter ? 'subtle' : 'ghost'}
                         onClick={() => {
                             setFilterMenuOpen(!filterMenuOpen)
                             setSortMenuOpen(false)
@@ -91,73 +95,77 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
                         aria-haspopup="menu"
                         aria-expanded={filterMenuOpen}
                         aria-label={hasActiveFilter ? t('library:filterAndGenreActive') : t('library:filterAndGenre')}
-                        className={`p-2 rounded-full transition-colors ${
-                            hasActiveFilter
-                                ? 'text-green-300 hover:bg-neutral-800 hover:text-green-400'
-                                : 'text-gray-400 hover:bg-neutral-800 hover:text-white'
-                        }`}
                     >
                         <SlidersHorizontal className="w-6 h-6" />
-                    </button>
+                    </Button>
                     {filterMenuOpen && (
-                        <div
-                            role="menu"
-                            aria-label={t('library:filterAndGenre')}
-                            className="absolute right-0 top-full mt-2 w-72 bg-white/50 backdrop-blur-md rounded-xl shadow-2xl py-2 z-50"
+                        <Menu
+                            placement="absolute"
+                            label={t('library:filterAndGenre')}
+                            className="right-0 top-full mt-2 w-72"
                             onKeyDown={handleMenuKeys}
                         >
-                            <div className="px-4 py-2 text-xs font-semibold text-gray-900 uppercase">{t('library:filterHeading')}</div>
+                            <MenuLabel className="uppercase">{t('library:filterHeading')}</MenuLabel>
                             {filterOptions.map(option => (
-                                <button
+                                <MenuItem
                                     key={option.value}
                                     role="menuitemradio"
-                                        aria-checked={filterBy === option.value}
-                                        onClick={() => {
+                                    aria-checked={filterBy === option.value}
+                                    checked={filterBy === option.value}
+                                    onClick={() => {
                                         onFilterChange?.(option.value)
                                         setFilterMenuOpen(false)
                                     }}
-                                    className="w-full px-4 py-2 text-left text-sm hover:bg-black/10 transition-colors flex items-center justify-between"
+                                    className="justify-between"
                                 >
-                                    <span className="text-gray-900 font-medium">{option.label}</span>
-                                    {filterBy === option.value && <Check className="w-4 h-4 text-gray-900" />}
-                                </button>
+                                    <span className="font-medium">{option.label}</span>
+                                    {filterBy === option.value && <Check className="w-4 h-4" aria-hidden="true" />}
+                                </MenuItem>
                             ))}
                             <>
-                                <div className="mx-4 my-1 h-px bg-black/10" />
-                                <div className="px-4 py-2 text-xs font-semibold text-gray-900 uppercase">{t('library:genreHeading')}</div>
-                                <div className="px-2 pb-1 grid grid-cols-2 gap-0.5 max-w-[280px] mx-auto">
-                                    <button
+                                <MenuSeparator />
+                                <MenuLabel className="uppercase">{t('library:genreHeading')}</MenuLabel>
+                                <div className="grid max-w-[280px] grid-cols-2 gap-0.5 px-1 pb-1 mx-auto">
+                                    <MenuItem
+                                        role="menuitemradio"
+                                        aria-checked={genreFilter === 'all'}
+                                        checked={genreFilter === 'all'}
                                         onClick={() => {
                                             onGenreFilterChange?.('all')
                                             setFilterMenuOpen(false)
                                         }}
-                                        className="col-span-2 w-full px-2 py-1.5 text-left text-sm hover:bg-black/10 rounded-md transition-colors flex items-center justify-between"
+                                        className="col-span-2 justify-between"
                                     >
-                                        <span className="text-gray-900 font-medium">{t('library:allGenres')}</span>
-                                        {genreFilter === 'all' && <Check className="w-4 h-4 text-gray-900" />}
-                                    </button>
+                                        <span className="font-medium">{t('library:allGenres')}</span>
+                                        {genreFilter === 'all' && <Check className="w-4 h-4" aria-hidden="true" />}
+                                    </MenuItem>
                                     {genreOptions.map((genre) => (
-                                        <button
+                                        <MenuItem
                                             key={genre}
+                                            role="menuitemradio"
+                                            aria-checked={genreFilter === genre}
+                                            checked={genreFilter === genre}
                                             onClick={() => {
                                                 onGenreFilterChange?.(genre)
                                                 setFilterMenuOpen(false)
                                             }}
-                                            className="w-full px-2 py-1.5 text-left text-sm hover:bg-black/10 rounded-md transition-colors flex items-center justify-between"
+                                            className="justify-between"
                                         >
-                                            <span className="text-gray-900 font-medium truncate pr-2">{genre}</span>
-                                            {genreFilter === genre && <Check className="w-4 h-4 text-gray-900" />}
-                                        </button>
+                                            <span className="font-medium truncate pr-2">{genre}</span>
+                                            {genreFilter === genre && <Check className="w-4 h-4" aria-hidden="true" />}
+                                        </MenuItem>
                                     ))}
                                 </div>
                             </>
-                        </div>
+                        </Menu>
                     )}
                 </div>
             )}
             {activeTab !== 'history' && (
                 <div className="relative" ref={sortMenuRef}>
-                    <button
+                    <Button
+                        size="icon"
+                        variant="ghost"
                         onClick={() => {
                             setSortMenuOpen(!sortMenuOpen)
                             setFilterMenuOpen(false)
@@ -165,54 +173,54 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
                         aria-haspopup="menu"
                         aria-expanded={sortMenuOpen}
                         aria-label={t('library:sortBy')}
-                        className="p-2 rounded-full text-gray-400 hover:bg-neutral-800 hover:text-white transition-colors"
                     >
                         <ArrowUpDown className="w-6 h-6" />
-                    </button>
+                    </Button>
                     {sortMenuOpen && (
-                        <div
-                            role="menu"
-                            aria-label={t('library:sortBy')}
-                            className="absolute right-0 top-full mt-2 w-56 bg-white/50 backdrop-blur-md rounded-xl shadow-2xl py-2 z-50"
+                        <Menu
+                            placement="absolute"
+                            label={t('library:sortBy')}
+                            className="right-0 top-full mt-2 w-56"
                             onKeyDown={handleMenuKeys}
                         >
-                            <div className="px-4 py-2 text-xs font-semibold text-gray-900 uppercase">{t('library:sortByHeading')}</div>
+                            <MenuLabel className="uppercase">{t('library:sortByHeading')}</MenuLabel>
                             {sortOptions.map(option => (
-                                <button
+                                <MenuItem
                                     key={option.value}
                                     role="menuitemradio"
-                                        aria-checked={sortBy === option.value}
-                                        onClick={() => {
+                                    aria-checked={sortBy === option.value}
+                                    checked={sortBy === option.value}
+                                    onClick={() => {
                                         onSortChange(option.value)
                                         setSortMenuOpen(false)
                                     }}
-                                    className="w-full px-4 py-2 text-left text-sm hover:bg-black/10 transition-colors flex items-center justify-between"
+                                    className="justify-between"
                                 >
-                                    <span className="text-gray-900 font-medium">{option.label}</span>
-                                    {sortBy === option.value && <Check className="w-4 h-4 text-gray-900" />}
-                                </button>
+                                    <span className="font-medium">{option.label}</span>
+                                    {sortBy === option.value && <Check className="w-4 h-4" aria-hidden="true" />}
+                                </MenuItem>
                             ))}
-                        </div>
+                        </Menu>
                     )}
                 </div>
             )}
-            <button
-                type="button"
+            <Button
+                size="icon"
+                variant="ghost"
                 onClick={onSearchToggle}
                 aria-label={t('common:search')}
                 aria-pressed={false}
-                className="p-2 rounded-full text-gray-400 hover:bg-neutral-800 hover:text-white transition-colors"
             >
                 <Search className="w-6 h-6" />
-            </button>
-            <button
-                type="button"
+            </Button>
+            <Button
+                size="icon"
+                variant="ghost"
                 onClick={() => navigate('/settings')}
                 aria-label={t('library:openSettings')}
-                className="p-2 rounded-full text-gray-400 hover:bg-neutral-800 hover:text-white transition-colors"
             >
                 <Settings className="w-6 h-6" />
-            </button>
+            </Button>
         </div>
     )
 }

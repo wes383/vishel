@@ -7,6 +7,7 @@ interface KeyboardShortcutsOptions {
 }
 
 function scrollHomeToTop() {
+    // Selector must match the class on the library scroller in pages/Library.tsx.
     const scrollContainer = document.querySelector('.library-scroll-container') as HTMLElement | null
     if (scrollContainer) {
         scrollContainer.scrollTo({ top: 0, behavior: 'smooth' })

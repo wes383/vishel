@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { X } from 'lucide-react'
+import Input from '../ui/Input'
 
 interface SearchInputProps {
     value: string
@@ -81,10 +82,12 @@ export const SearchInput: React.FC<SearchInputProps> = ({
             <label htmlFor={inputId} className="sr-only">
                 {t('library:searchTheLibrary')}
             </label>
-            <input
+            <Input
                 ref={inputRef}
                 id={inputId}
                 type="text"
+                size="lg"
+                className="pr-10"
                 autoComplete="off"
                 value={value}
                 onChange={(event) => onChange(event.target.value)}
@@ -99,7 +102,6 @@ export const SearchInput: React.FC<SearchInputProps> = ({
                     else onClose()
                 }}
                 placeholder={resolvedPlaceholder}
-                className="w-full bg-neutral-800 text-white px-4 py-3 pr-10 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
             />
             {value && (
                 <button
@@ -112,7 +114,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({
                     onClick={handleClear}
                     aria-label={t('library:clearSearch')}
                     title={t('library:clearSearch')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-subtle hover:text-foreground transition-colors rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                     <X className="w-5 h-5" aria-hidden="true" />
                 </button>

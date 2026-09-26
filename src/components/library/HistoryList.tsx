@@ -1,9 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Trash2, Play, Loader2, SkipForward } from 'lucide-react'
+import { Trash2, Play, SkipForward } from 'lucide-react'
 import Modal from '../ui/Modal'
 import ListItemButton from '../ui/ListItemButton'
+import Button from '../ui/Button'
+import Badge from '../ui/Badge'
+import EmptyState from '../ui/EmptyState'
+import { Spinner } from '../ui/Feedback'
 import { useToast } from '../../contexts/ToastContext'
 import { HistoryItem } from '../../types/library'
 import { useListVirtualizer } from '../../hooks/useRowVirtualizer'
@@ -403,9 +407,11 @@ export const HistoryList: React.FC<HistoryListProps> = ({ items, onDelete, empty
     }, [playFile, setPlaying, setSelector, showToast, t])
 
     const emptyState = (
-        <div className="text-center text-gray-400 mt-20">
-            {emptyMessage || <p>{t('grid:noHistoryFound')}</p>}
-        </div>
+        <EmptyState
+            compact
+            className="mt-20"
+            title={emptyMessage || t('grid:noHistoryFound')}
+        />
     )
 
     return (
@@ -427,7 +433,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({ items, onDelete, empty
                     {rows.slice(start, end).map(({ item, removed, nextEpisode, playedAt, episodeLabel }) => (
                         <li
                             key={item.id}
-                            className="group bg-neutral-800 rounded-xl overflow-hidden hover:bg-neutral-700 transition-colors"
+                            className="group bg-surface rounded-lg overflow-hidden hover:bg-hover-bg-strong transition-colors"
                         >
                             <div className="flex items-center gap-4 p-3">
                                 {/* Poster: mouse affordance only; the title button carries the tab stop. */}
@@ -436,7 +442,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({ items, onDelete, empty
                                     tabIndex={-1}
                                     onClick={() => void handleNavigateToDetail(item)}
                                     aria-label={t('grid:openDetailsAriaLabel', { title: item.title })}
-                                    className="flex-shrink-0 w-16 h-24 rounded-lg overflow-hidden bg-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                                    className="flex-shrink-0 w-16 h-24 rounded-lg overflow-hidden bg-surface-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 >
                                     {item.posterPath ? (
                                         <img
@@ -445,7 +451,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({ items, onDelete, empty
                                             className="w-full h-full object-cover"
                                         />
                                     ) : (
-                                        <span className="w-full h-full flex items-center justify-center text-neutral-500 text-xs">
+                                        <span className="w-full h-full flex items-center justify-center text-foreground-faint text-xs">
                                             {t('grid:noPoster')}
                                         </span>
                                     )}
@@ -454,11 +460,11 @@ export const HistoryList: React.FC<HistoryListProps> = ({ items, onDelete, empty
                                 <button
                                     type="button"
                                     onClick={() => void handleNavigateToDetail(item)}
-                                    className="flex-1 min-w-0 text-left rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                                    className="flex-1 min-w-0 text-left rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 >
-                                    <span className="block font-semibold text-white text-base truncate">{item.title}</span>
+                                    <span className="block font-semibold text-base truncate">{item.title}</span>
                                     {episodeLabel && (
-                                        <span className="flex items-center gap-2 mt-1 text-sm text-gray-400">
+                                        <span className="flex items-center gap-2 mt-1 text-sm text-foreground-muted">
                                             <span>{episodeLabel}</span>
                                             {item.episodeName && (
                                                 <>
@@ -468,36 +474,38 @@ export const HistoryList: React.FC<HistoryListProps> = ({ items, onDelete, empty
                                             )}
                                         </span>
                                     )}
-                                    <span className="block text-xs text-gray-500 mt-1">{playedAt}</span>
+                                    <span className="block text-xs text-foreground-muted mt-1">{playedAt}</span>
                                 </button>
 
                                 <div className="flex items-center gap-2">
                                     {nextEpisode && (
-                                        <button
-                                            type="button"
+                                        <Button
+                                            size="sm"
+                                            variant="subtle"
                                             onClick={(event) => {
                                                 event.stopPropagation()
                                                 void handlePlayNext(item)
                                             }}
                                             disabled={playingId === `${item.id}-next`}
                                             aria-label={t('grid:playNextAriaLabel', { season: nextEpisode.seasonNumber, episode: nextEpisode.episodeNumber, title: item.title })}
-                                            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/20 text-white hover:bg-white hover:text-black transition-colors opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 disabled:opacity-50 text-sm font-medium"
+                                            className="flex-shrink-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
                                         >
                                             {playingId === `${item.id}-next` ? (
-                                                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                                                <Spinner size="sm" />
                                             ) : (
                                                 <SkipForward className="w-4 h-4" aria-hidden="true" />
                                             )}
                                             <span>{t('grid:playNextLabel', { season: nextEpisode.seasonNumber, episode: nextEpisode.episodeNumber })}</span>
-                                        </button>
+                                        </Button>
                                     )}
                                     {removed ? (
-                                        <span className="flex-shrink-0 px-3 py-1.5 text-xs text-gray-500 whitespace-nowrap">
+                                        <Badge tone="muted" className="flex-shrink-0">
                                             {t('grid:removedFromLibrary')}
-                                        </span>
+                                        </Badge>
                                     ) : (
-                                        <button
-                                            type="button"
+                                        <Button
+                                            size="icon"
+                                            variant="subtle"
                                             onClick={(event) => {
                                                 event.stopPropagation()
                                                 void handlePlay(item)
@@ -506,26 +514,28 @@ export const HistoryList: React.FC<HistoryListProps> = ({ items, onDelete, empty
                                             aria-label={episodeLabel
                                                 ? t('grid:playWithEpisodeAriaLabel', { title: item.title, episode: episodeLabel })
                                                 : t('grid:playNamed', { name: item.title })}
-                                            className="flex-shrink-0 p-2 rounded-full bg-white/20 text-white hover:bg-white hover:text-black transition-colors opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 disabled:opacity-50"
+                                            className="flex-shrink-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
                                         >
                                             {playingId === item.id ? (
-                                                <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
+                                                <Spinner size="md" />
                                             ) : (
                                                 <Play className="w-5 h-5" aria-hidden="true" />
                                             )}
-                                        </button>
+                                        </Button>
                                     )}
-                                    <button
-                                        type="button"
+                                    <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        tone="danger"
                                         onClick={(event) => {
                                             event.stopPropagation()
                                             onDelete(item.id)
                                         }}
                                         aria-label={t('grid:removeFromHistoryAriaLabel', { title: item.title })}
-                                        className="flex-shrink-0 p-2 mr-2 rounded-full bg-white/20 text-gray-300 hover:bg-red-500 hover:text-white transition-colors opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                                        className="mr-2 flex-shrink-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
                                     >
                                         <Trash2 className="w-5 h-5" aria-hidden="true" />
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
                         </li>

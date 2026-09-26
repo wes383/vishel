@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronDown, Play, Loader2, Edit } from 'lucide-react'
+import { ChevronDown, Play, Edit } from 'lucide-react'
 import { UnscannedFile } from '../../types/library'
 import { ManualMatchModal } from './ManualMatchModal'
+import Button from '../ui/Button'
+import { Spinner } from '../ui/Feedback'
 import { useListVirtualizer } from '../../hooks/useRowVirtualizer'
 import { useToast } from '../../contexts/ToastContext'
 import type { MatchResult } from '../../types/ipc'
@@ -82,7 +84,7 @@ export const UnscannedFiles: React.FC<UnscannedFilesProps> = ({ files, onRefresh
                     onClick={() => setExpanded(value => !value)}
                     aria-expanded={expanded}
                     aria-controls={panelId}
-                    className="group flex w-full items-center justify-between gap-2 rounded-lg text-gray-400 hover:text-gray-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                    className="group flex w-full items-center justify-between gap-2 rounded-lg text-foreground-muted hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                     <span className="font-semibold truncate">
                         {t('grid:unscannedFiles', { count: files.length })}
@@ -102,24 +104,25 @@ export const UnscannedFiles: React.FC<UnscannedFilesProps> = ({ files, onRefresh
                     id={panelId}
                     ref={listRef}
                     style={{ paddingTop, paddingBottom }}
-                    className="bg-neutral-800 rounded-xl overflow-hidden"
+                    className="bg-surface border border-border rounded-lg overflow-hidden"
                 >
                     {files.slice(start, end).map(file => (
                         <li
                             key={file.id}
-                            className="h-[76px] p-4 border-b border-neutral-700 last:border-0 flex items-center justify-between gap-3 hover:bg-neutral-700/50 transition-colors group/item"
+                            className="h-[76px] p-4 border-b border-border last:border-0 flex items-center justify-between gap-3 hover:bg-hover-bg transition-colors group/item"
                         >
                             <div className="min-w-0 flex-1">
-                                <p className="font-medium text-white truncate">{file.name}</p>
+                                <p className="font-medium truncate">{file.name}</p>
                                 {file.sourceName && (
-                                    <p className="text-sm text-gray-500 truncate">
+                                    <p className="text-sm text-foreground-muted truncate">
                                         {t('grid:fromSource', { name: file.sourceName })}
                                     </p>
                                 )}
                             </div>
                             <div className="flex items-center gap-2">
-                                <button
-                                    type="button"
+                                <Button
+                                    size="icon"
+                                    variant="ghost"
                                     onClick={(event) => {
                                         event.stopPropagation()
                                         void handlePlay(file)
@@ -127,23 +130,24 @@ export const UnscannedFiles: React.FC<UnscannedFilesProps> = ({ files, onRefresh
                                     disabled={playingId === file.id}
                                     title={t('grid:playThisFile')}
                                     aria-label={t('grid:playNamed', { name: file.name })}
-                                    className="p-2 hover:bg-neutral-600 rounded-full transition-colors opacity-0 group-hover/item:opacity-100 group-focus-within/item:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 disabled:opacity-50"
+                                    className="opacity-0 group-hover/item:opacity-100 group-focus-within/item:opacity-100 focus-visible:opacity-100"
                                 >
                                     {playingId === file.id ? (
-                                        <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                                        <Spinner size="sm" />
                                     ) : (
                                         <Play className="w-4 h-4" aria-hidden="true" />
                                     )}
-                                </button>
-                                <button
-                                    type="button"
+                                </Button>
+                                <Button
+                                    size="icon"
+                                    variant="ghost"
                                     onClick={(event) => handleEditClick(event, file)}
                                     title={t('grid:matchThisFileManually')}
                                     aria-label={t('grid:matchFileManuallyAriaLabel', { name: file.name })}
-                                    className="p-2 hover:bg-neutral-600 rounded-full transition-colors opacity-0 group-hover/item:opacity-100 group-focus-within/item:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                                    className="opacity-0 group-hover/item:opacity-100 group-focus-within/item:opacity-100 focus-visible:opacity-100"
                                 >
                                     <Edit className="w-4 h-4" aria-hidden="true" />
-                                </button>
+                                </Button>
                             </div>
                         </li>
                     ))}

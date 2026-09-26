@@ -10,6 +10,10 @@ import { MediaGrid } from '../components/library/MediaGrid'
 import { HistoryList } from '../components/library/HistoryList'
 import { UnscannedFiles } from '../components/library/UnscannedFiles'
 import ScanProgressBar from '../components/library/ScanProgressBar'
+import Button from '../components/ui/Button'
+import EmptyState from '../components/ui/EmptyState'
+import { LoadingPanel } from '../components/ui/Feedback'
+import { AlertTriangle } from 'lucide-react'
 import { UnscannedFile, HistoryItem, GridItem } from '../types/library'
 import type { Movie as MovieRecord, TVShow as TVShowRecord } from '../../electron/db'
 import { matchesCastSearch, matchesNameListSearch, matchesSearch, normalizeGenres } from '../utils/searchMatch'
@@ -340,23 +344,22 @@ export default function LibraryPage() {
     const emptyMessage = (label: string, hint: React.ReactNode) => (
         searchQuery ? (
             <>
-                <p className="text-xl mb-2">{t('library:noResultsFound')}</p>
-                <p>{hint}</p>
+                <p className="mb-1">{t('library:noResultsFound')}</p>
+                <p className="text-sm">{hint}</p>
             </>
         ) : (
-            <>
-                <p className="text-xl mb-2">{label}</p>
-            </>
+            <p>{label}</p>
         )
     )
 
     return (
         <div className="h-full flex flex-col">
+            {/* The class name is load-bearing: useKeyboardShortcuts queries it to scroll home on Escape. */}
             <div ref={scrollRef} className="library-scroll-container flex-1 overflow-auto pt-12 px-8 lg:px-[72px] pb-8">
-                <div className="fixed top-0 left-0 right-0 h-8 bg-gradient-to-b from-neutral-900/50 to-transparent z-[99] pointer-events-none" />
+                <div className="titlebar-fade fixed top-0 left-0 right-0 h-8 z-[99] pointer-events-none" />
                 <div className="mb-8">
                     <div className="relative flex flex-wrap md:flex-nowrap items-center justify-between gap-y-4">
-                        <h1 className="text-3xl font-bold tracking-tight ml-[5px] font-display text-white/50 order-1">Vishel</h1>
+                        <h1 className="text-3xl font-bold tracking-tight ml-[5px] font-display text-foreground-faint order-1">Vishel</h1>
 
                         <div className="order-3 md:order-2 w-full md:w-auto">
                             <LibraryTabs activeTab={activeTab} onTabChange={setActiveTab} />
@@ -391,22 +394,25 @@ export default function LibraryPage() {
                 />
 
                 {loadError ? (
-                    <div className="text-center mt-20 space-y-4" role="alert">
-                        <p className="text-xl text-red-300">{t('library:couldNotLoadLibrary')}</p>
-                        <p className="text-sm text-gray-400 break-all">{loadError}</p>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setLoading(true)
-                                void fetchData()
-                            }}
-                            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium"
+                    <div role="alert">
+                        <EmptyState
+                            className="mt-20"
+                            icon={AlertTriangle}
+                            title={t('library:couldNotLoadLibrary')}
+                            hint={<span className="break-all">{loadError}</span>}
                         >
-                            {t('library:tryAgain')}
-                        </button>
+                            <Button
+                                onClick={() => {
+                                    setLoading(true)
+                                    void fetchData()
+                                }}
+                            >
+                                {t('library:tryAgain')}
+                            </Button>
+                        </EmptyState>
                     </div>
                 ) : loading ? (
-                    <div className="text-center text-gray-400 mt-20">{t('library:loadingLibrary')}</div>
+                    <LoadingPanel label={t('library:loadingLibrary')} className="mt-20" />
                 ) : (
                     <>
                         {activeTab === 'all' && (

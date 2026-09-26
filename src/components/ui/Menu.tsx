@@ -6,7 +6,8 @@ import { cn } from './cn'
  * flip logic from a real measurement instead of a guess.
  */
 export const MENU_ITEM_HEIGHT = 34
-export const MENU_HEADER_HEIGHT = 35
+/** py-2 text-sm line plus the 1px rule and the mb-1 gap under it. */
+export const MENU_HEADER_HEIGHT = 39
 export const MENU_PADDING_Y = 8
 
 export const menuHeight = (items: number, withHeader = false): number =>

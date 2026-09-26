@@ -121,12 +121,12 @@ export const LibraryTabs: React.FC<LibraryTabsProps> = ({ activeTab, onTabChange
         tabRefs.current[`${variant}-${next.id}`]?.focus()
     }, [activeTab, onTabChange])
 
-    const desktopButton = (isActive: boolean) => `relative z-10 flex items-center gap-1 lg:gap-2 px-3 py-1.5 lg:px-6 lg:py-2 text-sm lg:text-base rounded-full transition-colors whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${
-        isActive ? 'text-white' : 'text-gray-400 hover:text-white'
+    const desktopButton = (isActive: boolean) => `relative z-10 flex items-center gap-1 lg:gap-2 px-3 py-1.5 lg:px-6 lg:py-2 text-sm lg:text-base rounded-full transition-colors whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+        isActive ? 'text-foreground' : 'text-foreground-muted hover:text-foreground'
     }`
 
-    const mobileButton = (isActive: boolean) => `flex items-center gap-1 px-3 py-1.5 rounded-full transition-all whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${
-        isActive ? 'bg-white/10 text-white shadow-sm' : 'text-gray-400 hover:text-white'
+    const mobileButton = (isActive: boolean) => `flex items-center gap-1 px-3 py-1.5 rounded-full transition-colors whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+        isActive ? 'bg-hover-bg-strong text-foreground' : 'text-foreground-muted hover:text-foreground'
     }`
 
     return (
@@ -134,18 +134,18 @@ export const LibraryTabs: React.FC<LibraryTabsProps> = ({ activeTab, onTabChange
             {/* Desktop Tabs */}
             <div
                 ref={containerRef}
-                className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-neutral-800 rounded-full p-1 transition-all duration-300"
+                className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-surface rounded-full p-1"
             >
                 {/* Animated indicator */}
                 <div
                     aria-hidden="true"
-                    className="absolute bg-white/10 rounded-full shadow-sm pointer-events-none"
+                    className="absolute bg-hover-bg-strong rounded-full pointer-events-none"
                     style={{
                         left: `${indicator.left}px`,
                         width: `${indicator.width}px`,
                         top: '4px',
                         bottom: '4px',
-                        transition: animateIndicator ? 'all 0.25s ease-out' : 'none',
+                        transition: animateIndicator ? 'left 0.25s cubic-bezier(0.16, 1, 0.3, 1), width 0.25s cubic-bezier(0.16, 1, 0.3, 1)' : 'none',
                     }}
                 />
 
@@ -177,7 +177,7 @@ export const LibraryTabs: React.FC<LibraryTabsProps> = ({ activeTab, onTabChange
                     aria-label={t('library:librarySections')}
                     aria-orientation="horizontal"
                     onKeyDown={(event) => handleKeyDown('mobile', event)}
-                    className="flex bg-neutral-800 rounded-full p-1 text-sm"
+                    className="flex bg-surface rounded-full p-1 text-sm"
                 >
                     {TABS.map(tab => (
                         <TabButton

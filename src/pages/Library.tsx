@@ -72,7 +72,9 @@ export default function LibraryPage() {
     const restoredScroll = useRef(false)
 
     // The URL stays the authority - it is what the tray menu writes - and the stored tab only
-    // speaks when the URL has nothing to say.
+    // speaks on a bare `/`, which is how the detail pages, settings and the shortcuts come
+    // back. Every click writes its param, `all` included: dropping the param for All would
+    // make `setActiveTab('all')` look like an arrival and let the stored tab overrule it.
     const activeTab: LibraryTab = isTab(searchParams.get('tab')) ? searchParams.get('tab') as LibraryTab : readStoredTab()
 
     useEffect(() => {
@@ -80,7 +82,7 @@ export default function LibraryPage() {
     }, [activeTab])
 
     const setActiveTab = useCallback((tab: LibraryTab) => {
-        setSearchParams(tab === 'all' ? {} : { tab }, { replace: true })
+        setSearchParams({ tab }, { replace: true })
     }, [setSearchParams])
 
     // A persisted legacy value must not leave the library unsorted.

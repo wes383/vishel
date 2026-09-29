@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Calendar, Check, ChevronLeft, Clock, Heart, ImageOff, Play, User } from 'lucide-react'
 import Button from '../ui/Button'
@@ -81,6 +81,17 @@ export function MediaDetailShell({
     const watched = isWatched(mediaType, mediaId)
     const runtimeParts = getRuntimeParts(runtime)
 
+    // The hero sits outside the scroller so it can bleed under the scrollbar, which means it has
+    // to be pulled back by the scroll offset to keep moving with the content. Written straight to
+    // the node rather than to state: this runs on every scroll frame.
+    const scrollRef = useRef<HTMLDivElement>(null)
+    const heroRef = useRef<HTMLDivElement>(null)
+    const syncHeroWithScroll = useCallback(() => {
+        if (heroRef.current && scrollRef.current) {
+            heroRef.current.style.transform = `translate3d(0, ${-scrollRef.current.scrollTop}px, 0)`
+        }
+    }, [])
+
     const handleToggleFavorite = async () => {
         try {
             const added = await toggleFavorite({ mediaId, mediaType, title })
@@ -106,8 +117,8 @@ export function MediaDetailShell({
     }
 
     return (
-        <div className="relative min-h-screen bg-background text-foreground">
-            <div className="absolute inset-0 h-[80vh] w-full overflow-hidden">
+        <div className="relative h-full overflow-hidden bg-background text-foreground">
+            <div ref={heroRef} className="absolute inset-x-0 top-0 h-[80vh] overflow-hidden will-change-transform">
                 {!isMac && <div className="titlebar-fade absolute top-0 left-0 right-0 h-8 z-[99]" />}
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/60 to-background z-10" />
                 {backdropPath && (
@@ -128,124 +139,126 @@ export function MediaDetailShell({
                 )}
             </div>
 
-            <Button
-                size="icon"
-                variant="ghost"
-                onClick={onBack}
-                aria-label={t('detail:backToLibrary')}
-                className="absolute top-12 left-8 z-40"
-            >
-                <ChevronLeft className="w-6 h-6" aria-hidden="true" />
-            </Button>
+            <div ref={scrollRef} onScroll={syncHeroWithScroll} className="detail-scroll absolute inset-0 overflow-y-auto">
+                <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={onBack}
+                    aria-label={t('detail:backToLibrary')}
+                    className="absolute top-12 left-8 z-40"
+                >
+                    <ChevronLeft className="w-6 h-6" aria-hidden="true" />
+                </Button>
 
-            <div className="relative z-20 container mx-auto px-8 pt-[55vh] pb-20">
-                <div className="pt-4">
-                    {logoPath && !showTextTitle && !preferTextTitle ? (
-                        <button
-                            type="button"
-                            onClick={() => setShowTextTitle(true)}
-                            aria-label={t('detail:showTitleAsText', { title })}
-                            className="block origin-left hover:opacity-80 transition-opacity"
-                        >
-                            <img
-                                src={tmdbImage(logoPath, 'original')}
-                                alt={title}
-                                className="max-w-[400px] max-h-[150px] object-contain mb-6"
-                            />
-                        </button>
-                    ) : (
-                        <h1 className="font-display text-5xl font-extrabold mb-2 leading-tight tracking-tight">
+                <div className="relative z-20 min-h-screen container mx-auto px-8 pt-[55vh] pb-20">
+                    <div className="pt-4">
+                        {logoPath && !showTextTitle && !preferTextTitle ? (
                             <button
                                 type="button"
-                                onClick={() => {
-                                    if (logoPath && !preferTextTitle) setShowTextTitle(false)
-                                }}
-                                className={logoPath && !preferTextTitle ? 'cursor-pointer hover:opacity-80 transition-opacity text-left' : 'text-left cursor-default'}
+                                onClick={() => setShowTextTitle(true)}
+                                aria-label={t('detail:showTitleAsText', { title })}
+                                className="block origin-left hover:opacity-80 transition-opacity"
                             >
-                                {title}
+                                <img
+                                    src={tmdbImage(logoPath, 'original')}
+                                    alt={title}
+                                    className="max-w-[400px] max-h-[150px] object-contain mb-6"
+                                />
                             </button>
-                        </h1>
-                    )}
-
-                    {tagline && <p className="text-xl text-foreground-muted italic mb-6">{tagline}</p>}
-
-                    <div className="flex flex-wrap items-center gap-6 text-foreground-muted mb-8 text-sm md:text-base">
-                        {year && (
-                            <div className="flex items-center gap-2">
-                                <Calendar className="w-4 h-4 text-foreground-subtle" aria-hidden="true" />
-                                <span>{year}</span>
-                            </div>
-                        )}
-                        {runtimeParts ? (
-                            <div className="flex items-center gap-2">
-                                <Clock className="w-4 h-4 text-foreground-subtle" aria-hidden="true" />
-                                <span>
-                                    {t('detail:runtimeHoursMinutes', {
-                                        hours: runtimeParts.hours,
-                                        minutes: runtimeParts.minutes
-                                    })}
-                                </span>
-                            </div>
-                        ) : null}
-
-                        <RatingBadges
-                            voteAverage={voteAverage}
-                            imdbRating={imdbRating}
-                            loadingImdb={loadingImdb}
-                            showImdbRating={showImdbRating}
-                            hasImdbId={hasImdbId}
-                        />
-
-                        {genres && genres.length > 0 && (
-                            <div className="flex gap-2 flex-wrap">
-                                {genres.map(genre => (
-                                    <Badge key={genre} tone="muted" shape="rect">{genre}</Badge>
-                                ))}
-                            </div>
+                        ) : (
+                            <h1 className="font-display text-5xl font-extrabold mb-2 leading-tight tracking-tight">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (logoPath && !preferTextTitle) setShowTextTitle(false)
+                                    }}
+                                    className={logoPath && !preferTextTitle ? 'cursor-pointer hover:opacity-80 transition-opacity text-left' : 'text-left cursor-default'}
+                                >
+                                    {title}
+                                </button>
+                            </h1>
                         )}
 
-                        <div className="flex items-center gap-2">
-                            <StatusToggleButton
-                                onClick={handleToggleFavorite}
-                                active={favorited}
-                                activeLabel={t('detail:removeFromFavorites')}
-                                inactiveLabel={t('detail:addToFavorites')}
-                            >
-                                <Heart className={`w-5 h-5 ${favorited ? 'fill-danger text-danger' : 'text-foreground-muted'}`} aria-hidden="true" />
-                            </StatusToggleButton>
-                            <StatusToggleButton
-                                onClick={handleToggleWatched}
-                                active={watched}
-                                activeLabel={t('detail:markAsUnwatched')}
-                                inactiveLabel={t('detail:markAsWatched')}
-                            >
-                                <Check className={`w-5 h-5 ${watched ? 'text-success' : 'text-foreground-muted'}`} strokeWidth={3} aria-hidden="true" />
-                            </StatusToggleButton>
+                        {tagline && <p className="text-xl text-foreground-muted italic mb-6">{tagline}</p>}
+
+                        <div className="flex flex-wrap items-center gap-6 text-foreground-muted mb-8 text-sm md:text-base">
+                            {year && (
+                                <div className="flex items-center gap-2">
+                                    <Calendar className="w-4 h-4 text-foreground-subtle" aria-hidden="true" />
+                                    <span>{year}</span>
+                                </div>
+                            )}
+                            {runtimeParts ? (
+                                <div className="flex items-center gap-2">
+                                    <Clock className="w-4 h-4 text-foreground-subtle" aria-hidden="true" />
+                                    <span>
+                                        {t('detail:runtimeHoursMinutes', {
+                                            hours: runtimeParts.hours,
+                                            minutes: runtimeParts.minutes
+                                        })}
+                                    </span>
+                                </div>
+                            ) : null}
+
+                            <RatingBadges
+                                voteAverage={voteAverage}
+                                imdbRating={imdbRating}
+                                loadingImdb={loadingImdb}
+                                showImdbRating={showImdbRating}
+                                hasImdbId={hasImdbId}
+                            />
+
+                            {genres && genres.length > 0 && (
+                                <div className="flex gap-2 flex-wrap">
+                                    {genres.map(genre => (
+                                        <Badge key={genre} tone="muted" shape="rect">{genre}</Badge>
+                                    ))}
+                                </div>
+                            )}
+
+                            <div className="flex items-center gap-2">
+                                <StatusToggleButton
+                                    onClick={handleToggleFavorite}
+                                    active={favorited}
+                                    activeLabel={t('detail:removeFromFavorites')}
+                                    inactiveLabel={t('detail:addToFavorites')}
+                                >
+                                    <Heart className={`w-5 h-5 ${favorited ? 'fill-danger text-danger' : 'text-foreground-muted'}`} aria-hidden="true" />
+                                </StatusToggleButton>
+                                <StatusToggleButton
+                                    onClick={handleToggleWatched}
+                                    active={watched}
+                                    activeLabel={t('detail:markAsUnwatched')}
+                                    inactiveLabel={t('detail:markAsWatched')}
+                                >
+                                    <Check className={`w-5 h-5 ${watched ? 'text-success' : 'text-foreground-muted'}`} strokeWidth={3} aria-hidden="true" />
+                                </StatusToggleButton>
+                            </div>
                         </div>
+
+                        <p className="text-lg text-foreground-muted leading-relaxed max-w-3xl mb-6">{overview}</p>
+
+                        {externalLinks.length > 0 && (
+                            <div className="flex flex-wrap gap-4 mb-10">
+                                {externalLinks.map((link, index) => {
+                                    const labelKey = getExternalLinkLabelKey(link.label)
+
+                                    return (
+                                        <button
+                                            key={`${link.label}-${index}`}
+                                            type="button"
+                                            onClick={() => void window.electron.ipcRenderer.invoke('open-external', link.url)}
+                                            className="text-foreground-muted hover:text-foreground transition-colors text-sm border-b border-transparent hover:border-border-strong"
+                                        >
+                                            {labelKey ? t(labelKey) : link.label}
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                        )}
+
+                        {children}
                     </div>
-
-                    <p className="text-lg text-foreground-muted leading-relaxed max-w-3xl mb-6">{overview}</p>
-
-                    {externalLinks.length > 0 && (
-                        <div className="flex flex-wrap gap-4 mb-10">
-                            {externalLinks.map((link, index) => {
-                                const labelKey = getExternalLinkLabelKey(link.label)
-
-                                return (
-                                    <button
-                                        key={`${link.label}-${index}`}
-                                        type="button"
-                                        onClick={() => void window.electron.ipcRenderer.invoke('open-external', link.url)}
-                                        className="text-foreground-muted hover:text-foreground transition-colors text-sm border-b border-transparent hover:border-border-strong"
-                                    >
-                                        {labelKey ? t(labelKey) : link.label}
-                                    </button>
-                                )
-                            })}
-                        </div>
-                    )}
-
-                    {children}
                 </div>
             </div>
         </div>

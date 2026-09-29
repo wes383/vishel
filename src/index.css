@@ -207,8 +207,15 @@
 
     /* KEEP IN SYNC with titleBarOverlay.height in electron/main.ts and h-8 in App.tsx */
     main::-webkit-scrollbar-track,
-    .library-scroll-container::-webkit-scrollbar-track {
+    .library-scroll-container::-webkit-scrollbar-track,
+    .detail-scroll::-webkit-scrollbar-track {
         margin-top: 32px;
+    }
+
+    /* The detail hero is painted outside .detail-scroll, so it can only show through the
+       scrollbar gutter if the track stops covering it with an opaque #101010. */
+    .detail-scroll::-webkit-scrollbar-track {
+        background: transparent;
     }
 
     *::-webkit-scrollbar-thumb {

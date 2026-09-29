@@ -188,6 +188,101 @@ export default function TVDetail() {
 
     const activeVersion = selectedEpisode
 
+    // The season list used to be a sibling of the shell in main's flow. The shell owns the
+    // page scroller now, so the tail is handed back as a slot and scrolls with the hero.
+    const seasonPanel = (
+        <div className="container mx-auto px-8 -mt-12 relative z-20">
+            <div className="py-2">
+                <Segmented
+                    label={t('detail:seasons')}
+                    value={activeSeason}
+                    options={seasons.map(season => ({ value: season.seasonNumber, label: season.name }))}
+                    onChange={setActiveSeason}
+                />
+            </div>
+
+            {episodes.length > 0 && (
+                <div className="space-y-4 pb-20">
+                    {episodes.map(episode => {
+                        const revealed = !hideSpoilers || revealedEpisodes.has(episode.id)
+                        const playLabel = episode.name
+                            ? t('detail:playSeasonEpisodeNamed', {
+                                seasonNumber: episode.seasonNumber,
+                                episodeNumber: episode.episodeNumber,
+                                name: episode.name
+                            })
+                            : t('detail:playSeasonEpisode', {
+                                seasonNumber: episode.seasonNumber,
+                                episodeNumber: episode.episodeNumber
+                            })
+
+                        return (
+                            <Card
+                                key={`${episode.seasonNumber}-${episode.episodeNumber}`}
+                                interactive
+                                padded
+                                className="flex flex-col md:flex-row gap-6"
+                            >
+                                <div className="group md:w-56 flex-shrink-0 relative aspect-video rounded-lg overflow-hidden bg-background">
+                                    {episode.stillPath ? (
+                                        <img
+                                            src={tmdbImage(episode.stillPath, 'w780')}
+                                            alt=""
+                                            aria-hidden="true"
+                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex flex-col items-center justify-center text-foreground-faint gap-2" aria-hidden="true">
+                                            <div className="w-8 h-8 rounded-full border-2 border-current flex items-center justify-center opacity-50">
+                                                <span className="text-xs font-bold">TV</span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="absolute bottom-3 left-3 px-2 py-1 bg-black/60 rounded-md text-xs font-bold text-white">
+                                        {t('detail:episodeBadge', { episodeNumber: episode.episodeNumber })}
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => handlePlayClick(episode)}
+                                        disabled={playingEpisodeId !== null || episode.videoFiles.length === 0}
+                                        aria-label={playLabel}
+                                        className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-150 disabled:opacity-100"
+                                    >
+                                        <span className="transform scale-75 group-hover:scale-100 transition-transform">
+                                            {playingEpisodeId === episode.id ? (
+                                                <Loader2 className="w-12 h-12 text-white animate-spin" aria-hidden="true" />
+                                            ) : (
+                                                <Play className="w-12 h-12 text-white fill-white" aria-hidden="true" />
+                                            )}
+                                        </span>
+                                    </button>
+                                </div>
+
+                                <div className="flex-1 py-1 min-w-0 flex flex-col justify-center">
+                                    <h3 className="text-lg font-bold mb-2 truncate pr-4">{episode.name}</h3>
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleSpoiler(episode.id)}
+                                        disabled={!hideSpoilers}
+                                        aria-expanded={revealed}
+                                        aria-label={revealed ? undefined : t('detail:revealEpisodeSynopsis')}
+                                        className={`text-left text-foreground-muted text-sm leading-relaxed line-clamp-3 ${
+                                            hideSpoilers && !revealed ? 'blur-sm cursor-pointer select-none hover:blur-none transition-all' : ''
+                                        }`}
+                                    >
+                                        {episode.overview || t('detail:noEpisodeOverview')}
+                                    </button>
+                                </div>
+                            </Card>
+                        )
+                    })}
+                </div>
+            )}
+        </div>
+    )
+
     return (
         <>
             <MediaDetailShell
@@ -208,6 +303,7 @@ export default function TVDetail() {
                 externalLinks={externalLinks}
                 onBack={() => navigate('/')}
                 isMac={window.electron?.platform === 'darwin'}
+                belowInfo={seasonPanel}
             >
                 <div className="flex flex-col gap-8 mb-10">
                     <PersonChips
@@ -217,97 +313,6 @@ export default function TVDetail() {
                     <PersonChips label={t('detail:topCast')} people={show.cast} />
                 </div>
             </MediaDetailShell>
-
-            <div className="container mx-auto px-8 -mt-12 relative z-20">
-                <div className="py-2">
-                    <Segmented
-                        label={t('detail:seasons')}
-                        value={activeSeason}
-                        options={seasons.map(season => ({ value: season.seasonNumber, label: season.name }))}
-                        onChange={setActiveSeason}
-                    />
-                </div>
-
-                {episodes.length > 0 && (
-                    <div className="space-y-4 pb-20">
-                        {episodes.map(episode => {
-                            const revealed = !hideSpoilers || revealedEpisodes.has(episode.id)
-                            const playLabel = episode.name
-                                ? t('detail:playSeasonEpisodeNamed', {
-                                    seasonNumber: episode.seasonNumber,
-                                    episodeNumber: episode.episodeNumber,
-                                    name: episode.name
-                                })
-                                : t('detail:playSeasonEpisode', {
-                                    seasonNumber: episode.seasonNumber,
-                                    episodeNumber: episode.episodeNumber
-                                })
-
-                            return (
-                                <Card
-                                    key={`${episode.seasonNumber}-${episode.episodeNumber}`}
-                                    interactive
-                                    padded
-                                    className="flex flex-col md:flex-row gap-6"
-                                >
-                                    <div className="group md:w-56 flex-shrink-0 relative aspect-video rounded-lg overflow-hidden bg-background">
-                                        {episode.stillPath ? (
-                                            <img
-                                                src={tmdbImage(episode.stillPath, 'w780')}
-                                                alt=""
-                                                aria-hidden="true"
-                                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                            />
-                                        ) : (
-                                            <div className="w-full h-full flex flex-col items-center justify-center text-foreground-faint gap-2" aria-hidden="true">
-                                                <div className="w-8 h-8 rounded-full border-2 border-current flex items-center justify-center opacity-50">
-                                                    <span className="text-xs font-bold">TV</span>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        <div className="absolute bottom-3 left-3 px-2 py-1 bg-black/60 rounded-md text-xs font-bold text-white">
-                                            {t('detail:episodeBadge', { episodeNumber: episode.episodeNumber })}
-                                        </div>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => handlePlayClick(episode)}
-                                            disabled={playingEpisodeId !== null || episode.videoFiles.length === 0}
-                                            aria-label={playLabel}
-                                            className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-150 disabled:opacity-100"
-                                        >
-                                            <span className="transform scale-75 group-hover:scale-100 transition-transform">
-                                                {playingEpisodeId === episode.id ? (
-                                                    <Loader2 className="w-12 h-12 text-white animate-spin" aria-hidden="true" />
-                                                ) : (
-                                                    <Play className="w-12 h-12 text-white fill-white" aria-hidden="true" />
-                                                )}
-                                            </span>
-                                        </button>
-                                    </div>
-
-                                    <div className="flex-1 py-1 min-w-0 flex flex-col justify-center">
-                                        <h3 className="text-lg font-bold mb-2 truncate pr-4">{episode.name}</h3>
-                                        <button
-                                            type="button"
-                                            onClick={() => toggleSpoiler(episode.id)}
-                                            disabled={!hideSpoilers}
-                                            aria-expanded={revealed}
-                                            aria-label={revealed ? undefined : t('detail:revealEpisodeSynopsis')}
-                                            className={`text-left text-foreground-muted text-sm leading-relaxed line-clamp-3 ${
-                                                hideSpoilers && !revealed ? 'blur-sm cursor-pointer select-none hover:blur-none transition-all' : ''
-                                            }`}
-                                        >
-                                            {episode.overview || t('detail:noEpisodeOverview')}
-                                        </button>
-                                    </div>
-                                </Card>
-                            )
-                        })}
-                    </div>
-                )}
-            </div>
 
             {activeVersion && activeVersion.videoFiles.length > 1 && (
                 <Modal

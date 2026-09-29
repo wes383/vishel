@@ -44,6 +44,8 @@ interface MediaDetailShellProps {
     onBack: () => void
     isMac: boolean
     children: React.ReactNode
+    /** Page tail that must not sit inside the info column, e.g. the season list. */
+    belowInfo?: React.ReactNode
 }
 
 /**
@@ -70,7 +72,8 @@ export function MediaDetailShell({
     hasImdbId,
     onBack,
     isMac,
-    children
+    children,
+    belowInfo
 }: MediaDetailShellProps) {
     const { t } = useTranslation(['detail', 'common'])
     const [showTextTitle, setShowTextTitle] = useState(preferTextTitle)
@@ -260,6 +263,8 @@ export function MediaDetailShell({
                         {children}
                     </div>
                 </div>
+
+                {belowInfo}
             </div>
         </div>
     )

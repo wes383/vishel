@@ -139,13 +139,5 @@
     "scanFolderAria": "扫描 {{name}}",
     "openFolderAria": "打开文件夹 {{name}}",
     "next": "下一步",
-    "finish": "完成",
-
-    "versionLabel": "版本 {{version}}",
-    "checkForUpdates": "检查更新",
-    "checkingUpdates": "正在检查…",
-    "updateInstalledOnRestart": "重启后将安装更新 {{version}}",
-    "updateDownloadError": "无法下载更新",
-    "updateLatestToast": "当前已是最新版本",
-    "updateCheckError": "检查更新失败"
+    "finish": "完成"
 }

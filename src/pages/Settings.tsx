@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { X } from 'lucide-react'
@@ -6,7 +6,6 @@ import SourcesSection from './settings/SourcesSection'
 import PlayerSection from './settings/PlayerSection'
 import GeneralSection from './settings/GeneralSection'
 import LinksSection from './settings/LinksSection'
-import UpdateSection from './settings/UpdateSection'
 import Button from '../components/ui/Button'
 import { useSettings } from '../contexts/SettingsContext'
 import TMDBLogo from '../assets/TMDB_logo.svg'
@@ -15,21 +14,6 @@ export default function SettingsPage() {
     const navigate = useNavigate()
     const { t } = useTranslation(['settings', 'common'])
     const { ready } = useSettings()
-    const [appVersion, setAppVersion] = useState('')
-
-    useEffect(() => {
-        let active = true
-
-        window.electron.ipcRenderer.invoke('get-app-version')
-            .then(version => {
-                if (active) setAppVersion(version)
-            })
-            .catch(error => console.error('Failed to read the app version:', error))
-
-        return () => {
-            active = false
-        }
-    }, [])
 
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
@@ -95,7 +79,6 @@ export default function SettingsPage() {
                                 {t('settings:tmdbAttribution')}
                             </p>
                         </div>
-                        <UpdateSection version={appVersion} />
                     </section>
                 </div>
             )}

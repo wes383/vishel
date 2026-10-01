@@ -140,13 +140,5 @@
     "scanFolderAria": "Scan {{name}}",
     "openFolderAria": "Open folder {{name}}",
     "next": "Next",
-    "finish": "Finish",
-
-    "versionLabel": "Version {{version}}",
-    "checkForUpdates": "Check for updates",
-    "checkingUpdates": "Checking...",
-    "updateInstalledOnRestart": "Update {{version}} will install on restart",
-    "updateDownloadError": "Could not download the update",
-    "updateLatestToast": "You are on the latest version",
-    "updateCheckError": "Update check failed"
+    "finish": "Finish"
 }

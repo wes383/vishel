@@ -122,25 +122,14 @@ export interface IpcRequestMap {
     'get-favorites': { args: []; result: FavoriteItem[] }
     'add-favorite': { args: [FavoriteDraft]; result: boolean }
     'remove-favorite': { args: [MediaKey]; result: boolean }
-    'get-app-version': { args: []; result: string }
     'get-all-watch-status': { args: []; result: WatchStatus[] }
     'toggle-watch-status': { args: [MediaKey]; result: boolean }
-    'check-for-updates': { args: []; result: UpdateStatus }
-    'download-update': { args: []; result: boolean }
-}
-
-/** Result of the GitHub release check wired up in electron/updater.ts. */
-export interface UpdateStatus {
-    state: 'idle' | 'checking' | 'available' | 'not-available' | 'downloaded' | 'error'
-    version?: string
-    message?: string
 }
 
 /** Channels the main process pushes; payload per channel. */
 export interface IpcEventMap {
     'scan-progress': ScanProgress
     'navigate-to-tab': LibraryTab
-    'update-status': UpdateStatus
 }
 
 export type { RedactedSource, WritableSource, ExternalLinkConfig }

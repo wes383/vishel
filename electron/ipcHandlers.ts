@@ -1,4 +1,4 @@
-import { ipcMain, dialog, shell, app, BrowserWindow } from 'electron'
+import { ipcMain, dialog, shell, BrowserWindow } from 'electron'
 import axios from 'axios'
 import store, { getSources } from './store'
 import { getRedactedSettings, saveSettings, hydrateSourceConfig } from './settings'
@@ -32,7 +32,6 @@ import { testLocalConnection, listLocalDirectory } from './localFileService'
 import { testConnection as testSMBConnection, listDirectory as listSMBDirectory } from './smbService'
 import { getMovieDetails, getTVShowDetails, getSeasonDetails, pickLogos } from './tmdbService'
 import { probeVideoMetadata } from './mediaProbe'
-import { checkForUpdates, downloadUpdate, initAutoUpdater } from './updater'
 
 /** Only web links may leave the app through the OS handler. */
 const ALLOWED_EXTERNAL_PROTOCOLS = new Set(['http:', 'https:'])
@@ -448,10 +447,6 @@ export const setupIpcHandlers = () => {
         return true
     })
 
-    ipcMain.handle('get-app-version', () => {
-        return app.getVersion()
-    })
-
     // Watch Status
     ipcMain.handle('get-all-watch-status', async () => {
         return getAllWatchStatus()
@@ -460,11 +455,4 @@ export const setupIpcHandlers = () => {
     ipcMain.handle('toggle-watch-status', async (_, { mediaId, mediaType }) => {
         return toggleWatchStatus(mediaId, mediaType)
     })
-
-    // Updates
-    ipcMain.handle('check-for-updates', async () => checkForUpdates())
-
-    ipcMain.handle('download-update', async () => downloadUpdate())
-
-    initAutoUpdater(status => broadcast('update-status', status))
 }

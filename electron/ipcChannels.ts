@@ -32,11 +32,8 @@ export const INVOKE_CHANNELS = [
     'get-favorites',
     'add-favorite',
     'remove-favorite',
-    'get-app-version',
     'get-all-watch-status',
-    'toggle-watch-status',
-    'check-for-updates',
-    'download-update'
+    'toggle-watch-status'
 ] as const
 
 export type InvokeChannel = typeof INVOKE_CHANNELS[number]
@@ -44,8 +41,7 @@ export type InvokeChannel = typeof INVOKE_CHANNELS[number]
 /** Channels the main process pushes to the renderer. */
 export const RECEIVE_CHANNELS = [
     'scan-progress',
-    'navigate-to-tab',
-    'update-status'
+    'navigate-to-tab'
 ] as const
 
 export type ReceiveChannel = typeof RECEIVE_CHANNELS[number]

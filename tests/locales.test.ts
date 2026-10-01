@@ -1,0 +1,60 @@
+import { describe, expect, it } from 'vitest'
+import { readFileSync, readdirSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+
+const LOCALES_DIR = fileURLToPath(new URL('../src/i18n/locales/', import.meta.url))
+const REFERENCE = 'en'
+
+const localeNames = (): string[] => readdirSync(LOCALES_DIR).sort()
+
+const namespaceFiles = (locale: string): string[] =>
+    readdirSync(`${LOCALES_DIR}${locale}`).filter(name => name.endsWith('.json')).sort()
+
+const entries = (locale: string, file: string): Record<string, string> =>
+    JSON.parse(readFileSync(`${LOCALES_DIR}${locale}/${file}`, 'utf8')) as Record<string, string>
+
+const placeholdersOf = (value: string): string[] =>
+    [...value.matchAll(/\{\{(\w+)/g)].map(match => match[1]).sort()
+
+const otherLocales = localeNames().filter(locale => locale !== REFERENCE)
+
+describe('locale bundles', () => {
+    it('ship the same namespace files in every locale', () => {
+        const reference = namespaceFiles(REFERENCE)
+        expect(reference.length).toBeGreaterThan(0)
+
+        for (const locale of otherLocales) {
+            expect(namespaceFiles(locale), locale).toEqual(reference)
+        }
+    })
+
+    it('carry the same keys as the reference locale', () => {
+        for (const locale of otherLocales) {
+            for (const file of namespaceFiles(locale)) {
+                const reference = Object.keys(entries(REFERENCE, file)).sort()
+                const translated = entries(locale, file)
+
+                expect(Object.keys(translated).sort(), `${locale}/${file}`).toEqual(reference)
+
+                for (const [key, value] of Object.entries(translated)) {
+                    expect(value.trim(), `${locale}/${file}:${key}`).not.toBe('')
+                }
+            }
+        }
+    })
+
+    // A dropped {{title}} makes the sentence render its braces instead of throwing anywhere.
+    it('keep every interpolation argument of the string they translate', () => {
+        for (const locale of otherLocales) {
+            for (const file of namespaceFiles(locale)) {
+                const reference = entries(REFERENCE, file)
+                const translated = entries(locale, file)
+
+                for (const key of Object.keys(reference)) {
+                    expect(placeholdersOf(translated[key]), `${locale}/${file}:${key}`)
+                        .toEqual(placeholdersOf(reference[key]))
+                }
+            }
+        }
+    })
+})

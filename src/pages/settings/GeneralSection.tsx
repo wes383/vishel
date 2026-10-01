@@ -22,6 +22,12 @@ const POSTER_SIZES = [
     { value: 'large', labelKey: 'posterSizeLarge' }
 ] as const
 
+/** Language names stay in their own language, which is why these are not translation keys. */
+const LANGUAGES = [
+    { value: 'en', label: 'English' },
+    { value: 'zh', label: '简体中文' }
+] as const
+
 export default function GeneralSection() {
     const { t } = useTranslation(['settings', 'common'])
     const { settings, save } = useSettings()
@@ -62,6 +68,41 @@ export default function GeneralSection() {
                     aria-describedby="tmdb-api-key-hint"
                 />
             </Field>
+
+            <SettingRow
+                title={t('settings:languageTitle')}
+                description={t('settings:languageDescription')}
+                control={(
+                    <Segmented
+                        label={t('settings:languageAria')}
+                        value={settings?.language || 'en'}
+                        options={LANGUAGES}
+                        onChange={value => void commit({ language: value }, t('settings:settingSaveError'))}
+                    />
+                )}
+            />
+
+            {settings?.language === 'zh' && (
+                <>
+                    <SettingRow
+                        title={t('settings:preferEnglishLogoTitle')}
+                        description={t('settings:preferEnglishLogoDescription')}
+                        control={(
+                            <Toggle
+                                label={t('settings:preferEnglishLogoAria')}
+                                // Undefined means "never touched", which is the English-preferring default.
+                                checked={settings?.preferEnglishLogo !== false}
+                                onChange={value => void commit({ preferEnglishLogo: value }, t('settings:settingSaveError'))}
+                            />
+                        )}
+                    />
+                    <p className="text-xs text-foreground-muted">
+                        {t('settings:languageRescanHint', {
+                            language: LANGUAGES.find(option => option.value === settings?.language)?.label ?? ''
+                        })}
+                    </p>
+                </>
+            )}
 
             <SettingRow
                 title={t('settings:hideEpisodeDetailsTitle')}

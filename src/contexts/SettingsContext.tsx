@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import i18n from '../i18n'
 import type { RendererSettings, RendererSettingsPatch } from '../../electron/settings'
 
 interface SettingsApi {
@@ -23,6 +24,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     const apply = useCallback((next: RendererSettings | null) => {
         latest.current = next
         setSettings(next)
+        // This is the one funnel for load, save and rollback, so the interface language can never
+        // drift from the stored setting - a rejected save reverts it along with everything else.
+        if (next && i18n.language !== next.language) void i18n.changeLanguage(next.language)
     }, [])
 
     const reload = useCallback(async () => {

@@ -46,7 +46,7 @@
     "tmdbApiKeyHint": "Shown masked. Paste a new key (v3 or v4) to replace it.",
     "tmdbApiKeySaveError": "Could not save the TMDB API key",
     "languageTitle": "Language",
-    "languageDescription": "Interface language, and the language TMDB is asked for",
+    "languageDescription": "Interface language",
     "languageAria": "Interface language",
     "preferEnglishLogoTitle": "Prefer English Logo",
     "preferEnglishLogoDescription": "Use the English title logo on detail pages",

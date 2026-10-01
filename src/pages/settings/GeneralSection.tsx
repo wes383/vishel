@@ -71,7 +71,18 @@ export default function GeneralSection() {
 
             <SettingRow
                 title={t('settings:languageTitle')}
-                description={t('settings:languageDescription')}
+                description={(
+                    <>
+                        {t('settings:languageDescription')}
+                        {/* SettingRow paints the description under the card, so the rescan note lands
+                            directly below the language options instead of drifting a row further down. */}
+                        <span className="block">
+                            {t('settings:languageRescanHint', {
+                                language: LANGUAGES.find(option => option.value === settings?.language)?.label ?? ''
+                            })}
+                        </span>
+                    </>
+                )}
                 control={(
                     <Segmented
                         label={t('settings:languageAria')}
@@ -83,25 +94,18 @@ export default function GeneralSection() {
             />
 
             {settings?.language === 'zh' && (
-                <>
-                    <SettingRow
-                        title={t('settings:preferEnglishLogoTitle')}
-                        description={t('settings:preferEnglishLogoDescription')}
-                        control={(
-                            <Toggle
-                                label={t('settings:preferEnglishLogoAria')}
-                                // Undefined means "never touched", which is the English-preferring default.
-                                checked={settings?.preferEnglishLogo !== false}
-                                onChange={value => void commit({ preferEnglishLogo: value }, t('settings:settingSaveError'))}
-                            />
-                        )}
-                    />
-                    <p className="text-xs text-foreground-muted">
-                        {t('settings:languageRescanHint', {
-                            language: LANGUAGES.find(option => option.value === settings?.language)?.label ?? ''
-                        })}
-                    </p>
-                </>
+                <SettingRow
+                    title={t('settings:preferEnglishLogoTitle')}
+                    description={t('settings:preferEnglishLogoDescription')}
+                    control={(
+                        <Toggle
+                            label={t('settings:preferEnglishLogoAria')}
+                            // Undefined means "never touched", which is the English-preferring default.
+                            checked={settings?.preferEnglishLogo !== false}
+                            onChange={value => void commit({ preferEnglishLogo: value }, t('settings:settingSaveError'))}
+                        />
+                    )}
+                />
             )}
 
             <SettingRow

@@ -45,7 +45,7 @@
     "tmdbApiKeyHint": "以掩码显示。粘贴新的密钥（v3 或 v4）即可替换",
     "tmdbApiKeySaveError": "无法保存 TMDB API 密钥",
     "languageTitle": "语言",
-    "languageDescription": "界面语言，同时也是向 TMDB 请求元数据时使用的语言",
+    "languageDescription": "界面语言",
     "languageAria": "界面语言",
     "preferEnglishLogoTitle": "优先显示英文 Logo",
     "preferEnglishLogoDescription": "详情页使用英文片名 Logo",

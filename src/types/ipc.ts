@@ -122,6 +122,7 @@ export interface IpcRequestMap {
     'get-favorites': { args: []; result: FavoriteItem[] }
     'add-favorite': { args: [FavoriteDraft]; result: boolean }
     'remove-favorite': { args: [MediaKey]; result: boolean }
+    'get-app-version': { args: []; result: string }
     'get-all-watch-status': { args: []; result: WatchStatus[] }
     'toggle-watch-status': { args: [MediaKey]; result: boolean }
 }

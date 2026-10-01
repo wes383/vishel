@@ -32,6 +32,7 @@ export const INVOKE_CHANNELS = [
     'get-favorites',
     'add-favorite',
     'remove-favorite',
+    'get-app-version',
     'get-all-watch-status',
     'toggle-watch-status'
 ] as const

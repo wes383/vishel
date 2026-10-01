@@ -139,5 +139,7 @@
     "scanFolderAria": "扫描 {{name}}",
     "openFolderAria": "打开文件夹 {{name}}",
     "next": "下一步",
-    "finish": "完成"
+    "finish": "完成",
+
+    "versionLabel": "版本 {{version}}"
 }

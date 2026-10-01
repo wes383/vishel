@@ -1,4 +1,4 @@
-import { ipcMain, dialog, shell, BrowserWindow } from 'electron'
+import { ipcMain, dialog, shell, app, BrowserWindow } from 'electron'
 import axios from 'axios'
 import store, { getSources } from './store'
 import { getRedactedSettings, saveSettings, hydrateSourceConfig } from './settings'
@@ -445,6 +445,10 @@ export const setupIpcHandlers = () => {
     ipcMain.handle('remove-favorite', async (_, { mediaId, mediaType }) => {
         removeFavorite(mediaId, mediaType)
         return true
+    })
+
+    ipcMain.handle('get-app-version', () => {
+        return app.getVersion()
     })
 
     // Watch Status

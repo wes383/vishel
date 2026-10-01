@@ -140,5 +140,7 @@
     "scanFolderAria": "Scan {{name}}",
     "openFolderAria": "Open folder {{name}}",
     "next": "Next",
-    "finish": "Finish"
+    "finish": "Finish",
+
+    "versionLabel": "Version {{version}}"
 }

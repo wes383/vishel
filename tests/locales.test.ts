@@ -18,6 +18,17 @@ const placeholdersOf = (value: string): string[] =>
 
 const otherLocales = localeNames().filter(locale => locale !== REFERENCE)
 
+/**
+ * Keys a locale deliberately omits so i18next serves the reference language instead. Omitting
+ * rather than copying the English text means it can never drift or get translated by mistake, and
+ * this is the only place that intent can be written down - JSON has no comments. The TMDB
+ * attribution is legal boilerplate, so it stays English in every locale.
+ */
+const UNTRANSLATED = new Set(['tmdbAttribution'])
+
+const translatableKeys = (file: string): string[] =>
+    Object.keys(entries(REFERENCE, file)).filter(key => !UNTRANSLATED.has(key))
+
 describe('locale bundles', () => {
     it('ship the same namespace files in every locale', () => {
         const reference = namespaceFiles(REFERENCE)
@@ -31,7 +42,7 @@ describe('locale bundles', () => {
     it('carry the same keys as the reference locale', () => {
         for (const locale of otherLocales) {
             for (const file of namespaceFiles(locale)) {
-                const reference = Object.keys(entries(REFERENCE, file)).sort()
+                const reference = translatableKeys(file).sort()
                 const translated = entries(locale, file)
 
                 expect(Object.keys(translated).sort(), `${locale}/${file}`).toEqual(reference)
@@ -50,7 +61,7 @@ describe('locale bundles', () => {
                 const reference = entries(REFERENCE, file)
                 const translated = entries(locale, file)
 
-                for (const key of Object.keys(reference)) {
+                for (const key of translatableKeys(file)) {
                     expect(placeholdersOf(translated[key]), `${locale}/${file}:${key}`)
                         .toEqual(placeholdersOf(reference[key]))
                 }

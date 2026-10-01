@@ -6,7 +6,6 @@
     "attributionAria": "署名",
     "openTmdbSiteAria": "在浏览器中打开 themoviedb.org",
     "tmdbLogoAlt": "TMDB 标志",
-    "tmdbAttribution": "本产品使用了 TMDB 及 TMDB API，但未获得 TMDB 的认可、认证或其他形式的批准。",
 
     "dataSourcesHeading": "数据源",
     "quickScan": "快速扫描",
@@ -43,7 +42,7 @@
 
     "generalHeading": "通用配置",
     "tmdbApiKeyLabel": "TMDB API Key",
-    "tmdbApiKeyHint": "以掩码显示。粘贴新的密钥（v3 或 v4）即可替换。",
+    "tmdbApiKeyHint": "以掩码显示。粘贴新的密钥（v3 或 v4）即可替换",
     "tmdbApiKeySaveError": "无法保存 TMDB API 密钥",
     "languageTitle": "语言",
     "languageDescription": "界面语言，同时也是向 TMDB 请求元数据时使用的语言",
@@ -71,7 +70,7 @@
     "minimizeToTrayDescription": "关闭窗口后继续在后台运行",
     "minimizeToTrayAria": "关闭时最小化到托盘",
     "probeMetadataTitle": "探测视频元数据",
-    "probeMetadataDescription": "获取视频分辨率、编码格式、帧率等信息。",
+    "probeMetadataDescription": "获取视频分辨率、编码格式、帧率等信息",
     "probeMetadataHint": "需要已安装 FFmpeg。",
     "probeMetadataAria": "探测视频元数据",
     "autoMarkWatchedTitle": "自动标记为已观看",

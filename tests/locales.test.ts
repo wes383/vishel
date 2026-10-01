@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import { CORE_GENRES, genreLabelKey } from '../src/utils/searchMatch'
 
 const LOCALES_DIR = fileURLToPath(new URL('../src/i18n/locales/', import.meta.url))
 const REFERENCE = 'en'
@@ -65,6 +66,19 @@ describe('locale bundles', () => {
                     expect(placeholdersOf(translated[key]), `${locale}/${file}:${key}`)
                         .toEqual(placeholdersOf(reference[key]))
                 }
+            }
+        }
+    })
+
+    // The genre filter offers exactly these labels; a bundle missing one silently renders the
+    // filter's fallback, and the set can only change here, with the canonical list.
+    it('carry a label for every filterable genre', () => {
+        const expected = [...CORE_GENRES, 'Other'].map(genreLabelKey).sort()
+
+        for (const locale of localeNames()) {
+            const bundle = entries(locale, 'library.json')
+            for (const key of expected) {
+                expect(bundle[key], `${locale}/library.json:${key}`).toBeTruthy()
             }
         }
     })

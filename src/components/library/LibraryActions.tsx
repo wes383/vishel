@@ -4,6 +4,7 @@ import { Settings, Search, ArrowUpDown, Check, SlidersHorizontal, X } from 'luci
 import { useNavigate } from 'react-router-dom'
 import Button from '../ui/Button'
 import Menu, { MenuItem, MenuLabel, MenuSeparator } from '../ui/Menu'
+import { genreLabelKey } from '../../utils/searchMatch'
 import type { LibraryTab } from '../../types/ipc'
 
 export type SortOption = 'name-asc' | 'name-desc' | 'date-desc' | 'date-asc' | 'popularity-desc' | 'recently-added'
@@ -189,7 +190,7 @@ export const LibraryActions: React.FC<LibraryActionsProps> = ({
                                             }}
                                             className="justify-between"
                                         >
-                                            <span className="font-medium truncate pr-2">{genre}</span>
+                                            <span className="font-medium truncate pr-2">{t(`library:${genreLabelKey(genre)}`, { defaultValue: genre })}</span>
                                             {genreFilter === genre && <Check className="w-4 h-4" aria-hidden="true" />}
                                         </MenuItem>
                                     ))}

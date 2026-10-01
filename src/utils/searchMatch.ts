@@ -10,9 +10,37 @@ const GENRE_MERGE_MAP: Record<string, string> = {
     'Reality': 'Other',
     'Soap': 'Other',
     'Talk': 'Other',
+    // The zh-CN TMDB names, so a library re-scanned in Chinese filters like an English one.
+    '动作冒险': 'Action',
+    '科幻奇幻': 'Science Fiction',
+    '战争政治': 'War',
+    '电视电影': 'Other',
+    '儿童': 'Other',
+    '新闻': 'Other',
+    '真人秀': 'Other',
+    '肥皂剧': 'Other',
+    '脱口秀': 'Other',
+    '动作': 'Action',
+    '冒险': 'Adventure',
+    '动画': 'Animation',
+    '喜剧': 'Comedy',
+    '犯罪': 'Crime',
+    '纪录片': 'Documentary',
+    '剧情': 'Drama',
+    '家庭': 'Family',
+    '奇幻': 'Fantasy',
+    '历史': 'History',
+    '恐怖': 'Horror',
+    '音乐': 'Music',
+    '悬疑': 'Mystery',
+    '爱情': 'Romance',
+    '科幻': 'Science Fiction',
+    '惊悚': 'Thriller',
+    '战争': 'War',
+    '西部': 'Western',
 }
 
-const CORE_GENRES = new Set([
+export const CORE_GENRES = new Set([
     'Action',
     'Adventure',
     'Animation',
@@ -32,6 +60,9 @@ const CORE_GENRES = new Set([
     'War',
     'Western',
 ])
+
+/** Flat i18n key carrying a canonical genre's label in the library bundles. */
+export const genreLabelKey = (genre: string) => `genre${genre.replace(/[^A-Za-z]/g, '')}`
 
 const normalizeGenres = (genres?: string[]) => {
     if (!genres || genres.length === 0) return []

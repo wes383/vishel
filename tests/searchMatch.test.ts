@@ -80,6 +80,12 @@ describe('normalizeGenres', () => {
         expect(normalizeGenres(['Drama', 'Comedy', 'Drama'])).toEqual(['Drama', 'Comedy'])
     })
 
+    it('canonizes the zh-CN names a Chinese scan stores, so both languages filter alike', () => {
+        expect(normalizeGenres(['动作', '科幻'])).toEqual(['Action', 'Science Fiction'])
+        expect(normalizeGenres(['动作冒险', '战争政治'])).toEqual(['Action', 'War'])
+        expect(normalizeGenres(['电视电影', '儿童', '真人秀'])).toEqual(['Other'])
+    })
+
     it('keeps core genres in the incoming order', () => {
         expect(normalizeGenres(['Horror', 'Thriller'])).toEqual(['Horror', 'Thriller'])
     })

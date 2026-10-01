@@ -17,6 +17,7 @@ import { AlertTriangle } from 'lucide-react'
 import { UnscannedFile, HistoryItem, GridItem } from '../types/library'
 import type { Movie as MovieRecord, TVShow as TVShowRecord } from '../../electron/db'
 import { matchesCastSearch, matchesNameListSearch, matchesSearch, normalizeGenres } from '../utils/searchMatch'
+import { displayPoster } from '../utils/formatMediaInfo'
 import { useSettings } from '../contexts/SettingsContext'
 import { useMediaStatus, mediaKey } from '../contexts/MediaStatusContext'
 import { useScan } from '../contexts/ScanContext'
@@ -39,7 +40,6 @@ interface Sortable {
     sortDate: string
     popularity?: number
     createdAt?: number
-    posterPath: string
     name: string
 }
 
@@ -249,7 +249,6 @@ export default function LibraryPage() {
         sortDate: 'releaseDate' in record ? record.releaseDate || '' : record.firstAirDate || '',
         popularity: record.popularity,
         createdAt: record.createdAt,
-        posterPath: record.posterPath,
         name: 'title' in record ? record.title : record.name
     }), [])
 
@@ -261,9 +260,9 @@ export default function LibraryPage() {
                 id: entry.record.id,
                 type,
                 title: entry.sortable.name,
-                posterPath: entry.sortable.posterPath
+                posterPath: displayPoster(entry.record, settings) ?? ''
             })),
-        [compare, toSortable])
+        [compare, toSortable, settings])
 
     const movieGridItems = useMemo<GridItem[]>(
         () => sortedWith(genreFilteredMovies, 'movie'),
@@ -277,14 +276,14 @@ export default function LibraryPage() {
 
     const combinedGridItems = useMemo<GridItem[]>(() => {
         const entries: Array<Sortable & { poster: string; title: string }> = [
-            ...genreFilteredMovies.map(movie => ({ ...toSortable(movie, 'movie'), poster: movie.posterPath, title: movie.title })),
-            ...genreFilteredTvShows.map(show => ({ ...toSortable(show, 'tv'), poster: show.posterPath, title: show.name }))
+            ...genreFilteredMovies.map(movie => ({ ...toSortable(movie, 'movie'), poster: displayPoster(movie, settings) ?? '', title: movie.title })),
+            ...genreFilteredTvShows.map(show => ({ ...toSortable(show, 'tv'), poster: displayPoster(show, settings) ?? '', title: show.name }))
         ]
 
         return entries
             .sort((a, b) => compare(a, b))
             .map(entry => ({ id: entry.id, type: entry.type, title: entry.title, posterPath: entry.poster }))
-    }, [genreFilteredMovies, genreFilteredTvShows, toSortable, compare])
+    }, [genreFilteredMovies, genreFilteredTvShows, toSortable, compare, settings])
 
     const filteredHistory = useMemo(
         () => deferredQuery ? history.filter(item => matchesSearch(item?.title || '', deferredQuery)) : history,

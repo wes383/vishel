@@ -17,6 +17,8 @@ export interface Movie {
     id: number
     title: string
     posterPath: string
+    /** The English poster, stored beside the localized one so the preference is applied at render. */
+    posterPathEn?: string
     backdropPath: string
     logoPath?: string
     /** The English logo, stored beside the localized one so the preference is applied at render. */
@@ -61,6 +63,8 @@ export interface TVShow {
     id: number
     name: string
     posterPath: string
+    /** @see Movie.posterPathEn */
+    posterPathEn?: string
     backdropPath: string
     logoPath?: string
     /** @see Movie.logoPathEn */
@@ -88,6 +92,8 @@ export interface HistoryItem {
     mediaType: 'movie' | 'tv'
     title: string
     posterPath: string
+    /** @see Movie.posterPathEn */
+    posterPathEn?: string
     filePath: string
     timestamp: number
     seasonNumber?: number
@@ -150,6 +156,7 @@ const BASE_SCHEMA = `
         id INTEGER PRIMARY KEY,
         title TEXT NOT NULL,
         posterPath TEXT,
+        posterPathEn TEXT,
         backdropPath TEXT,
         logoPath TEXT,
         logoPathEn TEXT,
@@ -172,6 +179,7 @@ const BASE_SCHEMA = `
         id INTEGER PRIMARY KEY,
         name TEXT NOT NULL,
         posterPath TEXT,
+        posterPathEn TEXT,
         backdropPath TEXT,
         logoPath TEXT,
         logoPathEn TEXT,
@@ -228,6 +236,7 @@ const BASE_SCHEMA = `
         mediaType TEXT,
         title TEXT,
         posterPath TEXT,
+        posterPathEn TEXT,
         filePath TEXT,
         timestamp INTEGER,
         seasonNumber INTEGER,
@@ -343,6 +352,22 @@ const MIGRATIONS: { version: number, up: (db: Database.Database) => void }[] = [
             db.exec('UPDATE movies SET logoPathEn = logoPath WHERE logoPathEn IS NULL')
             db.exec('UPDATE tv_shows SET logoPathEn = logoPath WHERE logoPathEn IS NULL')
         }
+    },
+    {
+        version: 4,
+        up: (db) => {
+            // Same split for posters; history carries its own snapshot of them, so it needs the
+            // column too. The backfill mirrors migration 3: rows written before the zh locale
+            // existed were fetched in English, and for the rest the display simply keeps showing
+            // what it showed until the next scan or Full Rescan refills both halves.
+            if (!hasColumn(db, 'movies', 'posterPathEn')) db.exec('ALTER TABLE movies ADD COLUMN posterPathEn TEXT')
+            if (!hasColumn(db, 'tv_shows', 'posterPathEn')) db.exec('ALTER TABLE tv_shows ADD COLUMN posterPathEn TEXT')
+            if (!hasColumn(db, 'history', 'posterPathEn')) db.exec('ALTER TABLE history ADD COLUMN posterPathEn TEXT')
+
+            db.exec('UPDATE movies SET posterPathEn = posterPath WHERE posterPathEn IS NULL')
+            db.exec('UPDATE tv_shows SET posterPathEn = posterPath WHERE posterPathEn IS NULL')
+            db.exec('UPDATE history SET posterPathEn = posterPath WHERE posterPathEn IS NULL')
+        }
     }
 ]
 
@@ -420,6 +445,7 @@ interface MovieRow {
     id: number
     title: string
     posterPath: string | null
+    posterPathEn: string | null
     backdropPath: string | null
     logoPath: string | null
     logoPathEn: string | null
@@ -447,6 +473,7 @@ interface TVShowRow {
     id: number
     name: string
     posterPath: string | null
+    posterPathEn: string | null
     backdropPath: string | null
     logoPath: string | null
     logoPathEn: string | null
@@ -610,6 +637,7 @@ export const getAllMovies = (): Movie[] => {
     return movies.map(m => ({
         ...m,
         posterPath: m.posterPath ?? '',
+        posterPathEn: orUndefined(m.posterPathEn),
         backdropPath: m.backdropPath ?? '',
         logoPath: orUndefined(m.logoPath),
         logoPathEn: orUndefined(m.logoPathEn),
@@ -638,6 +666,7 @@ export const getMovie = (id: number): Movie | undefined => {
     return {
         ...movie,
         posterPath: movie.posterPath ?? '',
+        posterPathEn: orUndefined(movie.posterPathEn),
         backdropPath: movie.backdropPath ?? '',
         logoPath: orUndefined(movie.logoPath),
         logoPathEn: orUndefined(movie.logoPathEn),
@@ -679,11 +708,11 @@ export const saveMovie = (movie: Movie) => {
 
     const insert = stmt(`
         INSERT OR REPLACE INTO movies (
-            id, title, posterPath, backdropPath, logoPath, logoPathEn, overview, releaseDate, sourceId,
+            id, title, posterPath, posterPathEn, backdropPath, logoPath, logoPathEn, overview, releaseDate, sourceId,
             genres, runtime, voteAverage, popularity, tagline, status,
             cast, director, externalIds, createdAt
         ) VALUES (
-            @id, @title, @posterPath, @backdropPath, @logoPath, @logoPathEn, @overview, @releaseDate, @sourceId,
+            @id, @title, @posterPath, @posterPathEn, @backdropPath, @logoPath, @logoPathEn, @overview, @releaseDate, @sourceId,
             @genres, @runtime, @voteAverage, @popularity, @tagline, @status,
             @cast, @director, @externalIds, @createdAt
         )
@@ -701,6 +730,7 @@ export const saveMovie = (movie: Movie) => {
             id: movie.id,
             title: movie.title,
             posterPath: movie.posterPath,
+            posterPathEn: movie.posterPathEn || null,
             backdropPath: movie.backdropPath,
             logoPath: movie.logoPath || null,
             logoPathEn: movie.logoPathEn || null,
@@ -740,6 +770,7 @@ export const getAllTVShows = (): TVShow[] => {
     return shows.map(s => ({
         ...s,
         posterPath: s.posterPath ?? '',
+        posterPathEn: orUndefined(s.posterPathEn),
         backdropPath: s.backdropPath ?? '',
         logoPath: orUndefined(s.logoPath),
         logoPathEn: orUndefined(s.logoPathEn),
@@ -773,6 +804,7 @@ export const getTVShow = (id: number): TVShow | undefined => {
     return {
         ...show,
         posterPath: show.posterPath ?? '',
+        posterPathEn: orUndefined(show.posterPathEn),
         backdropPath: show.backdropPath ?? '',
         logoPath: orUndefined(show.logoPath),
         logoPathEn: orUndefined(show.logoPathEn),
@@ -804,10 +836,10 @@ export const saveTVShow = (show: TVShow) => {
 
     const insertShow = stmt(`
         INSERT OR REPLACE INTO tv_shows (
-            id, name, posterPath, backdropPath, logoPath, logoPathEn, overview, firstAirDate, sourceId,
+            id, name, posterPath, posterPathEn, backdropPath, logoPath, logoPathEn, overview, firstAirDate, sourceId,
             genres, voteAverage, popularity, status, cast, createdBy, externalIds, createdAt
         ) VALUES (
-            @id, @name, @posterPath, @backdropPath, @logoPath, @logoPathEn, @overview, @firstAirDate, @sourceId,
+            @id, @name, @posterPath, @posterPathEn, @backdropPath, @logoPath, @logoPathEn, @overview, @firstAirDate, @sourceId,
             @genres, @voteAverage, @popularity, @status, @cast, @createdBy, @externalIds, @createdAt
         )
     `)
@@ -842,6 +874,7 @@ export const saveTVShow = (show: TVShow) => {
             id: show.id,
             name: show.name,
             posterPath: show.posterPath,
+            posterPathEn: show.posterPathEn || null,
             backdropPath: show.backdropPath,
             logoPath: show.logoPath || null,
             logoPathEn: show.logoPathEn || null,
@@ -890,17 +923,19 @@ export const saveTVShow = (show: TVShow) => {
 }
 
 /** Movie history rows keep NULL in the episode columns; the domain type declares them absent. */
-type HistoryRow = Omit<HistoryItem, 'seasonNumber' | 'episodeNumber'> & {
+type HistoryRow = Omit<HistoryItem, 'seasonNumber' | 'episodeNumber' | 'posterPathEn'> & {
     seasonNumber: number | null
     episodeNumber: number | null
+    posterPathEn: string | null
 }
 
 export const getHistory = (): HistoryItem[] => {
     const db = getDb()
     const rows = db.prepare('SELECT * FROM history ORDER BY timestamp DESC LIMIT 200').all() as HistoryRow[]
 
-    return rows.map(({ seasonNumber, episodeNumber, ...rest }) => ({
+    return rows.map(({ seasonNumber, episodeNumber, posterPathEn, ...rest }) => ({
         ...rest,
+        posterPathEn: orUndefined(posterPathEn),
         seasonNumber: orUndefined(seasonNumber),
         episodeNumber: orUndefined(episodeNumber)
     }))
@@ -910,10 +945,10 @@ export const addToHistory = (item: HistoryItem) => {
     const db = getDb()
     const insert = db.prepare(`
         INSERT OR REPLACE INTO history (
-            id, mediaId, mediaType, title, posterPath, filePath, timestamp,
+            id, mediaId, mediaType, title, posterPath, posterPathEn, filePath, timestamp,
             seasonNumber, episodeNumber, episodeName
         ) VALUES (
-            @id, @mediaId, @mediaType, @title, @posterPath, @filePath, @timestamp,
+            @id, @mediaId, @mediaType, @title, @posterPath, @posterPathEn, @filePath, @timestamp,
             @seasonNumber, @episodeNumber, @episodeName
         )
     `)
@@ -933,6 +968,7 @@ export const addToHistory = (item: HistoryItem) => {
             mediaType: item.mediaType,
             title: item.title,
             posterPath: item.posterPath,
+            posterPathEn: item.posterPathEn || null,
             filePath: item.filePath,
             timestamp: item.timestamp,
             seasonNumber: item.seasonNumber || null,
@@ -1041,6 +1077,7 @@ export const syncHistoryPosters = () => {
     db.prepare(`
         UPDATE history SET 
             posterPath = (SELECT posterPath FROM movies WHERE movies.id = history.mediaId),
+            posterPathEn = (SELECT posterPathEn FROM movies WHERE movies.id = history.mediaId),
             title = (SELECT title FROM movies WHERE movies.id = history.mediaId)
         WHERE mediaType = 'movie' AND EXISTS (SELECT 1 FROM movies WHERE movies.id = history.mediaId)
     `).run()
@@ -1048,6 +1085,7 @@ export const syncHistoryPosters = () => {
     db.prepare(`
         UPDATE history SET 
             posterPath = (SELECT posterPath FROM tv_shows WHERE tv_shows.id = history.mediaId),
+            posterPathEn = (SELECT posterPathEn FROM tv_shows WHERE tv_shows.id = history.mediaId),
             title = (SELECT name FROM tv_shows WHERE tv_shows.id = history.mediaId)
         WHERE mediaType = 'tv' AND EXISTS (SELECT 1 FROM tv_shows WHERE tv_shows.id = history.mediaId)
     `).run()

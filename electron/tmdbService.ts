@@ -1,6 +1,6 @@
 import axios, { type AxiosInstance } from 'axios'
 import store, { type Settings } from './store'
-import type { TmdbImages, TmdbMovieDetails, TmdbSeasonDetails, TmdbTVDetails } from './tmdbTypes'
+import type { TmdbImage, TmdbImages, TmdbMovieDetails, TmdbSeasonDetails, TmdbTVDetails } from './tmdbTypes'
 
 export type {
     TmdbCredits,
@@ -55,12 +55,23 @@ const metadataLocale = (): string => TMDB_LOCALE[store.get('language')]
 const imageLanguages = (): string => [...new Set([metadataLocale(), 'en', 'null'])].join(',')
 
 /**
- * A logo is artwork with the title drawn into it, so its language is visible to the user. TMDB
- * tags logos with bare and region-qualified codes alike ('zh', 'zh-CN', 'zh-TW'), which leaves a
- * prefix match as the only reliable comparison.
+ * Artwork with text drawn into it is tagged by language - TMDB uses bare and region-qualified
+ * codes alike ('zh', 'zh-CN', 'zh-TW') - which leaves a prefix match as the only reliable
+ * comparison. Textless artwork carries a null tag and never matches.
  */
+const artworkIn = (list: TmdbImage[] | undefined, prefix: string): string =>
+    list?.find(item => (item.iso_639_1 || '').toLowerCase().startsWith(prefix))?.file_path || ''
+
+/** A logo is artwork with the title drawn into it, so its language is visible to the user. */
 const logoIn = (images: TmdbImages | undefined, prefix: string): string =>
-    images?.logos?.find(l => (l.iso_639_1 || '').toLowerCase().startsWith(prefix))?.file_path || ''
+    artworkIn(images?.logos, prefix)
+
+/**
+ * The English poster, stored beside the localized one (which rides on the details response
+ * itself) so `preferEnglishPoster` is applied at render instead of forcing another fetch.
+ */
+export const pickEnglishPoster = (images: TmdbImages | undefined): string =>
+    artworkIn(images?.posters, 'en')
 
 /**
  * The localized logo and the English one, kept apart so `preferEnglishLogo` can be applied when

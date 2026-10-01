@@ -30,7 +30,7 @@ import {
 import { testConnection, listDirectory } from './webdavService'
 import { testLocalConnection, listLocalDirectory } from './localFileService'
 import { testConnection as testSMBConnection, listDirectory as listSMBDirectory } from './smbService'
-import { getMovieDetails, getTVShowDetails, getSeasonDetails, pickLogos } from './tmdbService'
+import { getMovieDetails, getTVShowDetails, getSeasonDetails, pickLogos, pickEnglishPoster } from './tmdbService'
 import { probeVideoMetadata } from './mediaProbe'
 
 /** Only web links may leave the app through the OS handler. */
@@ -175,11 +175,13 @@ export const setupIpcHandlers = () => {
                 })) || []
 
                 const { localized: logoPath, english: logoPathEn } = pickLogos(details.images)
+                const posterPathEn = pickEnglishPoster(details.images)
 
                 const updatedMovie: Movie = {
                     ...existingMovie,
                     title: details.title,
                     posterPath: details.poster_path ?? '',
+                    posterPathEn,
                     backdropPath: details.backdrop_path ?? '',
                     logoPath,
                     logoPathEn,
@@ -220,6 +222,7 @@ export const setupIpcHandlers = () => {
                 })) || []
 
                 const { localized: logoPath, english: logoPathEn } = pickLogos(details.images)
+                const posterPathEn = pickEnglishPoster(details.images)
 
                 // Refresh season and episode metadata
                 const updatedSeasons: Season[] = []
@@ -254,6 +257,7 @@ export const setupIpcHandlers = () => {
                     ...existingShow,
                     name: details.name,
                     posterPath: details.poster_path ?? '',
+                    posterPathEn,
                     backdropPath: details.backdrop_path ?? '',
                     logoPath,
                     logoPathEn,

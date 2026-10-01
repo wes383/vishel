@@ -125,3 +125,17 @@ export const displayLogo = (
     settings: { language?: 'en' | 'zh', preferEnglishLogo?: boolean } | null | undefined
 ): string | undefined =>
     settings?.language === 'zh' && settings.preferEnglishLogo ? media.logoPathEn : media.logoPath
+
+/**
+ * Which of the two stored posters to draw. Unlike the logo, a missing English poster falls back
+ * to the localized one: a grid cell cannot fall back to text, and the default preference must
+ * never leave a library wall empty. English UI reads `posterPath`, which the fetch fills with
+ * whatever TMDB picked for English.
+ */
+export const displayPoster = (
+    media: { posterPath?: string, posterPathEn?: string },
+    settings: { language?: 'en' | 'zh', preferEnglishPoster?: boolean } | null | undefined
+): string | undefined =>
+    settings?.language === 'zh' && settings.preferEnglishPoster !== false
+        ? media.posterPathEn || media.posterPath
+        : media.posterPath

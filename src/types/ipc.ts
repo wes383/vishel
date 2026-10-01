@@ -60,6 +60,7 @@ export interface PlayHistoryDraft {
     mediaType: MediaType
     title: string
     posterPath: string
+    posterPathEn?: string
     filePath: string
     seasonNumber?: number
     episodeNumber?: number

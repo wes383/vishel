@@ -1,5 +1,5 @@
 import { getDb, getMovie, getTVShow, saveMovie, saveTVShow, Movie, TVShow } from './db'
-import { getMovieDetails, getTVShowDetails, getSeasonDetails, pickLogos } from './tmdbService'
+import { getMovieDetails, getTVShowDetails, getSeasonDetails, pickLogos, pickEnglishPoster } from './tmdbService'
 
 export const rematchMedia = async (
     oldTmdbId: number,
@@ -75,6 +75,7 @@ const rematchMovie = async (oldTmdbId: number, newTmdbId: number) => {
         }))
 
         const { localized: logoPath, english: logoPathEn } = pickLogos(details.images)
+        const posterPathEn = pickEnglishPoster(details.images)
 
         const newMovie: Movie = {
             id: details.id,
@@ -83,6 +84,7 @@ const rematchMovie = async (oldTmdbId: number, newTmdbId: number) => {
             logoPathEn,
             overview: details.overview,
             posterPath: details.poster_path ?? '',
+            posterPathEn,
             backdropPath: details.backdrop_path ?? '',
             releaseDate: details.release_date ?? '',
             runtime: details.runtime ?? undefined,
@@ -102,8 +104,8 @@ const rematchMovie = async (oldTmdbId: number, newTmdbId: number) => {
             
             db.prepare('UPDATE favorites SET mediaId = ?, title = ? WHERE mediaId = ? AND mediaType = ?')
                 .run(newTmdbId, newMovie.title, oldTmdbId, 'movie')
-            db.prepare('UPDATE history SET mediaId = ?, title = ?, posterPath = ? WHERE mediaId = ? AND mediaType = ?')
-                .run(newTmdbId, newMovie.title, newMovie.posterPath, oldTmdbId, 'movie')
+            db.prepare('UPDATE history SET mediaId = ?, title = ?, posterPath = ?, posterPathEn = ? WHERE mediaId = ? AND mediaType = ?')
+                .run(newTmdbId, newMovie.title, newMovie.posterPath, newMovie.posterPathEn ?? null, oldTmdbId, 'movie')
             
             db.prepare('DELETE FROM movies WHERE id = ?').run(oldTmdbId)
         })()
@@ -178,6 +180,7 @@ const rematchTVShow = async (oldTmdbId: number, newTmdbId: number) => {
         }))
 
         const { localized: logoPath, english: logoPathEn } = pickLogos(details.images)
+        const posterPathEn = pickEnglishPoster(details.images)
 
         // Save new show
         const newShow: TVShow = {
@@ -186,6 +189,7 @@ const rematchTVShow = async (oldTmdbId: number, newTmdbId: number) => {
             logoPath,
             logoPathEn,
             posterPath: details.poster_path ?? '',
+            posterPathEn,
             backdropPath: details.backdrop_path ?? '',
             overview: details.overview,
             firstAirDate: details.first_air_date ?? '',
@@ -238,8 +242,8 @@ const rematchTVShow = async (oldTmdbId: number, newTmdbId: number) => {
             
             db.prepare('UPDATE favorites SET mediaId = ?, title = ? WHERE mediaId = ? AND mediaType = ?')
                 .run(newTmdbId, newShow.name, oldTmdbId, 'tv')
-            db.prepare('UPDATE history SET mediaId = ?, title = ?, posterPath = ? WHERE mediaId = ? AND mediaType = ?')
-                .run(newTmdbId, newShow.name, newShow.posterPath, oldTmdbId, 'tv')
+            db.prepare('UPDATE history SET mediaId = ?, title = ?, posterPath = ?, posterPathEn = ? WHERE mediaId = ? AND mediaType = ?')
+                .run(newTmdbId, newShow.name, newShow.posterPath, newShow.posterPathEn ?? null, oldTmdbId, 'tv')
             
             db.prepare('DELETE FROM tv_shows WHERE id = ?').run(oldTmdbId)
         })()

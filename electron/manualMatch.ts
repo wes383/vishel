@@ -1,5 +1,5 @@
 import { getDb, getUnscannedFiles, saveMovie, saveTVShow, Movie, TVShow, Season, Episode, VideoFile } from './db'
-import { getMovieDetails, getTVShowDetails, getSeasonDetails, pickLogos } from './tmdbService'
+import { getMovieDetails, getTVShowDetails, getSeasonDetails, pickLogos, pickEnglishPoster } from './tmdbService'
 import { DataSource, getSources } from './store'
 
 /** Rows come straight from SQLite, where the array/object fields are still JSON TEXT. */
@@ -83,6 +83,7 @@ const matchMovie = async (tmdbId: number, file: VideoFile, source: DataSource) =
         }))
 
         const { localized: logoPath, english: logoPathEn } = pickLogos(details.images)
+        const posterPathEn = pickEnglishPoster(details.images)
 
         const newMovie: Movie = {
             id: details.id,
@@ -91,6 +92,7 @@ const matchMovie = async (tmdbId: number, file: VideoFile, source: DataSource) =
             logoPathEn,
             overview: details.overview,
             posterPath: details.poster_path ?? '',
+            posterPathEn,
             backdropPath: details.backdrop_path ?? '',
             releaseDate: details.release_date ?? '',
             runtime: details.runtime ?? undefined,
@@ -170,6 +172,7 @@ const matchTVShow = async (
         }))
 
         const { localized: logoPath, english: logoPathEn } = pickLogos(details.images)
+        const posterPathEn = pickEnglishPoster(details.images)
 
         show = {
             id: details.id,
@@ -177,6 +180,7 @@ const matchTVShow = async (
             logoPath,
             logoPathEn,
             posterPath: details.poster_path ?? '',
+            posterPathEn,
             backdropPath: details.backdrop_path ?? '',
             overview: details.overview,
             firstAirDate: details.first_air_date ?? '',

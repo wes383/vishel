@@ -20,6 +20,7 @@ const WRITABLE_KEYS: (keyof Settings)[] = [
     'probeVideoMetadataEnabled',
     'language',
     'preferEnglishLogo',
+    'preferEnglishPoster',
     'movieExternalLinks',
     'tvExternalLinks',
     'sources'
@@ -42,6 +43,7 @@ const NON_SECRET_KEYS: Exclude<keyof Settings, 'tmdbApiKey' | 'sources'>[] = [
     'probeVideoMetadataEnabled',
     'language',
     'preferEnglishLogo',
+    'preferEnglishPoster',
     'movieExternalLinks',
     'tvExternalLinks'
 ]
@@ -72,6 +74,7 @@ export interface RendererSettings {
     probeVideoMetadataEnabled: boolean
     language: Settings['language']
     preferEnglishLogo: boolean
+    preferEnglishPoster: boolean
     movieExternalLinks: ExternalLinkConfig[]
     tvExternalLinks: ExternalLinkConfig[]
     /** Masked: the renderer never sees the real TMDB key. */

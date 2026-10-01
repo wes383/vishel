@@ -143,6 +143,7 @@ export default function TVDetail() {
                     mediaType: 'tv',
                     title: show.name,
                     posterPath: show.posterPath,
+                    posterPathEn: show.posterPathEn,
                     filePath: file.filePath,
                     seasonNumber: episode.seasonNumber,
                     episodeNumber: episode.episodeNumber,

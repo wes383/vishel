@@ -217,6 +217,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({
             mediaType: 'movie',
             title: movie.title,
             posterPath: movie.posterPath,
+            posterPathEn: movie.posterPathEn,
             filePath: first.filePath
         }
 
@@ -259,6 +260,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({
             mediaType: 'tv',
             title: show.name,
             posterPath: show.posterPath,
+            posterPathEn: show.posterPathEn,
             filePath: episode.videoFiles[0].filePath,
             seasonNumber: episode.seasonNumber,
             episodeNumber: episode.episodeNumber,

@@ -116,6 +116,7 @@ export default function MovieDetail() {
                     mediaType: 'movie',
                     title: movie.title,
                     posterPath: movie.posterPath,
+                    posterPathEn: movie.posterPathEn,
                     filePath: file.filePath
                 }
             })

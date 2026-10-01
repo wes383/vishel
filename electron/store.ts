@@ -40,6 +40,8 @@ export interface Settings {
     language: 'en' | 'zh'
     /** Only meaningful when `language` is 'zh': show the English logo instead of the localized one. */
     preferEnglishLogo: boolean
+    /** Only meaningful when `language` is 'zh': show the English poster instead of the localized one. */
+    preferEnglishPoster: boolean
     movieExternalLinks: ExternalLinkConfig[]
     tvExternalLinks: ExternalLinkConfig[]
     sources: DataSource[]
@@ -75,6 +77,7 @@ const schema = {
     probeVideoMetadataEnabled: { type: 'boolean', default: true },
     language: { type: 'string', default: 'en', enum: ['en', 'zh'] },
     preferEnglishLogo: { type: 'boolean', default: true },
+    preferEnglishPoster: { type: 'boolean', default: true },
     movieExternalLinks: {
         type: 'array',
         default: defaultMovieExternalLinks,

@@ -9,9 +9,11 @@ import Badge from '../ui/Badge'
 import EmptyState from '../ui/EmptyState'
 import { Spinner } from '../ui/Feedback'
 import { useToast } from '../../contexts/ToastContext'
+import { useSettings } from '../../contexts/SettingsContext'
 import { HistoryItem } from '../../types/library'
 import { useListVirtualizer } from '../../hooks/useRowVirtualizer'
 import { formatMoviePlayTitle, formatTvPlayTitle } from '../../utils/playTitle'
+import { displayPoster } from '../../utils/formatMediaInfo'
 import type { Episode, Movie, TVShow, VideoFile } from '../../../electron/db'
 import type { MediaType, PlayHistoryDraft } from '../../types/ipc'
 
@@ -38,6 +40,7 @@ type MediaEntry =
 /** What a row needs to render, all derived from the cached record - no extra IPC per row. */
 interface DerivedRow {
     item: HistoryItem
+    poster: string
     checked: boolean
     /** The record was confirmed deleted from the library (as opposed to the lookup failing). */
     removed: boolean
@@ -112,6 +115,7 @@ function planForItem(record: MediaRecord, item: HistoryItem): PlaybackPlan | nul
                 mediaType: 'tv',
                 title: record.name,
                 posterPath: record.posterPath,
+                posterPathEn: record.posterPathEn,
                 filePath: episode.videoFiles[0].filePath,
                 seasonNumber: episode.seasonNumber,
                 episodeNumber: episode.episodeNumber,
@@ -130,6 +134,7 @@ function planForItem(record: MediaRecord, item: HistoryItem): PlaybackPlan | nul
             mediaType: 'movie',
             title: record.title,
             posterPath: record.posterPath,
+            posterPathEn: record.posterPathEn,
             filePath: record.videoFiles[0].filePath
         },
         files: record.videoFiles,
@@ -145,6 +150,7 @@ function planForEpisode(record: TVShow, episode: Episode): PlaybackPlan {
             mediaType: 'tv',
             title: record.name,
             posterPath: record.posterPath,
+            posterPathEn: record.posterPathEn,
             filePath: episode.videoFiles[0].filePath,
             seasonNumber: episode.seasonNumber,
             episodeNumber: episode.episodeNumber,
@@ -179,6 +185,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({ items, onDelete, empty
     const navigate = useNavigate()
     const { t } = useTranslation(['grid', 'common'])
     const { showToast } = useToast()
+    const { settings } = useSettings()
 
     const [playingId, setPlayingIdState] = useState<string | null>(null)
     const [fileSelector, setFileSelectorState] = useState<PlaybackPlan | null>(null)
@@ -287,6 +294,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({ items, onDelete, empty
 
         return {
             item,
+            poster: displayPoster(item, settings) || '',
             checked: entry !== undefined,
             // A record known to be gone loses its Play button; a failed lookup keeps it so the
             // click can retry and report the real error.
@@ -295,7 +303,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({ items, onDelete, empty
             playedAt: new Date(item.timestamp).toLocaleString(),
             episodeLabel: hasEpisode ? t('grid:episodeCode', { season: item.seasonNumber, episode: item.episodeNumber }) : ''
         }
-    }), [items, cachedEntries, t])
+    }), [items, cachedEntries, t, settings])
 
     const listRef = useRef<HTMLUListElement>(null)
     const { start, end, paddingTop, paddingBottom } = useListVirtualizer(listRef, rows.length, HISTORY_ROW_PITCH)
@@ -430,7 +438,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({ items, onDelete, empty
                     className="space-y-2"
                     aria-busy={isChecking}
                 >
-                    {rows.slice(start, end).map(({ item, removed, nextEpisode, playedAt, episodeLabel }) => (
+                    {rows.slice(start, end).map(({ item, poster, removed, nextEpisode, playedAt, episodeLabel }) => (
                         <li
                             key={item.id}
                             className="group bg-surface rounded-lg overflow-hidden hover:bg-hover-bg-strong transition-colors"
@@ -444,9 +452,9 @@ export const HistoryList: React.FC<HistoryListProps> = ({ items, onDelete, empty
                                     aria-label={t('grid:openDetailsAriaLabel', { title: item.title })}
                                     className="flex-shrink-0 w-16 h-24 rounded-lg overflow-hidden bg-surface-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 >
-                                    {item.posterPath ? (
+                                    {poster ? (
                                         <img
-                                            src={`https://image.tmdb.org/t/p/w200${item.posterPath}`}
+                                            src={`https://image.tmdb.org/t/p/w200${poster}`}
                                             alt=""
                                             className="w-full h-full object-cover"
                                         />

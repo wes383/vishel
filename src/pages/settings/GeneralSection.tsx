@@ -115,18 +115,33 @@ export default function GeneralSection() {
 
             <Group heading={t('settings:appearanceGroupHeading')}>
                 {settings?.language === 'zh' && (
-                    <SettingRow
-                        title={t('settings:preferEnglishLogoTitle')}
-                        description={t('settings:preferEnglishLogoDescription')}
-                        control={(
-                            <Toggle
-                                label={t('settings:preferEnglishLogoAria')}
-                                // Undefined means "never touched", which is the English-preferring default.
-                                checked={settings?.preferEnglishLogo !== false}
-                                onChange={value => void commit({ preferEnglishLogo: value }, t('settings:settingSaveError'))}
-                            />
-                        )}
-                    />
+                    <>
+                        <SettingRow
+                            title={t('settings:preferEnglishLogoTitle')}
+                            description={t('settings:preferEnglishLogoDescription')}
+                            control={(
+                                <Toggle
+                                    label={t('settings:preferEnglishLogoAria')}
+                                    // Undefined means "never touched", which is the English-preferring default.
+                                    checked={settings?.preferEnglishLogo !== false}
+                                    onChange={value => void commit({ preferEnglishLogo: value }, t('settings:settingSaveError'))}
+                                />
+                            )}
+                        />
+
+                        <SettingRow
+                            title={t('settings:preferEnglishPosterTitle')}
+                            description={t('settings:preferEnglishPosterDescription')}
+                            control={(
+                                <Toggle
+                                    label={t('settings:preferEnglishPosterAria')}
+                                    // Undefined means "never touched", which is the English-preferring default.
+                                    checked={settings?.preferEnglishPoster !== false}
+                                    onChange={value => void commit({ preferEnglishPoster: value }, t('settings:settingSaveError'))}
+                                />
+                            )}
+                        />
+                    </>
                 )}
 
                 <SettingRow

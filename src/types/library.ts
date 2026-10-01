@@ -49,6 +49,8 @@ export interface HistoryItem {
     mediaType: 'movie' | 'tv'
     title: string
     posterPath: string
+    /** @see electron/db.ts Movie.posterPathEn */
+    posterPathEn?: string
     filePath: string
     timestamp: number
     seasonNumber?: number

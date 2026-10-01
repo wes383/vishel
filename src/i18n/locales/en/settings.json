@@ -42,6 +42,10 @@
     "playerPathSaveError": "Could not save the player path",
 
     "generalHeading": "General Configuration",
+    "metadataGroupHeading": "Metadata & Language",
+    "appearanceGroupHeading": "Appearance",
+    "playbackGroupHeading": "Playback",
+    "applicationGroupHeading": "Application",
     "tmdbApiKeyLabel": "TMDB API Key",
     "tmdbApiKeyHint": "Shown masked. Paste a new key (v3 or v4) to replace it.",
     "tmdbApiKeySaveError": "Could not save the TMDB API key",

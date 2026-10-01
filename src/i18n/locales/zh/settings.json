@@ -41,6 +41,10 @@
     "playerPathSaveError": "无法保存播放器路径",
 
     "generalHeading": "通用配置",
+    "metadataGroupHeading": "元数据与语言",
+    "appearanceGroupHeading": "外观",
+    "playbackGroupHeading": "播放",
+    "applicationGroupHeading": "应用",
     "tmdbApiKeyLabel": "TMDB API Key",
     "tmdbApiKeyHint": "以掩码显示。粘贴新的密钥（v3 或 v4）即可替换",
     "tmdbApiKeySaveError": "无法保存 TMDB API 密钥",

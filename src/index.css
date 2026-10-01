@@ -62,15 +62,20 @@
        --text-* must be paired with its line-height or the utility keeps the
        default ratio and lands on a fractional line box. 15px/22px is frozen
        against useRowVirtualizer's TITLE_EXTRA_HEIGHT. */
+    /* Explicit families before the generic ones: a generic (ui-sans-serif, system-ui) reaches
+       the platform's own Han fallback the moment a character is missing, so a CJK family listed
+       after it is never consulted - measured, not assumed. */
     --font-sans:
-        "Inter", ui-sans-serif, system-ui, "Segoe UI", Roboto,
+        "Inter",
         "Source Han Sans SC", "Noto Sans SC", "思源黑体",
         "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
-        "Noto Sans CJK SC", "WenQuanYi Micro Hei", sans-serif;
+        "Noto Sans CJK SC", "WenQuanYi Micro Hei",
+        ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
     --font-display:
-        "Manrope", ui-sans-serif, system-ui, "Segoe UI", Roboto,
+        "Manrope",
         "Source Han Sans SC", "Noto Sans SC", "思源黑体",
-        "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+        "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC",
+        ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
     --font-mono:
         ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
         "Liberation Mono", "Courier New", monospace;

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { useScan } from '../../contexts/ScanContext'
+import { useScan } from '../contexts/ScanContext'
 import { Loader2, X } from 'lucide-react'
 
 /** Only the i18n key lives here: a module-scope constant cannot call the `t` hook. */
@@ -23,7 +23,7 @@ export default function ScanProgressBar() {
         : t('library:phaseStarting')
     const detail = progress?.sourceName
         ? `${progress.sourceName}${progress.file ? ` · ${progress.file}` : ''}`
-        : progress?.error
+        : progress?.file || progress?.error
 
     return (
         <div
@@ -36,7 +36,11 @@ export default function ScanProgressBar() {
                 <p className="text-sm font-medium text-foreground">{phase}</p>
                 {detail && <p className="text-xs text-foreground-muted truncate">{detail}</p>}
             </div>
-            {typeof progress?.processed === 'number' && (
+            {progress?.current !== undefined && progress.total !== undefined ? (
+                <span className="text-sm text-foreground-muted tabular-nums shrink-0">
+                    {progress.current} / {progress.total}
+                </span>
+            ) : typeof progress?.processed === 'number' && (
                 <span className="text-sm text-foreground-muted tabular-nums shrink-0">
                     {t('library:fileCount', { count: progress.processed })}
                 </span>

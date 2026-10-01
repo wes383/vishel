@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, RefreshCw, Square } from 'lucide-react'
+import { Plus, RefreshCw } from 'lucide-react'
 import DataSourceList from '../../components/DataSourceList'
 import SourceModal from '../../components/source/SourceModal'
+import ScanProgressBar from '../../components/ScanProgressBar'
 import Button from '../../components/ui/Button'
 import Card from '../../components/ui/Card'
 import { useSettings } from '../../contexts/SettingsContext'
@@ -21,7 +22,7 @@ export default function SourcesSection() {
     const { t } = useTranslation(['settings', 'common'])
     const { settings, save } = useSettings()
     const { showToast } = useToast()
-    const { scanning, scan, cancel, addFinishListener } = useScan()
+    const { scanning, scan, addFinishListener } = useScan()
 
     const [stats, setStats] = useState<LibraryStats>({ movies: 0, tvShows: 0 })
     const [showAddModal, setShowAddModal] = useState(false)
@@ -100,14 +101,7 @@ export default function SourcesSection() {
                 </div>
             </div>
 
-            {scanning && (
-                <div className="mb-4 flex justify-end">
-                    <Button size="sm" variant="subtle" onClick={() => void cancel()}>
-                        <Square className="w-3 h-3" aria-hidden="true" />
-                        {t('settings:stopScan')}
-                    </Button>
-                </div>
-            )}
+            {scanning && <ScanProgressBar />}
 
             <div className="mb-4 px-1">
                 <p className="text-sm text-foreground-muted mb-1">
@@ -133,10 +127,6 @@ export default function SourcesSection() {
                     <h3 className="text-sm font-medium text-foreground-muted mb-1">{t('settings:totalTvShows')}</h3>
                     <p className="text-2xl font-bold">{stats.tvShows}</p>
                 </Card>
-            </div>
-
-            <div aria-live="polite" className="sr-only">
-                {scanning ? t('settings:scanningProgress') : ''}
             </div>
 
             {showAddModal && (

@@ -77,6 +77,9 @@ export interface ScanProgress {
     /** English prose for logs and devtools only; the UI renders `phase`, so this is never displayed. */
     status?: string
     processed?: number
+    /** Item position within a phase that knows its workload (the refresh phase fetches one item at a time). */
+    current?: number
+    total?: number
     sourceName?: string
     file?: string
     failedSources?: ScanFailure[]
@@ -570,11 +573,18 @@ const refreshExistingMetadata = async (
     signal: AbortSignal | undefined,
     emit: (progress: ScanProgress) => void
 ) => {
+    const total = state.currentMovies.length + state.currentTVShows.length
+    let current = 0
+
     emit({ phase: 'refresh', status: 'Refreshing metadata for existing items...' })
     console.log('Refreshing metadata for existing items...')
 
     for (const movie of state.currentMovies) {
         throwIfAborted(signal)
+        // One item, one TMDB fetch: this loop is the longest dead stretch of a Full Rescan,
+        // so it reports the item it is fetching rather than only its phase.
+        current++
+        emit({ phase: 'refresh', status: `Refreshing metadata for ${movie.title}...`, file: movie.title, current, total })
         try {
             const details = await getMovieDetails(movie.id)
             if (details) {
@@ -622,6 +632,8 @@ const refreshExistingMetadata = async (
 
     for (const show of state.currentTVShows) {
         throwIfAborted(signal)
+        current++
+        emit({ phase: 'refresh', status: `Refreshing metadata for ${show.name}...`, file: show.name, current, total })
         try {
             const details = await getTVShowDetails(show.id)
             if (details) {

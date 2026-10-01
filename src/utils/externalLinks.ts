@@ -15,32 +15,29 @@ export interface ExternalLinkContext {
 }
 
 export const defaultMovieExternalLinks: ExternalLinkConfig[] = [
-    { label: 'View on IMDb', template: 'https://www.imdb.com/title/{imdbId}/' },
-    { label: 'View on TMDB', template: 'https://www.themoviedb.org/movie/{tmdbId}' },
-    { label: 'View on Letterboxd', template: 'https://letterboxd.com/tmdb/{tmdbId}' },
-    { label: 'View Detailed Info', template: 'https://kino.wesluma.com/movie/{tmdbId}' }
+    { label: 'IMDb', template: 'https://www.imdb.com/title/{imdbId}/' },
+    { label: 'TMDB', template: 'https://www.themoviedb.org/movie/{tmdbId}' },
+    { label: 'Letterboxd', template: 'https://letterboxd.com/tmdb/{tmdbId}' },
+    { label: 'Kino', template: 'https://kino.wesluma.com/movie/{tmdbId}' }
 ]
 
 export const defaultTvExternalLinks: ExternalLinkConfig[] = [
-    { label: 'View on IMDb', template: 'https://www.imdb.com/title/{imdbId}/' },
-    { label: 'View on TMDB', template: 'https://www.themoviedb.org/tv/{tmdbId}' },
-    { label: 'View Detailed Info', template: 'https://kino.wesluma.com/tv/{tmdbId}' }
+    { label: 'IMDb', template: 'https://www.imdb.com/title/{imdbId}/' },
+    { label: 'TMDB', template: 'https://www.themoviedb.org/tv/{tmdbId}' },
+    { label: 'Kino', template: 'https://kino.wesluma.com/tv/{tmdbId}' }
 ]
 
 /**
- * The link configs themselves stay untranslated data: they are read and written by the settings
- * editor. Only the built-in labels are recognised here, so the render site can localise them while
- * anything a user typed themselves passes through untouched.
+ * The link labels are plain user data now: they render as typed, in every locale, and are edited
+ * verbatim in the settings table. These are the pre-rename copies of the defaults, so a stored
+ * library follows the new wording without touching anything the user wrote themselves.
  */
-const DEFAULT_LINK_LABEL_KEYS: Record<string, string> = {
-    'View on IMDb': 'detail:externalLinkImdb',
-    'View on TMDB': 'detail:externalLinkTmdb',
-    'View on Letterboxd': 'detail:externalLinkLetterboxd',
-    'View Detailed Info': 'detail:externalLinkDetailedInfo'
-}
-
-export const getExternalLinkLabelKey = (label: string): string | undefined =>
-    DEFAULT_LINK_LABEL_KEYS[label.trim()]
+const LEGACY_DEFAULT_LABELS = new Map<string, string>([
+    ['View on IMDb', 'IMDb'],
+    ['View on TMDB', 'TMDB'],
+    ['View on Letterboxd', 'Letterboxd'],
+    ['View Detailed Info', 'Kino']
+])
 
 const cloneLinks = (links: ExternalLinkConfig[]): ExternalLinkConfig[] => links.map(link => ({ ...link }))
 
@@ -54,7 +51,7 @@ export const normalizeExternalLinks = (value: unknown, defaults: ExternalLinkCon
             const candidate = item as { label?: unknown; template?: unknown }
             if (typeof candidate.label !== 'string' || typeof candidate.template !== 'string') return null
             return {
-                label: candidate.label,
+                label: LEGACY_DEFAULT_LABELS.get(candidate.label.trim()) ?? candidate.label,
                 template: candidate.template
             }
         })

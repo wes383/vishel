@@ -14,7 +14,6 @@ import type { VideoFile } from '../../../electron/db'
 import type { VideoProbeMetadata } from '../../../electron/mediaProbe'
 import type { MediaType } from '../../types/ipc'
 import type { ImdbRatingValue } from '../../hooks/useImdbRating'
-import { getExternalLinkLabelKey } from '../../utils/externalLinks'
 import type { ExternalLink } from '../../utils/externalLinks'
 
 export interface Person {
@@ -243,20 +242,16 @@ export function MediaDetailShell({
 
                         {externalLinks.length > 0 && (
                             <div className="flex flex-wrap gap-4 mb-10">
-                                {externalLinks.map((link, index) => {
-                                    const labelKey = getExternalLinkLabelKey(link.label)
-
-                                    return (
-                                        <button
-                                            key={`${link.label}-${index}`}
-                                            type="button"
-                                            onClick={() => void window.electron.ipcRenderer.invoke('open-external', link.url)}
-                                            className="text-foreground-muted hover:text-foreground transition-colors text-sm border-b border-transparent hover:border-border-strong"
-                                        >
-                                            {labelKey ? t(labelKey) : link.label}
-                                        </button>
-                                    )
-                                })}
+                                {externalLinks.map((link, index) => (
+                                    <button
+                                        key={`${link.label}-${index}`}
+                                        type="button"
+                                        onClick={() => void window.electron.ipcRenderer.invoke('open-external', link.url)}
+                                        className="text-foreground-muted hover:text-foreground transition-colors text-sm border-b border-transparent hover:border-border-strong"
+                                    >
+                                        {link.label}
+                                    </button>
+                                ))}
                             </div>
                         )}
 

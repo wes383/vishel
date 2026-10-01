@@ -187,6 +187,7 @@ const scanDirectoryRecursive = async (
     source: DataSource,
     dirPath: string,
     state: ScanState,
+    emit: (progress: ScanProgress) => void,
     signal?: AbortSignal
 ) => {
     let items: DirectoryEntry[] = []
@@ -211,14 +212,14 @@ const scanDirectoryRecursive = async (
 
         if (item.type === 'directory') {
             try {
-                await scanDirectoryRecursive(source, targetPath, state, signal)
+                await scanDirectoryRecursive(source, targetPath, state, emit, signal)
             } catch (err) {
                 if (err instanceof ScanAbortError) throw err
                 if (source.type === 'webdav' || source.type === 'smb') {
                     try {
                         const decodedPath = decodeURIComponent(targetPath)
                         if (decodedPath !== targetPath) {
-                            await scanDirectoryRecursive(source, decodedPath, state, signal)
+                            await scanDirectoryRecursive(source, decodedPath, state, emit, signal)
                             return
                         }
                     } catch (retryErr) {
@@ -234,7 +235,7 @@ const scanDirectoryRecursive = async (
         if (item.type !== 'file' || !isVideoFile(item.filename)) return
 
         try {
-            await fileSlots.run(() => processFile(source, item.filename, state, signal))
+            await fileSlots.run(() => processFile(source, item.filename, state, emit, signal))
         } catch (error) {
             if (error instanceof ScanAbortError) throw error
             // A single unreadable file must not abort the source walk; only a rejected
@@ -254,6 +255,7 @@ const processFile = async (
     source: DataSource,
     filePath: string,
     state: ScanState,
+    emit: (progress: ScanProgress) => void,
     signal?: AbortSignal
 ) => {
     throwIfAborted(signal)
@@ -261,6 +263,9 @@ const processFile = async (
     const key = fileKey(source.id, filePath)
     state.foundKeys.add(key)
     state.processedFiles++
+    // Files arrive in parallel bursts, so the running count is the only honest per-file progress;
+    // `emit` throttles these to PROGRESS_INTERVAL_MS.
+    emit({ phase: 'scanning', status: `Processing ${filePath}`, sourceName: source.name, processed: state.processedFiles })
 
     const existing = state.fileMap.get(key)
     if (existing) {
@@ -874,7 +879,7 @@ export const scanMovies = async (
             let sourceOk = true
             for (const scanPath of source.paths || []) {
                 try {
-                    await scanDirectoryRecursive(source, scanPath, state, signal)
+                    await scanDirectoryRecursive(source, scanPath, state, emit, signal)
                 } catch (error) {
                     if (error instanceof ScanAbortError) throw error
                     if (error instanceof TmdbError && !isTransientTmdbError(error)) {
@@ -898,7 +903,7 @@ export const scanMovies = async (
         console.log(`Total found files in scan: ${state.foundKeys.size}`)
         const prunedFiles = pruneMissingFiles(state)
 
-        emit({ phase: 'saving', status: 'Saving metadata...' })
+        emit({ phase: 'saving', status: 'Saving metadata...', processed: state.processedFiles })
 
         const db = getDb()
 

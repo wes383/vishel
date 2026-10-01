@@ -262,18 +262,23 @@ export default function TVDetail() {
 
                                 <div className="flex-1 py-1 min-w-0 flex flex-col justify-center">
                                     <h3 className="text-lg font-bold mb-2 truncate pr-4">{episode.name}</h3>
-                                    <button
-                                        type="button"
-                                        onClick={() => toggleSpoiler(episode.id)}
-                                        disabled={!hideSpoilers}
-                                        aria-expanded={revealed}
-                                        aria-label={revealed ? undefined : t('detail:revealEpisodeSynopsis')}
-                                        className={`text-left text-foreground-muted text-sm leading-relaxed line-clamp-3 ${
-                                            hideSpoilers && !revealed ? 'blur-sm cursor-pointer select-none hover:blur-none transition-all' : ''
-                                        }`}
-                                    >
-                                        {episode.overview || t('detail:noEpisodeOverview')}
-                                    </button>
+                                    {hideSpoilers ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleSpoiler(episode.id)}
+                                            aria-expanded={revealed}
+                                            aria-label={revealed ? undefined : t('detail:revealEpisodeSynopsis')}
+                                            className={`text-left text-foreground-muted text-sm leading-relaxed line-clamp-3 ${
+                                                !revealed ? 'blur-sm cursor-pointer select-none hover:blur-none transition-all' : ''
+                                            }`}
+                                        >
+                                            {episode.overview || t('detail:noEpisodeOverview')}
+                                        </button>
+                                    ) : (
+                                        <p className="text-foreground-muted text-sm leading-relaxed line-clamp-3">
+                                            {episode.overview || t('detail:noEpisodeOverview')}
+                                        </p>
+                                    )}
                                 </div>
                             </Card>
                         )

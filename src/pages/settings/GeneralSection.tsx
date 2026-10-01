@@ -71,18 +71,9 @@ export default function GeneralSection() {
 
             <SettingRow
                 title={t('settings:languageTitle')}
-                description={(
-                    <>
-                        {t('settings:languageDescription')}
-                        {/* SettingRow paints the description under the card, so the rescan note lands
-                            directly below the language options instead of drifting a row further down. */}
-                        <span className="block">
-                            {t('settings:languageRescanHint', {
-                                language: LANGUAGES.find(option => option.value === settings?.language)?.label ?? ''
-                            })}
-                        </span>
-                    </>
-                )}
+                description={t('settings:languageRescanHint', {
+                    language: LANGUAGES.find(option => option.value === settings?.language)?.label ?? ''
+                })}
                 control={(
                     <Segmented
                         label={t('settings:languageAria')}

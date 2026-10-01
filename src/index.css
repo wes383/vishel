@@ -64,10 +64,12 @@
        against useRowVirtualizer's TITLE_EXTRA_HEIGHT. */
     --font-sans:
         "Inter", ui-sans-serif, system-ui, "Segoe UI", Roboto,
+        "Source Han Sans SC", "Noto Sans SC", "思源黑体",
         "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
-        "Noto Sans CJK SC", "Source Han Sans SC", "WenQuanYi Micro Hei", sans-serif;
+        "Noto Sans CJK SC", "WenQuanYi Micro Hei", sans-serif;
     --font-display:
         "Manrope", ui-sans-serif, system-ui, "Segoe UI", Roboto,
+        "Source Han Sans SC", "Noto Sans SC", "思源黑体",
         "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
     --font-mono:
         ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,

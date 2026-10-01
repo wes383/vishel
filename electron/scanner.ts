@@ -19,6 +19,7 @@ import {
     searchTVShow,
     getTVShowDetails,
     getSeasonDetails,
+    pickLogos,
     isTransientTmdbError,
     isAuthTmdbError,
     TmdbError,
@@ -303,12 +304,13 @@ const getOrCreateTVShow = async (
             name: c.name,
             profilePath: c.profile_path ?? ''
         }))
-        const logoPath = details.images?.logos?.find(l => l.iso_639_1 === 'en')?.file_path
+        const { localized: logoPath, english: logoPathEn } = pickLogos(details.images)
 
         state.newTVShows.set(tvId, {
             id: details.id,
             name: details.name,
-            logoPath: logoPath ?? '',
+            logoPath,
+            logoPathEn,
             posterPath: details.poster_path ?? '',
             backdropPath: details.backdrop_path ?? '',
             overview: details.overview,
@@ -477,12 +479,13 @@ const getOrCreateMovie = async (source: DataSource, movieId: number, state: Scan
             name: d.name,
             profilePath: d.profile_path || null
         }))
-        const logoPath = details.images?.logos?.find(l => l.iso_639_1 === 'en')?.file_path
+        const { localized: logoPath, english: logoPathEn } = pickLogos(details.images)
 
         state.newMovies.set(movieId, {
             id: details.id,
             title: details.title,
-            logoPath: logoPath ?? '',
+            logoPath,
+            logoPathEn,
             overview: details.overview,
             posterPath: details.poster_path ?? '',
             backdropPath: details.backdrop_path ?? '',
@@ -570,7 +573,7 @@ const refreshExistingMetadata = async (
         try {
             const details = await getMovieDetails(movie.id)
             if (details) {
-                const logoPath = details.images?.logos?.find(l => l.iso_639_1 === 'en')?.file_path
+                const { localized: logoPath, english: logoPathEn } = pickLogos(details.images)
 
                 const directors = details.credits?.crew?.filter(c => c.job === 'Director')
                 const directorObj = directors?.map(d => ({
@@ -593,7 +596,10 @@ const refreshExistingMetadata = async (
                 movie.posterPath = details.poster_path ?? ''
                 movie.backdropPath = details.backdrop_path ?? ''
                 movie.overview = details.overview
-                movie.logoPath = logoPath || movie.logoPath
+                // Assigned outright: keeping the previous value here would resurrect the logo of a
+                // language the user has moved away from.
+                movie.logoPath = logoPath
+                movie.logoPathEn = logoPathEn
                 movie.voteAverage = details.vote_average
                 movie.status = details.status
 
@@ -612,7 +618,7 @@ const refreshExistingMetadata = async (
         try {
             const details = await getTVShowDetails(show.id)
             if (details) {
-                const logoPath = details.images?.logos?.find(l => l.iso_639_1 === 'en')?.file_path
+                const { localized: logoPath, english: logoPathEn } = pickLogos(details.images)
 
                 const createdBy = details.created_by?.map(c => ({
                     name: c.name,
@@ -633,7 +639,8 @@ const refreshExistingMetadata = async (
                 show.posterPath = details.poster_path ?? ''
                 show.backdropPath = details.backdrop_path ?? ''
                 show.overview = details.overview
-                show.logoPath = logoPath || show.logoPath
+                show.logoPath = logoPath
+                show.logoPathEn = logoPathEn
                 show.voteAverage = details.vote_average
                 show.status = details.status
 

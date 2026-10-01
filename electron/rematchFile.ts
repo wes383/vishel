@@ -1,5 +1,5 @@
 import { getDb, getMovie, getTVShow, saveMovie, saveTVShow, Movie, VideoFile } from './db'
-import { getMovieDetails, getTVShowDetails, getSeasonDetails } from './tmdbService'
+import { getMovieDetails, getTVShowDetails, getSeasonDetails, pickLogos } from './tmdbService'
 import { DataSource, getSources } from './store'
 
 export const rematchSingleFile = async (
@@ -126,14 +126,15 @@ const addFileToMovie = async (tmdbId: number, file: VideoFile, source: DataSourc
             profilePath: d.profile_path ?? null
         }))
 
-        const logoPath = details.images?.logos?.find(l => l.iso_639_1 === 'en')?.file_path
+        const { localized: logoPath, english: logoPathEn } = pickLogos(details.images)
 
         file.manuallyMatched = true
 
         const newMovie: Movie = {
             id: details.id,
             title: details.title,
-            logoPath: logoPath ?? '',
+            logoPath,
+            logoPathEn,
             overview: details.overview,
             posterPath: details.poster_path ?? '',
             backdropPath: details.backdrop_path ?? '',
@@ -184,12 +185,13 @@ const addFileToTVShow = async (
             profilePath: c.profile_path ?? ''
         }))
 
-        const logoPath = details.images?.logos?.find(l => l.iso_639_1 === 'en')?.file_path
+        const { localized: logoPath, english: logoPathEn } = pickLogos(details.images)
 
         show = {
             id: details.id,
             name: details.name,
-            logoPath: logoPath ?? '',
+            logoPath,
+            logoPathEn,
             posterPath: details.poster_path ?? '',
             backdropPath: details.backdrop_path ?? '',
             overview: details.overview,

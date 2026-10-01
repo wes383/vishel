@@ -30,7 +30,7 @@ import {
 import { testConnection, listDirectory } from './webdavService'
 import { testLocalConnection, listLocalDirectory } from './localFileService'
 import { testConnection as testSMBConnection, listDirectory as listSMBDirectory } from './smbService'
-import { getMovieDetails, getTVShowDetails, getSeasonDetails } from './tmdbService'
+import { getMovieDetails, getTVShowDetails, getSeasonDetails, pickLogos } from './tmdbService'
 import { probeVideoMetadata } from './mediaProbe'
 import { checkForUpdates, downloadUpdate, initAutoUpdater } from './updater'
 
@@ -175,14 +175,15 @@ export const setupIpcHandlers = () => {
                     profilePath: d.profile_path ?? null
                 })) || []
 
-                const logoPath = details.images?.logos?.find(l => l.iso_639_1 === 'en')?.file_path
+                const { localized: logoPath, english: logoPathEn } = pickLogos(details.images)
 
                 const updatedMovie: Movie = {
                     ...existingMovie,
                     title: details.title,
                     posterPath: details.poster_path ?? '',
                     backdropPath: details.backdrop_path ?? '',
-                    logoPath: logoPath ?? '',
+                    logoPath,
+                    logoPathEn,
                     overview: details.overview,
                     releaseDate: details.release_date ?? '',
                     genres: details.genres?.map(g => g.name) || [],
@@ -219,7 +220,7 @@ export const setupIpcHandlers = () => {
                     profilePath: c.profile_path ?? ''
                 })) || []
 
-                const logoPath = details.images?.logos?.find(l => l.iso_639_1 === 'en')?.file_path
+                const { localized: logoPath, english: logoPathEn } = pickLogos(details.images)
 
                 // Refresh season and episode metadata
                 const updatedSeasons: Season[] = []
@@ -255,7 +256,8 @@ export const setupIpcHandlers = () => {
                     name: details.name,
                     posterPath: details.poster_path ?? '',
                     backdropPath: details.backdrop_path ?? '',
-                    logoPath: logoPath ?? '',
+                    logoPath,
+                    logoPathEn,
                     overview: details.overview,
                     firstAirDate: details.first_air_date ?? '',
                     genres: details.genres?.map(g => g.name) || [],

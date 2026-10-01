@@ -1,5 +1,5 @@
 import { getDb, getMovie, getTVShow, saveMovie, saveTVShow, Movie, TVShow } from './db'
-import { getMovieDetails, getTVShowDetails, getSeasonDetails } from './tmdbService'
+import { getMovieDetails, getTVShowDetails, getSeasonDetails, pickLogos } from './tmdbService'
 
 export const rematchMedia = async (
     oldTmdbId: number,
@@ -74,12 +74,13 @@ const rematchMovie = async (oldTmdbId: number, newTmdbId: number) => {
             profilePath: d.profile_path ?? null
         }))
 
-        const logoPath = details.images?.logos?.find(l => l.iso_639_1 === 'en')?.file_path
+        const { localized: logoPath, english: logoPathEn } = pickLogos(details.images)
 
         const newMovie: Movie = {
             id: details.id,
             title: details.title,
-            logoPath: logoPath ?? '',
+            logoPath,
+            logoPathEn,
             overview: details.overview,
             posterPath: details.poster_path ?? '',
             backdropPath: details.backdrop_path ?? '',
@@ -176,13 +177,14 @@ const rematchTVShow = async (oldTmdbId: number, newTmdbId: number) => {
             profilePath: c.profile_path ?? ''
         }))
 
-        const logoPath = details.images?.logos?.find(l => l.iso_639_1 === 'en')?.file_path
+        const { localized: logoPath, english: logoPathEn } = pickLogos(details.images)
 
         // Save new show
         const newShow: TVShow = {
             id: details.id,
             name: details.name,
-            logoPath: logoPath ?? '',
+            logoPath,
+            logoPathEn,
             posterPath: details.poster_path ?? '',
             backdropPath: details.backdrop_path ?? '',
             overview: details.overview,

@@ -114,3 +114,14 @@ export const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p'
 
 export const tmdbImage = (path: string | null | undefined, size: string) =>
     path ? `${TMDB_IMAGE_BASE}/${size}${path}` : ''
+
+/**
+ * Which of the two stored logos to draw. A missing localized logo is never replaced with the
+ * English one: the detail page then falls back to the title as text, which is the whole point of
+ * the preference. English UI reads `logoPath`, which the fetch fills with the English logo.
+ */
+export const displayLogo = (
+    media: { logoPath?: string, logoPathEn?: string },
+    settings: { language?: 'en' | 'zh', preferEnglishLogo?: boolean } | null | undefined
+): string | undefined =>
+    settings?.language === 'zh' && settings.preferEnglishLogo ? media.logoPathEn : media.logoPath

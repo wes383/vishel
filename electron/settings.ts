@@ -18,6 +18,8 @@ const WRITABLE_KEYS: (keyof Settings)[] = [
     'preferTextTitle',
     'posterSize',
     'probeVideoMetadataEnabled',
+    'language',
+    'preferEnglishLogo',
     'movieExternalLinks',
     'tvExternalLinks',
     'sources'
@@ -38,6 +40,8 @@ const NON_SECRET_KEYS: Exclude<keyof Settings, 'tmdbApiKey' | 'sources'>[] = [
     'preferTextTitle',
     'posterSize',
     'probeVideoMetadataEnabled',
+    'language',
+    'preferEnglishLogo',
     'movieExternalLinks',
     'tvExternalLinks'
 ]
@@ -66,6 +70,8 @@ export interface RendererSettings {
     preferTextTitle: boolean
     posterSize: Settings['posterSize']
     probeVideoMetadataEnabled: boolean
+    language: Settings['language']
+    preferEnglishLogo: boolean
     movieExternalLinks: ExternalLinkConfig[]
     tvExternalLinks: ExternalLinkConfig[]
     /** Masked: the renderer never sees the real TMDB key. */

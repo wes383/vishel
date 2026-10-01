@@ -36,6 +36,10 @@ export interface Settings {
     preferTextTitle: boolean
     posterSize: 'small' | 'medium' | 'large'
     probeVideoMetadataEnabled: boolean
+    /** UI locale and the metadata language TMDB is asked for. */
+    language: 'en' | 'zh'
+    /** Only meaningful when `language` is 'zh': show the English logo instead of the localized one. */
+    preferEnglishLogo: boolean
     movieExternalLinks: ExternalLinkConfig[]
     tvExternalLinks: ExternalLinkConfig[]
     sources: DataSource[]
@@ -69,6 +73,8 @@ const schema = {
     preferTextTitle: { type: 'boolean', default: false },
     posterSize: { type: 'string', default: 'medium', enum: ['small', 'medium', 'large'] },
     probeVideoMetadataEnabled: { type: 'boolean', default: true },
+    language: { type: 'string', default: 'en', enum: ['en', 'zh'] },
+    preferEnglishLogo: { type: 'boolean', default: true },
     movieExternalLinks: {
         type: 'array',
         default: defaultMovieExternalLinks,

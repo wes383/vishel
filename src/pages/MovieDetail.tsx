@@ -10,7 +10,7 @@ import {
 } from '../components/media/MediaDetailShell'
 import { LoadingPanel } from '../components/ui/Feedback'
 import { buildExternalLinks, defaultMovieExternalLinks, normalizeExternalLinks } from '../utils/externalLinks'
-import { formatVideoInfo } from '../utils/formatMediaInfo'
+import { displayLogo, formatVideoInfo } from '../utils/formatMediaInfo'
 import { formatMoviePlayTitle } from '../utils/playTitle'
 import { useImdbRating } from '../hooks/useImdbRating'
 import { useVideoProbeMetadata } from '../hooks/useVideoProbeMetadata'
@@ -145,7 +145,7 @@ export default function MovieDetail() {
             mediaId={movie.id}
             title={movie.title}
             overview={movie.overview}
-            logoPath={movie.logoPath}
+            logoPath={displayLogo(movie, settings)}
             backdropPath={movie.backdropPath}
             tagline={movie.tagline}
             year={movie.releaseDate?.split('-')[0]}

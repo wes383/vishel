@@ -19,6 +19,8 @@ export interface Movie {
     posterPath: string
     backdropPath: string
     logoPath?: string
+    /** The English logo, stored beside the localized one so the preference is applied at render. */
+    logoPathEn?: string
     overview: string
     releaseDate: string
     sourceId: string
@@ -61,6 +63,8 @@ export interface TVShow {
     posterPath: string
     backdropPath: string
     logoPath?: string
+    /** @see Movie.logoPathEn */
+    logoPathEn?: string
     overview: string
     firstAirDate: string
     sourceId: string
@@ -148,6 +152,7 @@ const BASE_SCHEMA = `
         posterPath TEXT,
         backdropPath TEXT,
         logoPath TEXT,
+        logoPathEn TEXT,
         overview TEXT,
         releaseDate TEXT,
         sourceId TEXT,
@@ -169,6 +174,7 @@ const BASE_SCHEMA = `
         posterPath TEXT,
         backdropPath TEXT,
         logoPath TEXT,
+        logoPathEn TEXT,
         overview TEXT,
         firstAirDate TEXT,
         sourceId TEXT,
@@ -307,6 +313,9 @@ const dedupeEpisodes = (db: Database.Database) => {
     return groups.length
 }
 
+const hasColumn = (db: Database.Database, table: string, column: string): boolean =>
+    (db.pragma(`table_info(${table})`) as { name: string }[]).some(c => c.name === column)
+
 const MIGRATIONS: { version: number, up: (db: Database.Database) => void }[] = [
     {
         version: 2,
@@ -318,6 +327,21 @@ const MIGRATIONS: { version: number, up: (db: Database.Database) => void }[] = [
                     ON episodes(tvShowId, seasonNumber, episodeNumber);
             `)
             db.exec(INDICES)
+        }
+    },
+    {
+        version: 3,
+        up: (db) => {
+            // One logo per language instead of one logo total: the English preference is now a
+            // display-time choice rather than a re-fetch. BASE_SCHEMA already carries the column,
+            // and getDb runs the schema before migrating, so a fresh database lands here too.
+            if (!hasColumn(db, 'movies', 'logoPathEn')) db.exec('ALTER TABLE movies ADD COLUMN logoPathEn TEXT')
+            if (!hasColumn(db, 'tv_shows', 'logoPathEn')) db.exec('ALTER TABLE tv_shows ADD COLUMN logoPathEn TEXT')
+
+            // Every row written before this column existed held the English logo by construction -
+            // the only pick there was `iso_639_1 === 'en'` - so the copy is fact, not a guess.
+            db.exec('UPDATE movies SET logoPathEn = logoPath WHERE logoPathEn IS NULL')
+            db.exec('UPDATE tv_shows SET logoPathEn = logoPath WHERE logoPathEn IS NULL')
         }
     }
 ]
@@ -398,6 +422,7 @@ interface MovieRow {
     posterPath: string | null
     backdropPath: string | null
     logoPath: string | null
+    logoPathEn: string | null
     overview: string | null
     releaseDate: string | null
     sourceId: string | null
@@ -424,6 +449,7 @@ interface TVShowRow {
     posterPath: string | null
     backdropPath: string | null
     logoPath: string | null
+    logoPathEn: string | null
     overview: string | null
     firstAirDate: string | null
     sourceId: string | null
@@ -586,6 +612,7 @@ export const getAllMovies = (): Movie[] => {
         posterPath: m.posterPath ?? '',
         backdropPath: m.backdropPath ?? '',
         logoPath: orUndefined(m.logoPath),
+        logoPathEn: orUndefined(m.logoPathEn),
         overview: m.overview ?? '',
         releaseDate: m.releaseDate ?? '',
         sourceId: m.sourceId ?? '',
@@ -613,6 +640,7 @@ export const getMovie = (id: number): Movie | undefined => {
         posterPath: movie.posterPath ?? '',
         backdropPath: movie.backdropPath ?? '',
         logoPath: orUndefined(movie.logoPath),
+        logoPathEn: orUndefined(movie.logoPathEn),
         overview: movie.overview ?? '',
         releaseDate: movie.releaseDate ?? '',
         sourceId: movie.sourceId ?? '',
@@ -651,11 +679,11 @@ export const saveMovie = (movie: Movie) => {
 
     const insert = stmt(`
         INSERT OR REPLACE INTO movies (
-            id, title, posterPath, backdropPath, logoPath, overview, releaseDate, sourceId,
+            id, title, posterPath, backdropPath, logoPath, logoPathEn, overview, releaseDate, sourceId,
             genres, runtime, voteAverage, popularity, tagline, status,
             cast, director, externalIds, createdAt
         ) VALUES (
-            @id, @title, @posterPath, @backdropPath, @logoPath, @overview, @releaseDate, @sourceId,
+            @id, @title, @posterPath, @backdropPath, @logoPath, @logoPathEn, @overview, @releaseDate, @sourceId,
             @genres, @runtime, @voteAverage, @popularity, @tagline, @status,
             @cast, @director, @externalIds, @createdAt
         )
@@ -675,6 +703,7 @@ export const saveMovie = (movie: Movie) => {
             posterPath: movie.posterPath,
             backdropPath: movie.backdropPath,
             logoPath: movie.logoPath || null,
+            logoPathEn: movie.logoPathEn || null,
             overview: movie.overview,
             releaseDate: movie.releaseDate,
             sourceId: movie.sourceId,
@@ -713,6 +742,7 @@ export const getAllTVShows = (): TVShow[] => {
         posterPath: s.posterPath ?? '',
         backdropPath: s.backdropPath ?? '',
         logoPath: orUndefined(s.logoPath),
+        logoPathEn: orUndefined(s.logoPathEn),
         overview: s.overview ?? '',
         firstAirDate: s.firstAirDate ?? '',
         sourceId: s.sourceId ?? '',
@@ -745,6 +775,7 @@ export const getTVShow = (id: number): TVShow | undefined => {
         posterPath: show.posterPath ?? '',
         backdropPath: show.backdropPath ?? '',
         logoPath: orUndefined(show.logoPath),
+        logoPathEn: orUndefined(show.logoPathEn),
         overview: show.overview ?? '',
         firstAirDate: show.firstAirDate ?? '',
         sourceId: show.sourceId ?? '',
@@ -773,10 +804,10 @@ export const saveTVShow = (show: TVShow) => {
 
     const insertShow = stmt(`
         INSERT OR REPLACE INTO tv_shows (
-            id, name, posterPath, backdropPath, logoPath, overview, firstAirDate, sourceId,
+            id, name, posterPath, backdropPath, logoPath, logoPathEn, overview, firstAirDate, sourceId,
             genres, voteAverage, popularity, status, cast, createdBy, externalIds, createdAt
         ) VALUES (
-            @id, @name, @posterPath, @backdropPath, @logoPath, @overview, @firstAirDate, @sourceId,
+            @id, @name, @posterPath, @backdropPath, @logoPath, @logoPathEn, @overview, @firstAirDate, @sourceId,
             @genres, @voteAverage, @popularity, @status, @cast, @createdBy, @externalIds, @createdAt
         )
     `)
@@ -813,6 +844,7 @@ export const saveTVShow = (show: TVShow) => {
             posterPath: show.posterPath,
             backdropPath: show.backdropPath,
             logoPath: show.logoPath || null,
+            logoPathEn: show.logoPathEn || null,
             overview: show.overview,
             firstAirDate: show.firstAirDate,
             sourceId: show.sourceId,

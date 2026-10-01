@@ -14,7 +14,7 @@ import Segmented from '../components/ui/Segmented'
 import Card from '../components/ui/Card'
 import { LoadingPanel } from '../components/ui/Feedback'
 import { buildExternalLinks, defaultTvExternalLinks, normalizeExternalLinks } from '../utils/externalLinks'
-import { tmdbImage } from '../utils/formatMediaInfo'
+import { displayLogo, tmdbImage } from '../utils/formatMediaInfo'
 import { formatTvPlayTitle } from '../utils/playTitle'
 import { useImdbRating } from '../hooks/useImdbRating'
 import { useSettings } from '../contexts/SettingsContext'
@@ -290,7 +290,7 @@ export default function TVDetail() {
                 mediaId={show.id}
                 title={show.name}
                 overview={show.overview}
-                logoPath={show.logoPath}
+                logoPath={displayLogo(show, settings)}
                 backdropPath={show.backdropPath}
                 year={show.firstAirDate?.split('-')[0]}
                 genres={show.genres}

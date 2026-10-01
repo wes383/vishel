@@ -89,6 +89,7 @@ export default function GeneralSection() {
                             label={t('settings:languageAria')}
                             value={settings?.language || 'en'}
                             options={LANGUAGES}
+                            compact
                             onChange={value => void commit({ language: value }, t('settings:settingSaveError'))}
                         />
                     )}
@@ -148,6 +149,7 @@ export default function GeneralSection() {
                             label={t('settings:posterTitleDisplayAria')}
                             value={settings?.posterTitleMode || 'hover'}
                             options={POSTER_TITLE_MODES.map(option => ({ value: option.value, label: t(`settings:${option.labelKey}`) }))}
+                            compact
                             onChange={value => void commit({
                                 posterTitleMode: value,
                                 showTitlesOnPosters: value === 'below'
@@ -164,6 +166,7 @@ export default function GeneralSection() {
                             label={t('settings:posterSizeAria')}
                             value={settings?.posterSize || 'medium'}
                             options={POSTER_SIZES.map(option => ({ value: option.value, label: t(`settings:${option.labelKey}`) }))}
+                            compact
                             onChange={value => void commit({ posterSize: value }, t('settings:settingSaveError'))}
                         />
                     )}

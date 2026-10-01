@@ -195,6 +195,13 @@
         cursor: not-allowed;
     }
 
+    /* Chromium's default highlight is an OS-blue slab that fights the monochrome
+       palette; selection reads as the same light-on-dark accent as the buttons. */
+    ::selection {
+        background-color: var(--color-accent);
+        color: var(--color-accent-foreground);
+    }
+
     /* Scrollbars. Do not add `scrollbar-width` or `scrollbar-color`: any
        non-auto value on either makes Chromium discard this whole block and
        fall back to native scrollbars. The 2px transparent border plus

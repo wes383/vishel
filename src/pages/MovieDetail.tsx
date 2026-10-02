@@ -161,16 +161,6 @@ export default function MovieDetail() {
             externalLinks={externalLinks}
             onBack={() => navigate('/')}
             isMac={isMac}
-            playList={videoFiles.length > 0 && (
-                <VideoFileList
-                    files={videoFiles}
-                    metadata={videoMetadata}
-                    sourceNames={sourceNames}
-                    playingFileId={playingFileId}
-                    videoInfoOf={formatVideoInfo}
-                    onPlay={playVideo}
-                />
-            )}
         >
             <div className="flex flex-col gap-8 mb-10">
                 <PersonChips
@@ -179,6 +169,15 @@ export default function MovieDetail() {
                 />
                 <PersonChips label={t('detail:topCast')} people={movie.cast} />
             </div>
+
+            <VideoFileList
+                files={videoFiles}
+                metadata={videoMetadata}
+                sourceNames={sourceNames}
+                playingFileId={playingFileId}
+                videoInfoOf={formatVideoInfo}
+                onPlay={playVideo}
+            />
         </MediaDetailShell>
     )
 }

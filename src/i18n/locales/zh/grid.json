@@ -6,6 +6,7 @@
     "refreshMetadata": "刷新元数据",
     "refreshing": "正在刷新…",
     "playing": "正在播放…",
+    "nowPlaying": "正在播放《{{title}}》",
     "rematch": "重新匹配",
     "rematched": "已重新匹配",
     "matchedTo": "已匹配到《{{title}}》",

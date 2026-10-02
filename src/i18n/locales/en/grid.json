@@ -6,6 +6,7 @@
     "refreshMetadata": "Refresh Metadata",
     "refreshing": "Refreshing...",
     "playing": "Playing...",
+    "nowPlaying": "Now playing \"{{title}}\"",
     "rematch": "Rematch",
     "rematched": "Rematched",
     "matchedTo": "Matched to \"{{title}}\"",

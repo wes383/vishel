@@ -200,6 +200,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({
                 title,
                 history
             })
+            showToast(t('grid:nowPlaying', { title }))
             if (result?.autoMarked) {
                 onChanged?.()
             }

@@ -179,7 +179,7 @@ export default function MovieDetail() {
                 isMac={isMac}
                 primaryAction={videoFiles.length > 0 && (
                     <Button
-                        variant="ghost"
+                        variant="subtle"
                         size="sm"
                         onClick={handlePlayClick}
                         aria-busy={playingFileId !== null || undefined}

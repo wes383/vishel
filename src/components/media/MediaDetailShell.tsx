@@ -167,11 +167,11 @@ export function MediaDetailShell({
                                 <img
                                     src={tmdbImage(logoPath, 'original')}
                                     alt={title}
-                                    className="max-w-[400px] max-h-[150px] object-contain mb-6"
+                                    className="max-w-[400px] max-h-[150px] object-contain mb-8"
                                 />
                             </button>
                         ) : (
-                            <h1 className="font-display text-5xl font-extrabold mb-2 leading-tight tracking-tight">
+                            <h1 className="font-display text-5xl font-extrabold mb-6 leading-tight tracking-tight">
                                 <button
                                     type="button"
                                     onClick={() => {
@@ -184,7 +184,7 @@ export function MediaDetailShell({
                             </h1>
                         )}
 
-                        {tagline && <p className="text-xl text-foreground-muted italic mb-6">{tagline}</p>}
+                        {tagline && <p className="text-xl text-foreground-muted italic mb-8">{tagline}</p>}
 
                         <div className="flex flex-wrap items-center gap-6 text-foreground-muted mb-8 text-sm md:text-base">
                             {primaryAction}

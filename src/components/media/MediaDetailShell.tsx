@@ -393,7 +393,7 @@ export function VideoFileList({ files, metadata, sourceNames, playingFileId, vid
                         aria-label={sourceName
                             ? t('detail:playFileFromSource', { name: file.name, source: sourceName })
                             : t('detail:playFile', { name: file.name })}
-                        className={`flex items-center gap-4 rounded-lg border px-4 py-3.5 text-left transition-colors duration-150 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                        className={`group flex items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors duration-150 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                             anyPlaying
                                 ? (isPlaying
                                     ? 'cursor-default border-border-strong bg-accent-muted'
@@ -401,15 +401,22 @@ export function VideoFileList({ files, metadata, sourceNames, playingFileId, vid
                                 : 'cursor-pointer border-border bg-surface hover:border-border-strong hover:bg-hover-bg'
                         }`}
                     >
-                        <span className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center">
+                        <span className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-hover-bg transition-colors duration-150 ease-out ${
+                            anyPlaying ? '' : 'group-hover:bg-hover-bg-strong'
+                        }`}>
                             {anyPlaying && isPlaying ? (
                                 <Spinner size="md" />
                             ) : (
-                                <Play className="w-[18px] h-[18px] text-accent fill-accent ml-0.5" aria-hidden="true" />
+                                <Play className="w-4 h-4 text-accent fill-accent ml-0.5" aria-hidden="true" />
                             )}
                         </span>
-                        <span className="flex flex-col gap-1 flex-1 min-w-0 pr-2">
-                            <span className="font-medium text-sm break-all">{file.name}</span>
+                        <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+                            <span className="flex items-center justify-between gap-3">
+                                <span className="min-w-0 truncate font-medium text-sm" title={file.name}>{file.name}</span>
+                                <span className="flex-shrink-0 text-xs text-foreground-subtle">
+                                    {sourceName || t('detail:unknownSource')}
+                                </span>
+                            </span>
                             {infoParts.length > 0 && (
                                 <span className="flex flex-wrap items-center gap-1.5">
                                     {infoParts.map((part, index) => (
@@ -422,9 +429,6 @@ export function VideoFileList({ files, metadata, sourceNames, playingFileId, vid
                                     ))}
                                 </span>
                             )}
-                            <span className="text-foreground-muted text-xs truncate">
-                                {sourceName || t('detail:unknownSource')}
-                            </span>
                         </span>
                     </button>
                 )

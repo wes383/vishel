@@ -196,7 +196,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({
         setPlaying(true)
         // The main process holds the launch up to two seconds to catch a player that exits
         // at once, so acknowledge the click first and swap to the error toast if it does.
-        const toastId = showToast(t('grid:nowPlaying', { title }))
+        const toastId = showToast(t('grid:nowPlaying', { title }), 'success')
         try {
             const result = await window.electron.ipcRenderer.invoke('play-video', {
                 url: file.webdavUrl,

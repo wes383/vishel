@@ -460,7 +460,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({
                     </MenuItem>
                     <MenuItem onClick={handleToggleFavorite}>
                         <Heart
-                            className={`w-4 h-4 ${isFavorite(contextMenu.item.type, contextMenu.item.id) ? 'fill-danger text-danger' : ''}`}
+                            className={`w-4 h-4 ${isFavorite(contextMenu.item.type, contextMenu.item.id) ? 'fill-favorite text-favorite' : ''}`}
                             aria-hidden="true"
                         />
                         {isFavorite(contextMenu.item.type, contextMenu.item.id) ? t('grid:removeFromFavorites') : t('grid:addToFavorites')}

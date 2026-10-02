@@ -225,7 +225,7 @@ export function MediaDetailShell({
                                     activeLabel={t('detail:removeFromFavorites')}
                                     inactiveLabel={t('detail:addToFavorites')}
                                 >
-                                    <Heart className={`w-5 h-5 ${favorited ? 'fill-danger text-danger' : 'text-foreground-muted'}`} aria-hidden="true" />
+                                    <Heart className={`w-5 h-5 ${favorited ? 'fill-favorite text-favorite' : 'text-foreground-muted'}`} aria-hidden="true" />
                                 </StatusToggleButton>
                                 <StatusToggleButton
                                     onClick={handleToggleWatched}

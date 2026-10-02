@@ -41,6 +41,8 @@
     --color-danger-strong: #f87171;
     --color-danger-soft: rgb(239 68 68 / 0.12);
     --color-danger-border: rgb(248 113 113 / 0.45);
+    /* Solid heart red: the danger text tone reads washed out when filled. */
+    --color-favorite: #ef4444;
     --color-success: #86efac;
     --color-success-strong: #4ade80;
     --color-success-soft: rgb(34 197 94 / 0.16);

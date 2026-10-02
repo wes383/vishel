@@ -42,6 +42,8 @@ interface MediaDetailShellProps {
     hasImdbId: boolean
     onBack: () => void
     isMac: boolean
+    /** Playable files, rendered above the synopsis: playing is the primary action. */
+    playList?: React.ReactNode
     children: React.ReactNode
     /** Page tail that must not sit inside the info column, e.g. the season list. */
     belowInfo?: React.ReactNode
@@ -71,6 +73,7 @@ export function MediaDetailShell({
     hasImdbId,
     onBack,
     isMac,
+    playList,
     children,
     belowInfo
 }: MediaDetailShellProps) {
@@ -238,6 +241,8 @@ export function MediaDetailShell({
                             </div>
                         </div>
 
+                        {playList && <div className="mb-6">{playList}</div>}
+
                         <p className="text-lg text-foreground-muted leading-relaxed max-w-3xl mb-6">{overview}</p>
 
                         {externalLinks.length > 0 && (
@@ -393,7 +398,7 @@ export function VideoFileList({ files, metadata, sourceNames, playingFileId, vid
                         aria-label={sourceName
                             ? t('detail:playFileFromSource', { name: file.name, source: sourceName })
                             : t('detail:playFile', { name: file.name })}
-                        className={`group flex items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors duration-150 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                        className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors duration-150 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                             anyPlaying
                                 ? (isPlaying
                                     ? 'cursor-default border-border-strong bg-accent-muted'
@@ -401,13 +406,11 @@ export function VideoFileList({ files, metadata, sourceNames, playingFileId, vid
                                 : 'cursor-pointer border-border bg-surface hover:border-border-strong hover:bg-hover-bg'
                         }`}
                     >
-                        <span className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-hover-bg transition-colors duration-150 ease-out ${
-                            anyPlaying ? '' : 'group-hover:bg-hover-bg-strong'
-                        }`}>
+                        <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center">
                             {anyPlaying && isPlaying ? (
                                 <Spinner size="md" />
                             ) : (
-                                <Play className="w-4 h-4 text-accent fill-accent ml-0.5" aria-hidden="true" />
+                                <Play className="w-[18px] h-[18px] text-accent fill-accent ml-0.5" aria-hidden="true" />
                             )}
                         </span>
                         <span className="flex min-w-0 flex-1 flex-col gap-1.5">

@@ -179,16 +179,18 @@ export default function MovieDetail() {
                 isMac={isMac}
                 primaryAction={videoFiles.length > 0 && (
                     <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={handlePlayClick}
                         aria-busy={playingFileId !== null || undefined}
                         className={playingFileId !== null ? 'cursor-default' : undefined}
                     >
                         {playingFileId !== null ? (
-                            <Spinner size="sm" className="text-accent-foreground" />
+                            <Spinner size="sm" />
                         ) : (
-                            <Play className="w-4 h-4 fill-current" aria-hidden="true" />
+                            <Play className="w-4 h-4 fill-current text-foreground-muted" aria-hidden="true" />
                         )}
-                        {t('common:play')}
+                        <span className="text-foreground-muted">{t('common:play')}</span>
                     </Button>
                 )}
             >

@@ -149,7 +149,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({
     const anchorRef = useRef<HTMLElement | null>(null)
 
     const { isFavorite, isWatched, toggleFavorite, toggleWatched } = useMediaStatus()
-    const { showToast } = useToast()
+    const { showToast, dismissToast } = useToast()
 
     const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
     const [rematchItem, setRematchItem] = useState<{ id: number, type: 'movie' | 'tv', title: string, videoFiles: VideoFile[] } | null>(null)
@@ -194,22 +194,25 @@ export const MediaGrid: React.FC<MediaGridProps> = ({
 
     const playVideo = useCallback(async (file: VideoFile, title: string, history: PlayHistoryDraft) => {
         setPlaying(true)
+        // The main process holds the launch up to two seconds to catch a player that exits
+        // at once, so acknowledge the click first and swap to the error toast if it does.
+        const toastId = showToast(t('grid:nowPlaying', { title }))
         try {
             const result = await window.electron.ipcRenderer.invoke('play-video', {
                 url: file.webdavUrl,
                 title,
                 history
             })
-            showToast(t('grid:nowPlaying', { title }))
             if (result?.autoMarked) {
                 onChanged?.()
             }
         } catch (error) {
+            dismissToast(toastId)
             showToast(errorMessage(error, t('grid:failedToLaunchPlayer')), 'error')
         } finally {
             setPlaying(false)
         }
-    }, [onChanged, showToast, t])
+    }, [onChanged, showToast, dismissToast, t])
 
     const playMovie = useCallback((movie: Movie) => {
         const [first, ...rest] = movie.videoFiles

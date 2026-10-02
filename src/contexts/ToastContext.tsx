@@ -10,7 +10,7 @@ interface Toast {
 }
 
 interface ToastApi {
-    showToast: (message: string, kind?: ToastKind, duration?: number) => void
+    showToast: (message: string, kind?: ToastKind, duration?: number) => number
     dismissToast: (id: number) => void
 }
 
@@ -51,11 +51,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         setToasts(current => current.filter(toast => toast.id !== id))
     }, [])
 
-    const showToast = useCallback((message: string, kind: ToastKind = 'info', duration = 3000) => {
+    const showToast = useCallback((message: string, kind: ToastKind = 'info', duration = 3000): number => {
         const id = ++nextId
         setToasts(current => [...current.slice(-2), { id, message, kind }])
         const timer = setTimeout(() => dismissToast(id), duration)
         timers.current.set(id, timer)
+        return id
     }, [dismissToast])
 
     useEffect(() => {

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
+import { Play } from 'lucide-react'
 import type { Movie as MovieRecord, VideoFile } from '../../electron/db'
 import {
     MediaDetailShell,
@@ -8,7 +9,10 @@ import {
     PersonChips,
     VideoFileList
 } from '../components/media/MediaDetailShell'
-import { LoadingPanel } from '../components/ui/Feedback'
+import Modal from '../components/ui/Modal'
+import ListItemButton from '../components/ui/ListItemButton'
+import Button from '../components/ui/Button'
+import { LoadingPanel, Spinner } from '../components/ui/Feedback'
 import { buildExternalLinks, defaultMovieExternalLinks, normalizeExternalLinks } from '../utils/externalLinks'
 import { displayLogo, formatVideoInfo } from '../utils/formatMediaInfo'
 import { formatMoviePlayTitle } from '../utils/playTitle'
@@ -30,6 +34,7 @@ export default function MovieDetail() {
     const [movie, setMovie] = useState<MovieRecord | null>(null)
     const [loading, setLoading] = useState(true)
     const [playingFileId, setPlayingFileId] = useState<string | null>(null)
+    const [showFilePicker, setShowFilePicker] = useState(false)
 
     const showImdbRating = settings?.showImdbRating !== false
     const imdbId = movie?.externalIds?.imdb_id
@@ -59,7 +64,8 @@ export default function MovieDetail() {
 
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') {
+            // The version picker closes itself; Escape here only backs out of the page.
+            if (event.key === 'Escape' && !showFilePicker) {
                 event.preventDefault()
                 navigate('/')
             }
@@ -67,7 +73,7 @@ export default function MovieDetail() {
 
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [navigate])
+    }, [navigate, showFilePicker])
 
     useEffect(() => {
         if (!id) {
@@ -130,6 +136,15 @@ export default function MovieDetail() {
         }
     }, [movie, isWatched, toggleWatched, showToast, t])
 
+    const handlePlayClick = useCallback(() => {
+        if (playingFileId !== null) return
+        if (videoFiles.length === 1) {
+            void playVideo(videoFiles[0])
+            return
+        }
+        setShowFilePicker(true)
+    }, [playingFileId, videoFiles, playVideo])
+
     if (loading) {
         return <LoadingPanel label={t('common:loading')} className="h-screen" />
     }
@@ -141,43 +156,83 @@ export default function MovieDetail() {
     const directors = movie.director?.map(director => ({ name: director.name, profilePath: director.profilePath })) ?? []
 
     return (
-        <MediaDetailShell
-            mediaType="movie"
-            mediaId={movie.id}
-            title={movie.title}
-            overview={movie.overview}
-            logoPath={displayLogo(movie, settings)}
-            backdropPath={movie.backdropPath}
-            tagline={movie.tagline}
-            year={movie.releaseDate?.split('-')[0]}
-            runtime={movie.runtime}
-            genres={movie.genres}
-            voteAverage={movie.voteAverage}
-            imdbRating={imdbRating}
-            loadingImdb={loadingImdb}
-            showImdbRating={showImdbRating}
-            hasImdbId={Boolean(imdbId)}
-            preferTextTitle={settings?.preferTextTitle === true}
-            externalLinks={externalLinks}
-            onBack={() => navigate('/')}
-            isMac={isMac}
-        >
-            <div className="flex flex-col gap-8 mb-10">
-                <PersonChips
-                    label={t('detail:director', { count: directors.length })}
-                    people={directors}
-                />
-                <PersonChips label={t('detail:topCast')} people={movie.cast} />
-            </div>
+        <>
+            <MediaDetailShell
+                mediaType="movie"
+                mediaId={movie.id}
+                title={movie.title}
+                overview={movie.overview}
+                logoPath={displayLogo(movie, settings)}
+                backdropPath={movie.backdropPath}
+                tagline={movie.tagline}
+                year={movie.releaseDate?.split('-')[0]}
+                runtime={movie.runtime}
+                genres={movie.genres}
+                voteAverage={movie.voteAverage}
+                imdbRating={imdbRating}
+                loadingImdb={loadingImdb}
+                showImdbRating={showImdbRating}
+                hasImdbId={Boolean(imdbId)}
+                preferTextTitle={settings?.preferTextTitle === true}
+                externalLinks={externalLinks}
+                onBack={() => navigate('/')}
+                isMac={isMac}
+                primaryAction={videoFiles.length > 0 && (
+                    <Button
+                        onClick={handlePlayClick}
+                        aria-busy={playingFileId !== null || undefined}
+                        className={playingFileId !== null ? 'cursor-default' : undefined}
+                    >
+                        {playingFileId !== null ? (
+                            <Spinner size="sm" className="text-accent-foreground" />
+                        ) : (
+                            <Play className="w-4 h-4 fill-current" aria-hidden="true" />
+                        )}
+                        {t('common:play')}
+                    </Button>
+                )}
+            >
+                <div className="flex flex-col gap-8 mb-10">
+                    <PersonChips
+                        label={t('detail:director', { count: directors.length })}
+                        people={directors}
+                    />
+                    <PersonChips label={t('detail:topCast')} people={movie.cast} />
+                </div>
 
-            <VideoFileList
-                files={videoFiles}
-                metadata={videoMetadata}
-                sourceNames={sourceNames}
-                playingFileId={playingFileId}
-                videoInfoOf={formatVideoInfo}
-                onPlay={playVideo}
-            />
-        </MediaDetailShell>
+                <VideoFileList
+                    files={videoFiles}
+                    metadata={videoMetadata}
+                    sourceNames={sourceNames}
+                    playingFileId={playingFileId}
+                    videoInfoOf={formatVideoInfo}
+                    onPlay={playVideo}
+                />
+            </MediaDetailShell>
+
+            {showFilePicker && (
+                <Modal
+                    title={t('detail:selectVersion')}
+                    onClose={() => setShowFilePicker(false)}
+                    size="lg"
+                    description={formatMoviePlayTitle(movie.title)}
+                >
+                    <div className="space-y-3">
+                        {videoFiles.map(file => (
+                            <ListItemButton
+                                key={file.id}
+                                icon={<Play className="w-5 h-5" aria-hidden="true" />}
+                                title={file.name}
+                                meta={file.filePath}
+                                onClick={() => {
+                                    void playVideo(file)
+                                    setShowFilePicker(false)
+                                }}
+                            />
+                        ))}
+                    </div>
+                </Modal>
+            )}
+        </>
     )
 }

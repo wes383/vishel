@@ -42,6 +42,8 @@ interface MediaDetailShellProps {
     hasImdbId: boolean
     onBack: () => void
     isMac: boolean
+    /** Rendered first in the metadata row, left of the year. */
+    primaryAction?: React.ReactNode
     children: React.ReactNode
     /** Page tail that must not sit inside the info column, e.g. the season list. */
     belowInfo?: React.ReactNode
@@ -71,6 +73,7 @@ export function MediaDetailShell({
     hasImdbId,
     onBack,
     isMac,
+    primaryAction,
     children,
     belowInfo
 }: MediaDetailShellProps) {
@@ -184,6 +187,8 @@ export function MediaDetailShell({
                         {tagline && <p className="text-xl text-foreground-muted italic mb-6">{tagline}</p>}
 
                         <div className="flex flex-wrap items-center gap-6 text-foreground-muted mb-8 text-sm md:text-base">
+                            {primaryAction}
+
                             {year && (
                                 <div className="flex items-center gap-2">
                                     <Calendar className="w-4 h-4 text-foreground-subtle" aria-hidden="true" />
